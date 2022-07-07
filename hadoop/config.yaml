@@ -1,0 +1,41 @@
+cluster:
+  name: bigdata-cluster1
+  services:
+    - 192.168.10.220:8088
+    - 192.168.10.220:50070
+    - 192.168.10.220:8020
+    - 192.168.10.221:8020
+    - 192.168.10.222:8020
+  servicenum: 5
+  namenodes:
+    - 192.168.10.220
+    - 192.168.10.221
+    - 192.168.10.222
+  namenodehosts:
+    - bigdata-dev01
+    - bigdata-dev02
+    - bigdata-dev03
+  namenodehttpport: 50070 
+  namenoderpcport: 8020
+  datanodes:
+    - 192.168.10.220
+    - 192.168.10.221
+    - 192.168.10.222
+  datanodehosts:
+    - bigdata-dev01
+    - bigdata-dev02
+    - bigdata-dev03
+  datanodehttpport: 9864
+  datanoderpcport: 9867
+  resourcemanagers:
+    - 192.168.10.220
+    - 192.168.10.221
+    - 192.168.10.222
+  resourcemanagerhosts:
+    - bigdata-dev01
+    - bigdata-dev02
+    - bigdata-dev03
+  resourcemanagerurl: http://192.168.10.220:8088/jmx
+  resourcemanagerhost: bigdata-dev01
+  resourcemanagerhttpport: 8088
+  
