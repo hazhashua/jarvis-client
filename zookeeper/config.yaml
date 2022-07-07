@@ -1,0 +1,7 @@
+cluster: 
+  name: test环境zookeeper
+  hosts:
+    - 192.168.10.220
+    - 192.168.10.221
+    - 192.168.10.222
+  clientport: 2181

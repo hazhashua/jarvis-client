@@ -1,0 +1,185 @@
+package spark
+
+import (
+	"alive_exporter/utils"
+	"fmt"
+	"io/ioutil"
+	"os"
+
+	// "os"
+	"regexp"
+	"strings"
+
+	"gopkg.in/yaml.v2"
+)
+
+/*
+*  spark获取指标数据时：
+*	1. spark-submit 添加参数，打开metric http地址 参数包括: --conf "spark.ui.prmetheus.enabled=true"
+*   2. spark集群需要添加配置:
+*        metrics.properties
+*          master.source.jvm.class=org.apache.spark.metrics.source.JvmSource
+*          worker.source.jvm.class=org.apache.spark.metrics.source.JvmSource
+*          driver.source.jvm.class=org.apache.spark.metrics.source.JvmSource
+*          executor.source.jvm.class=org.apache.spark.metrics.source.JvmSource
+*          applications.source.jvm.class=org.apache.spark.metrics.source.JvmSource
+*
+*          *.sink.prometheusServlet.class=org.apache.spark.metrics.sink.PrometheusServlet
+*          *.sink.prometheusServlet.path=/metrics/prometheus
+ */
+
+// spark 分为http的接口获取数据的方式
+// :8080/metrics/master/prometheus master汇总的相关信息地址
+func GetMetrics(urls []string) []string {
+	arrs := make([]string, 0)
+	var yamlConfig *YamlConfig
+	var err error
+	if yamlConfig, err = LoadSparkConf(); err != nil {
+		fmt.Println("load spark configure failed!")
+		return []string{}
+	}
+
+	url_s := yamlConfig.Masterhttp.Ips
+	fmt.Println("url_s:", url_s)
+	ports := yamlConfig.Applicationhttp.Ports
+	fmt.Println("ports: ", ports)
+	// 抓取master的网页地址，获取active的地址
+	// 添加is_active_node指标
+	var active_node_index int
+	for idx, url := range urls {
+		ports = []int{4040}
+		for _, port := range ports {
+			//获取driver进程的堆栈内存使用率
+			// master_metric_url := yamlConfig.Masterhttp.Ips[idx] + ":" + fmt.Sprintf("%d", yamlConfig.Masterhttp.Port) + yamlConfig.Masterhttp.Path
+			// fmt.Println("master_metric_url", master_metric_url)
+			driver_url := yamlConfig.Applicationhttp.Ips[idx] + ":" + fmt.Sprintf("%d", port) + yamlConfig.Applicationhttp.MainPath
+			fmt.Println("driver_url: ", driver_url)
+			driver_url = fmt.Sprintf(url+":%d/metrics/prometheus", port)
+			fmt.Println("driver_url: ", driver_url)
+
+			driver_response := utils.GetUrl(driver_url)
+			// fmt.Println("driver_response: ", driver_response)
+			for _, line := range strings.Split(driver_response, "\n") {
+				if strings.Contains(line, "_driver_jvm_heap_usage_Value") {
+					fmt.Println("contains: ", line)
+					reg := regexp.MustCompile("metrics_(.*)_driver_jvm_heap_usage_Value.*")
+					app_name := reg.FindStringSubmatch(line)[1]
+					fmt.Println("app name: ", app_name)
+					arrs = append(arrs, "driver_jvm_heap_usage{type=\"gauges\", application_name=\""+app_name+"\"}\n")
+				}
+			}
+		}
+
+		//查询所有maser的状态
+		res := utils.GetUrl(url + ":28080")
+		is_active_node := strings.Contains(res, "<strong>Status:</strong> ALIVE")
+		fmt.Println("is_active_node: ", is_active_node)
+		is_standby_node := strings.Contains(res, "<strong>Status:</strong> STANDBY")
+		fmt.Println("is_standby_node: ", is_standby_node)
+
+		if is_active_node {
+			arrs = append(arrs, "is_active_master"+"{type=\"gauges\", host=\""+url+"\"} 1\n")
+			active_node_index = idx
+
+			// 获取完成的app数量
+			fmt.Println("active_url: ", url+fmt.Sprintf(":%d", yamlConfig.Masterhttp.Port))
+			response := utils.GetUrl(urls[active_node_index] + ":28080")
+			reg := regexp.MustCompile("(\\d+) <a href=\"#completed-app\">Completed</a>")
+			match_strings := reg.FindStringSubmatch(response)
+			fmt.Println("match strings: ", match_strings[1])
+			// strconv.Itoa(match_strings[1])    int to string...
+			arrs = append(arrs, "master_finished_apps{type=\"gauges\", host=\""+url+"\"} "+match_strings[1]+"\n")
+		} else if is_standby_node {
+			arrs = append(arrs, "is_active_master"+"{type=\"gauges\", host=\""+url+"\"} 0\n")
+		} else {
+			continue
+		}
+		fmt.Println("url: ", url)
+	}
+	fmt.Println("active node index: ", active_node_index)
+
+	// 0 <a href="#completed-app">Completed</a>
+	// fmt.Println("match strings: ", match_strings)
+
+	// 查询active http metric数据
+	// response := utils.GetUrl(urls[active_node_index]+"metrics/prometheus")
+	response := utils.GetUrl(urls[active_node_index] + ":28080/metrics/prometheus/")
+
+	regexp := regexp.MustCompile("[^{]*{(.*)}.*")
+	for _, line := range strings.Split(response, "\n") {
+		// fmt.Println("line: ", line)
+		if strings.Contains(line, "metrics_master_aliveWorkers_Value") {
+			line = strings.ReplaceAll(line, "metrics_master_aliveWorkers_Value", "master_alive_workers")
+			arrs = append(arrs, line+"\n")
+		}
+		if strings.Contains(line, "metrics_master_apps_Value") {
+			line = strings.ReplaceAll(line, "metrics_master_apps_Value", "master_apps")
+			arrs = append(arrs, line+"\n")
+		}
+		if strings.Contains(line, "metrics_master_waitingApps_Value") {
+			line = strings.ReplaceAll(line, "metrics_master_waitingApps_Value", "master_waiting_apps")
+			arrs = append(arrs, line+"\n")
+		}
+		if strings.Contains(line, "metrics_master_workers_Value") {
+			line = strings.ReplaceAll(line, "metrics_master_workers_Value", "master_workers")
+			arrs = append(arrs, line+"\n")
+		}
+		// master 进程堆内存使用率
+		if strings.Contains(line, "metrics_jvm_heap_usage_Value") {
+			line = strings.ReplaceAll(line, "metrics_jvm_heap_usage_Value", "master_jvm_heap_usage")
+			ss := regexp.FindStringSubmatch(line)
+			line = strings.ReplaceAll(line, ss[1], ss[1]+","+"host=\""+urls[active_node_index]+"\" ")
+			arrs = append(arrs, line+"\n")
+		}
+	}
+	cluster := fmt.Sprintf("cluster=\"%s\"", "test")
+	print_metrics := []string{}
+	for _, line := range arrs {
+		// strings.Split(line, "\n")
+		// b := regexp.MatchString(line)
+		// fmt.Println("match result: ", b)
+		ss := regexp.FindStringSubmatch(line)
+		//匹配到的话 0为全串，1，2...为()内的串
+		fmt.Println("find string: ", ss[1])
+		s := strings.ReplaceAll(line, ss[1], ss[1]+","+cluster)
+		print_metrics = append(print_metrics, s)
+	}
+
+	// 解析active地址中的有用的metric信息
+	return print_metrics
+}
+
+type YamlConfig struct {
+	// masterConf MasterConf `yaml:"masterHttp"`
+	// applicationConf HttpConf   `yaml:"application_http"`
+	Masterhttp struct {
+		Ips  []string `yaml:"ips"`
+		Port int      `yaml:"port"`
+		Path string   `yaml:"path"`
+	}
+	Applicationhttp struct {
+		Ips          []string `yaml:"ips"`
+		Ports        []int    `yaml:"ports"`
+		MainPath     string   `yaml:"mainpath"`
+		ExecutorPath string   `yaml:"executorpath"`
+	}
+}
+
+func LoadSparkConf() (*YamlConfig, error) {
+	config := new(YamlConfig)
+	// var yamlConfig YamlConfig
+	dir, _ := os.Getwd()
+	confPath := dir + "/spark/config.yaml"
+	fmt.Println("confPath: ", confPath)
+
+	data, _ := ioutil.ReadFile(confPath)
+	err := yaml.Unmarshal(data, config)
+	if err != nil {
+		fmt.Println("err: ", err)
+	}
+	fmt.Println("configStruct: ", config)
+
+	fmt.Println("yamlConfig data: ", config.Masterhttp.Ips, config.Masterhttp.Port, config.Masterhttp.Path)
+	fmt.Println("configStruct.IpList: ", config.Applicationhttp.ExecutorPath, config.Applicationhttp.Ips, config.Applicationhttp.Ports, config.Applicationhttp.MainPath)
+	return config, nil
+}
