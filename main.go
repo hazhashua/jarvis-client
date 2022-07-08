@@ -160,7 +160,8 @@ func main() {
 		prometheus.MustRegister(hadoop_collector)
 		http.Handle("/hadoop/metrics", promhttp.Handler())
 
-		zookeeper.Testzk()
+		zookeeper.ZookeeperExporter()
+		zookeeper.Watch()
 
 		log.Info("Beginning to serve on port :38080")
 		log.Fatal(http.ListenAndServe(":38080", nil))
