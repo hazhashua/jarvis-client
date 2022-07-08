@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"gopkg.in/yaml.v2"
 )
 
 type jmxHttpUrl struct {
-	masterUrl        *string
-	masterBackupUrl  *string
-	regionserversUrl []string
+	masterUrl         *string
+	masterBackupUrls  *[]string
+	regionserversUrls *[]string
 }
 
 type hmasterData struct {
@@ -75,6 +77,22 @@ type hbaseData struct {
 	regionDatas []regionData
 }
 
+// cluster:
+//   masterjmxport: 16010
+//   regionserverjmxport: 16030
+//   hosts:
+//     - 192.168.10.220
+//     - 192.168.10.221
+//     - 192.168.10.222
+
+type HbaseConfigure struct {
+	Cluster struct {
+		MasterJmxPort       string   `yaml:"masterjmxport"`
+		RegionserverJmxPort string   `yaml:"regionserverjmxport"`
+		Hosts               []string `yaml:"hosts"`
+	}
+}
+
 //hbase jmx数据采集转换存入
 // hbase jmx URL
 // master
@@ -86,16 +104,60 @@ type hbaseData struct {
 // http://192.168.10.222:16030/jmx
 
 func initUrl() *jmxHttpUrl {
+	bytes, err := ioutil.ReadFile("./hbase/config.yaml")
+	if err != nil {
+		fmt.Println("err: ", err.Error())
+	}
+	var hbase_config HbaseConfigure
+	err = yaml.Unmarshal(bytes, hbase_config)
+	if err != nil {
+		fmt.Println("err: ", err.Error())
+	}
+	// 获取active的master
+	find := false
+	var jmx_url string
+	// var active_master_index int
+	var master_backup_urls []string
+	for _, host := range hbase_config.Cluster.Hosts {
+		jmx_url = fmt.Sprintf("http://%s:%s/jmx", host, hbase_config.Cluster.MasterJmxPort)
+		response, err2 := http.Get(jmx_url)
+		if err2 != nil {
+			fmt.Println("err2: ", err.Error())
+		}
+		defer response.Body.Close()
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			// handle error
+			panic(err)
+		}
+		body_str := string(body)
+		if strings.Contains(body_str, "<titil>Backup Master:") {
+			find = true
+			// active_master_index = idx
+		} else {
+			master_backup_urls = append(master_backup_urls, jmx_url)
+		}
+	}
+	// if !find {
+	// 	jmx_url = ""
+	// }
+
 	// masterUrl := "http://192.168.10.220:16010/jmx"
 	// 必须是主master地址，注意当前配置变成备用master
-	masterUrl := "http://124.65.131.14:16010/jmx"
-	masterBackupUrl := "http://192.168.10.221:16010/jmx"
-	// 临时使用regionserver1的地址覆盖regionserv2和regionserver3的地址
-	regionserversUrl := [3]string{"http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx"}
+	master_url := ""
+	if find {
+		// masterUrl = "http://124.65.131.14:16010/jmx"
+		master_url = jmx_url //"http://192.168.10.220:16010/jmx"
+	}
+	regionserver_urls := make([]string, 0)
+	for _, host := range hbase_config.Cluster.Hosts {
+		regionserver_urls = append(regionserver_urls, fmt.Sprintf("http://%s:%s/jmx", host, hbase_config.Cluster.RegionserverJmxPort))
+	}
+	// regionserversUrl := [3]string{"http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx"}
 	return &jmxHttpUrl{
-		masterUrl:        &masterUrl,
-		masterBackupUrl:  &masterBackupUrl,
-		regionserversUrl: regionserversUrl[:],
+		masterUrl:         &master_url,
+		masterBackupUrls:  &master_backup_urls,
+		regionserversUrls: &regionserver_urls,
 	}
 }
 
@@ -109,7 +171,7 @@ func HttpRequest(is_master bool, uri string, region_no int) []byte {
 	if is_master {
 		response, _ = http.Get((*jmx_http_url.masterUrl) + uri)
 	} else {
-		response, _ = http.Get(jmx_http_url.regionserversUrl[region_no-1] + uri)
+		response, _ = http.Get((*jmx_http_url.regionserversUrls)[region_no-1] + uri)
 	}
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
@@ -215,8 +277,8 @@ func QueryMetric() *hbaseData {
 	hmaster_data.ip = &ip
 
 	jmx_http_url := initUrl()
-	fmt.Println(jmx_http_url.regionserversUrl)
-	region_num := len(jmx_http_url.regionserversUrl)
+	fmt.Println(jmx_http_url.regionserversUrls)
+	region_num := len(*jmx_http_url.regionserversUrls)
 	region_no := 1
 	// var region_datas [3]regionData
 	region_datas := make([]regionData, 0)
@@ -377,7 +439,7 @@ func newHbaseCollector() *hbaseCollector {
 	var master_metrics hbaseMasterMetric
 	var regionMetricList []hbaseRegionMetric
 	jmx_http_url := initUrl()
-	region_num := len(jmx_http_url.regionserversUrl)
+	region_num := len(*jmx_http_url.regionserversUrls)
 	length := 0
 	for {
 		// var service_alive_collector hbaseRegionMetric
