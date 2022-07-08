@@ -61,7 +61,7 @@ func Parse_zookeeper_config() *ZookeeperConfig {
 	return zk_config
 }
 
-func Testzk() {
+func ZookeeperExporter() {
 	zk_config := Parse_zookeeper_config()
 	// var hosts_str string
 	// hosts_str = strings.Join(zk_config.cluster.Hosts, " ")
