@@ -49,9 +49,9 @@ type regionData struct {
 	slowIncrementCount      int64
 	fsReadTimeMax           int64
 	fsWriteTimeMax          int64
-	cluster                 *string
-	host                    *string
-	ip                      *string
+	cluster                 string
+	host                    string
+	ip                      string
 }
 
 type hbaseData struct {
@@ -61,9 +61,16 @@ type hbaseData struct {
 
 type HbaseConfigure struct {
 	Cluster struct {
+		ClusterName         string   `yaml:"clustername"`
 		MasterJmxPort       string   `yaml:"masterjmxport"`
 		RegionserverJmxPort string   `yaml:"regionserverjmxport"`
 		Hosts               []string `yaml:"hosts"`
+		Names               []string `yaml:"names"`
+		// names:
+		//   - bigdata-dev01
+		//   - bigdata-dev02
+		//   - bigdata-dev03
+
 	}
 }
 
@@ -77,7 +84,24 @@ type HbaseConfigure struct {
 // http://192.168.10.221:16030/jmx
 // http://192.168.10.222:16030/jmx
 
-func initUrl() *jmxHttpUrl {
+// 解析hbase配置文件
+func ParseHbaseConfig() *HbaseConfigure {
+	hbase_config := new(HbaseConfigure)
+	bytes, err := ioutil.ReadFile("./hbase/config.yaml")
+	if err != nil {
+		fmt.Println("err: ", err.Error())
+	}
+	err2 := yaml.Unmarshal(bytes, hbase_config)
+	if err2 != nil {
+		fmt.Println("err2: ", err2.Error())
+	}
+	return hbase_config
+}
+
+func initUrl() (int, *jmxHttpUrl) {
+	/*
+		从配置中获取请求地址，及active master信息
+	*/
 	bytes, err := ioutil.ReadFile("./hbase/config.yaml")
 	if err != nil {
 		fmt.Println("*****************************")
@@ -90,9 +114,9 @@ func initUrl() *jmxHttpUrl {
 	}
 	// 获取active的master
 	var jmx_url, master_jmx_url string
-	// var active_master_index int
+	active_master_index := -1
 	var master_backup_urls []string
-	for _, host := range hbase_config.Cluster.Hosts {
+	for idx, host := range hbase_config.Cluster.Hosts {
 		jmx_url = fmt.Sprintf("http://%s:%s/jmx", host, hbase_config.Cluster.MasterJmxPort)
 		master_url := fmt.Sprintf("http://%s:%s/master-status", host, hbase_config.Cluster.MasterJmxPort)
 		fmt.Println("jmx_url: ", jmx_url)
@@ -110,7 +134,7 @@ func initUrl() *jmxHttpUrl {
 		body_str := string(body)
 		if strings.Contains(body_str, "<title>Master:") {
 			master_jmx_url = jmx_url
-			// active_master_index = idx
+			active_master_index = idx
 		} else {
 			master_backup_urls = append(master_backup_urls, jmx_url)
 		}
@@ -123,15 +147,14 @@ func initUrl() *jmxHttpUrl {
 	}
 	// regionserversUrl := [3]string{"http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx"}
 	fmt.Println("before return jmxHttpUrl...")
-	return &jmxHttpUrl{
+	return active_master_index, &jmxHttpUrl{
 		masterUrl:         &master_jmx_url,
 		masterBackupUrls:  &master_backup_urls,
 		regionserversUrls: &regionserver_urls,
 	}
 }
 
-func HttpRequest(is_master bool, uri string, region_no int) []byte {
-	jmx_http_url := initUrl()
+func HttpRequest(is_master bool, jmx_http_url *jmxHttpUrl, uri string, region_no int) []byte {
 	fmt.Println(*jmx_http_url.masterUrl)
 	fmt.Println(*jmx_http_url.masterBackupUrls)
 	fmt.Println(jmx_http_url.regionserversUrls)
@@ -159,7 +182,23 @@ func QueryMetric() *hbaseData {
 	// 查询master的特定指标
 	query_url := fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=Server")
 	fmt.Println("query_url: ", query_url)
-	body := HttpRequest(true, query_url, 0)
+
+	active_no, jmx_http_url := initUrl()
+	// fmt.Println(*jmx_http_url.masterUrl)
+	// fmt.Println(*jmx_http_url.masterBackupUrls)
+	// fmt.Println(jmx_http_url.regionserversUrls)
+
+	// 获取集群主机的名称IP信息
+	hbase_config := ParseHbaseConfig()
+
+	host := hbase_config.Cluster.Hosts[active_no]
+	cluster := hbase_config.Cluster.ClusterName
+	ip := hbase_config.Cluster.Names[active_no]
+	hmaster_data.cluster = &cluster
+	hmaster_data.host = &host
+	hmaster_data.ip = &ip
+
+	body := HttpRequest(true, jmx_http_url, query_url, 0)
 	mm, _ := hbase.UnmarshalMasterMain(body)
 	hmaster_data.numRegionServers = *mm.Beans[0].NumRegionServers
 	hmaster_data.numDeadRegionServers = *mm.Beans[0].NumDeadRegionServers
@@ -167,7 +206,7 @@ func QueryMetric() *hbaseData {
 	fmt.Println(*mm.Beans[0].NumDeadRegionServers)
 
 	query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=AssignmentManager")
-	body = HttpRequest(true, query_url, 0)
+	body = HttpRequest(true, jmx_http_url, query_url, 0)
 	assignment_manager, _ := hbase.UnmarshalAssignmentManager(body)
 	hmaster_data.ritCount = *assignment_manager.Beans[0].RitCount
 	hmaster_data.ritCountOverThreshold = *assignment_manager.Beans[0].RitCountOverThreshold
@@ -176,7 +215,7 @@ func QueryMetric() *hbaseData {
 
 	//Hadoop:service=HBase,name=Master,sub=IPC
 	query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=IPC")
-	body = HttpRequest(true, query_url, 0)
+	body = HttpRequest(true, jmx_http_url, query_url, 0)
 	master_ipc, _ := hbase.UnmarshalMasterIPC(body)
 
 	hmaster_data.masterNumActiveHandler = *master_ipc.Beans[0].NumActiveHandler
@@ -191,12 +230,7 @@ func QueryMetric() *hbaseData {
 	fmt.Println(*master_ipc.Beans[0].SentBytes)
 	// 打开的ipc连接数
 	fmt.Println(*master_ipc.Beans[0].NumOpenConnections)
-	cluster, host, ip := "cluster1", "dev01", "192.168.10.220"
-	hmaster_data.cluster = &cluster
-	hmaster_data.host = &host
-	hmaster_data.ip = &ip
 
-	jmx_http_url := initUrl()
 	fmt.Println(jmx_http_url.regionserversUrls)
 	region_num := len(*jmx_http_url.regionserversUrls)
 	region_no := 1
@@ -207,7 +241,8 @@ func QueryMetric() *hbaseData {
 		//?qry=Hadoop:service=HBase,name=RegionServer,sub=IPC
 		var region_data regionData
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IPC")
-		body = HttpRequest(false, query_url, region_no)
+		body = HttpRequest(false, jmx_http_url, query_url, region_no)
+		fmt.Println("body: ", body)
 		region_ipc, _ := hbase.UnmarshalRegionserverIPC(body)
 		region_data.numActiveHandler = *region_ipc.Beans[0].NumActiveHandler
 		region_data.receivedBytes = *region_ipc.Beans[0].ReceivedBytes
@@ -230,7 +265,7 @@ func QueryMetric() *hbaseData {
 
 		//Hadoop:service=HBase,name=RegionServer,sub=Server
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=Server")
-		body = HttpRequest(false, query_url, region_no)
+		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		region_server, _ := hbase.UnmarshalRegionserverServer(body)
 		region_data.readRequestCount = *region_server.Beans[0].ReadRequestCount
 		region_data.writeRequestCount = *region_server.Beans[0].WriteRequestCount
@@ -263,7 +298,7 @@ func QueryMetric() *hbaseData {
 
 		//	Hadoop:service=HBase,name=RegionServer,sub=IO
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IO")
-		body = HttpRequest(false, query_url, region_no)
+		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		region_io, _ := hbase.UnmarshalRegionserverIO(body)
 		region_data.fsReadTimeMax = *region_io.Beans[0].FSReadTimeMax
 		region_data.fsWriteTimeMax = *region_io.Beans[0].FSWriteTimeMax
@@ -271,10 +306,15 @@ func QueryMetric() *hbaseData {
 		fmt.Println(*region_io.Beans[0].FSReadTimeMax)
 		// 文件系统最大写时间
 		fmt.Println(*region_io.Beans[0].FSWriteTimeMax)
-		cluster, host, ip := "cluster1", fmt.Sprintf("dev%02d", region_no), "192.168.10.220"
-		region_data.cluster = &cluster
-		region_data.host = &host
-		region_data.ip = &ip
+		// cluster, host, ip := "cluster1", fmt.Sprintf("dev%02d", region_no), "192.168.10.220"
+		cluster = hbase_config.Cluster.ClusterName
+		host = hbase_config.Cluster.Names[region_no-1]
+		ip = hbase_config.Cluster.Hosts[region_no-1]
+		fmt.Println("@@@@@@@@@@@@@@@@@", cluster, host, ip)
+
+		region_data.cluster = cluster
+		region_data.host = host
+		region_data.ip = ip
 
 		region_datas = append(region_datas, region_data)
 		region_no += 1
@@ -358,7 +398,7 @@ type hbaseMasterMetric struct {
 func newHbaseCollector() *hbaseCollector {
 	var master_metrics hbaseMasterMetric
 	var regionMetricList []hbaseRegionMetric
-	jmx_http_url := initUrl()
+	_, jmx_http_url := initUrl()
 	fmt.Println("jmx_http_url: ", jmx_http_url)
 	region_num := len(*jmx_http_url.regionserversUrls)
 	fmt.Println("region_num: ", region_num)
@@ -540,23 +580,23 @@ func (collector *hbaseCollector) Collect(ch chan<- prometheus.Metric) {
 	for index, region_info := range collector.regionMetrics {
 		// ch <- prometheus.MustNewConstMetric(alive.aliveMetric, prometheus.GaugeValue, float64(da[index].MetricValue), *da[index].ClusterName, *da[index].ServiceName, *da[index].ChildService, *da[index].IP, fmt.Sprintf("%d", da[index].Port), *da[index].PortType)
 		//NumActiveHandler
-		ch <- prometheus.MustNewConstMetric(region_info.NumActiveHandler, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].numActiveHandler), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.ReceivedBytes, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].receivedBytes), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.SentBytes, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].sentBytes), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.NumOpenConnections, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].numOpenConnections), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.AuthenticationFailures, prometheus.CounterValue, float64(hbase_data.regionDatas[index].authenticationFailures), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.AuthenticationSuccesses, prometheus.CounterValue, float64(hbase_data.regionDatas[index].authenticationSuccesses), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.ReadRequestCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].readRequestCount), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.WriteRequestCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].writeRequestCount), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.RegionCount, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].regionCount), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.StoreFileCount, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].storeFileCount), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.SlowGetCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowGetCount), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.SlowPutCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowPutCount), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.SlowDeleteCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowDeleteCount), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.SlowAppendCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowAppendCount), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.SlowIncrementCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowIncrementCount), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.FSWriteTimeMax, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].fsWriteTimeMax), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.FSReadTimeMax, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].fsReadTimeMax), *hbase_data.regionDatas[index].cluster, *hbase_data.regionDatas[index].host, *hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.NumActiveHandler, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].numActiveHandler), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.ReceivedBytes, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].receivedBytes), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.SentBytes, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].sentBytes), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.NumOpenConnections, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].numOpenConnections), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.AuthenticationFailures, prometheus.CounterValue, float64(hbase_data.regionDatas[index].authenticationFailures), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.AuthenticationSuccesses, prometheus.CounterValue, float64(hbase_data.regionDatas[index].authenticationSuccesses), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.ReadRequestCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].readRequestCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.WriteRequestCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].writeRequestCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.RegionCount, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].regionCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.StoreFileCount, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].storeFileCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.SlowGetCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowGetCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.SlowPutCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowPutCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.SlowDeleteCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowDeleteCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.SlowAppendCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowAppendCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.SlowIncrementCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowIncrementCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.FSWriteTimeMax, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].fsWriteTimeMax), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.FSReadTimeMax, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].fsReadTimeMax), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
 	}
 	// NumRegionServers                *prometheus.Desc
 	// NumDeadRegionServers            *prometheus.Desc
