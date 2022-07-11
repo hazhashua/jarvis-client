@@ -31,24 +31,6 @@ type hmasterData struct {
 	ip                       *string
 }
 
-// NumActiveHandler               *prometheus.Desc
-// ReceivedBytes                  *prometheus.Desc
-// SentBytes                      *prometheus.Desc
-// NumOpenConnections             *prometheus.Desc
-// AuthenticationFailures         *prometheus.Desc
-// AuthenticationSuccesses        *prometheus.Desc
-// ReadRequestCount               *prometheus.Desc
-// WriteRequestCount              *prometheus.Desc
-// RegionCount                    *prometheus.Desc
-// StoreFileCount                 *prometheus.Desc
-// SlowGetCount                   *prometheus.Desc
-// SlowPutCount                   *prometheus.Desc
-// SlowDeleteCount                *prometheus.Desc
-// SlowAppendCount                *prometheus.Desc
-// SlowIncrementCount             *prometheus.Desc
-// FSReadTimeMax                 *prometheus.Desc
-// FSWriteTimeMax                 *prometheus.Desc
-
 type regionData struct {
 	numActiveHandler        int64
 	receivedBytes           int64
@@ -77,14 +59,6 @@ type hbaseData struct {
 	regionDatas []regionData
 }
 
-// cluster:
-//   masterjmxport: 16010
-//   regionserverjmxport: 16030
-//   hosts:
-//     - 192.168.10.220
-//     - 192.168.10.221
-//     - 192.168.10.222
-
 type HbaseConfigure struct {
 	Cluster struct {
 		MasterJmxPort       string   `yaml:"masterjmxport"`
@@ -106,23 +80,26 @@ type HbaseConfigure struct {
 func initUrl() *jmxHttpUrl {
 	bytes, err := ioutil.ReadFile("./hbase/config.yaml")
 	if err != nil {
+		fmt.Println("*****************************")
 		fmt.Println("err: ", err.Error())
 	}
-	var hbase_config HbaseConfigure
+	hbase_config := new(HbaseConfigure)
 	err = yaml.Unmarshal(bytes, hbase_config)
 	if err != nil {
 		fmt.Println("err: ", err.Error())
 	}
 	// 获取active的master
-	find := false
-	var jmx_url string
+	var jmx_url, master_jmx_url string
 	// var active_master_index int
 	var master_backup_urls []string
 	for _, host := range hbase_config.Cluster.Hosts {
 		jmx_url = fmt.Sprintf("http://%s:%s/jmx", host, hbase_config.Cluster.MasterJmxPort)
-		response, err2 := http.Get(jmx_url)
+		master_url := fmt.Sprintf("http://%s:%s/master-status", host, hbase_config.Cluster.MasterJmxPort)
+		fmt.Println("jmx_url: ", jmx_url)
+		fmt.Println("master_url: ", master_url)
+		response, err2 := http.Get(master_url)
 		if err2 != nil {
-			fmt.Println("err2: ", err.Error())
+			fmt.Println("err2: ", err2.Error())
 		}
 		defer response.Body.Close()
 		body, err := ioutil.ReadAll(response.Body)
@@ -131,31 +108,23 @@ func initUrl() *jmxHttpUrl {
 			panic(err)
 		}
 		body_str := string(body)
-		if strings.Contains(body_str, "<titil>Backup Master:") {
-			find = true
+		if strings.Contains(body_str, "<title>Master:") {
+			master_jmx_url = jmx_url
 			// active_master_index = idx
 		} else {
 			master_backup_urls = append(master_backup_urls, jmx_url)
 		}
 	}
-	// if !find {
-	// 	jmx_url = ""
-	// }
 
 	// masterUrl := "http://192.168.10.220:16010/jmx"
-	// 必须是主master地址，注意当前配置变成备用master
-	master_url := ""
-	if find {
-		// masterUrl = "http://124.65.131.14:16010/jmx"
-		master_url = jmx_url //"http://192.168.10.220:16010/jmx"
-	}
 	regionserver_urls := make([]string, 0)
 	for _, host := range hbase_config.Cluster.Hosts {
 		regionserver_urls = append(regionserver_urls, fmt.Sprintf("http://%s:%s/jmx", host, hbase_config.Cluster.RegionserverJmxPort))
 	}
 	// regionserversUrl := [3]string{"http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx"}
+	fmt.Println("before return jmxHttpUrl...")
 	return &jmxHttpUrl{
-		masterUrl:         &master_url,
+		masterUrl:         &master_jmx_url,
 		masterBackupUrls:  &master_backup_urls,
 		regionserversUrls: &regionserver_urls,
 	}
@@ -163,14 +132,16 @@ func initUrl() *jmxHttpUrl {
 
 func HttpRequest(is_master bool, uri string, region_no int) []byte {
 	jmx_http_url := initUrl()
-	// fmt.Println(*jmx_http_url.masterUrl)
-	// fmt.Println(*jmx_http_url.masterBackupUrl)
-	// fmt.Println(jmx_http_url.regionserversUrl)
+	fmt.Println(*jmx_http_url.masterUrl)
+	fmt.Println(*jmx_http_url.masterBackupUrls)
+	fmt.Println(jmx_http_url.regionserversUrls)
 	// fmt.Println((*jmx_http_url.masterUrl) + uri)
 	var response *http.Response
 	if is_master {
+		fmt.Println("master url: ", (*jmx_http_url.masterUrl)+uri)
 		response, _ = http.Get((*jmx_http_url.masterUrl) + uri)
 	} else {
+		fmt.Println("regionserver url: ", (*jmx_http_url.regionserversUrls)[region_no-1]+uri)
 		response, _ = http.Get((*jmx_http_url.regionserversUrls)[region_no-1] + uri)
 	}
 	defer response.Body.Close()
@@ -183,62 +154,11 @@ func HttpRequest(is_master bool, uri string, region_no int) []byte {
 	return body
 }
 
-// func UnmarshalMasterMain(data []byte) (MasterMain, error) {
-// 	var r MasterMain
-// 	err := json.Unmarshal(data, &r)
-// 	return r, err
-// }
-
-// func (r *MasterMain) MarshalMasterMain() ([]byte, error) {
-// 	return json.Marshal(r)
-// }
-
-// type MasterMain struct {
-// 	Beans []Bean `json:"beans,omitempty"`
-// }
-
-// type Bean struct {
-// 	Name                             *string `json:"name,omitempty"`
-// 	ModelerType                      *string `json:"modelerType,omitempty"`
-// 	TagLiveRegionServers             *string `json:"tag.liveRegionServers,omitempty"`
-// 	TagDeadRegionServers             *string `json:"tag.deadRegionServers,omitempty"`
-// 	TagDraininigRegionServers        *string `json:"tag.draininigRegionServers,omitempty"`
-// 	TagZookeeperQuorum               *string `json:"tag.zookeeperQuorum,omitempty"`
-// 	TagServerName                    *string `json:"tag.serverName,omitempty"`
-// 	TagClusterID                     *string `json:"tag.clusterId,omitempty"`
-// 	TagIsActiveMaster                *string `json:"tag.isActiveMaster,omitempty"`
-// 	TagContext                       *string `json:"tag.Context,omitempty"`
-// 	TagHostname                      *string `json:"tag.Hostname,omitempty"`
-// 	MergePlanCount                   *int64  `json:"mergePlanCount,omitempty"`
-// 	SplitPlanCount                   *int64  `json:"splitPlanCount,omitempty"`
-// 	MasterActiveTime                 *int64  `json:"masterActiveTime,omitempty"`
-// 	MasterStartTime                  *int64  `json:"masterStartTime,omitempty"`
-// 	MasterFinishedInitializationTime *int64  `json:"masterFinishedInitializationTime,omitempty"`
-// 	AverageLoad                      *int64  `json:"averageLoad,omitempty"`
-// 	NumRegionServers                 *int64  `json:"numRegionServers,omitempty"`
-// 	NumDeadRegionServers             *int64  `json:"numDeadRegionServers,omitempty"`
-// 	NumDrainingRegionServers         *int64  `json:"numDrainingRegionServers,omitempty"`
-// 	ClusterRequests                  *int64  `json:"clusterRequests,omitempty"`
-// 	ServerCrashTimeNumOps            *int64  `json:"ServerCrashTime_num_ops,omitempty"`
-// 	ServerCrashTimeMin               *int64  `json:"ServerCrashTime_min,omitempty"`
-// 	ServerCrashTimeMax               *int64  `json:"ServerCrashTime_max,omitempty"`
-// 	ServerCrashTimeMean              *int64  `json:"ServerCrashTime_mean,omitempty"`
-// 	ServerCrashTime25ThPercentile    *int64  `json:"ServerCrashTime_25th_percentile,omitempty"`
-// 	ServerCrashTimeMedian            *int64  `json:"ServerCrashTime_median,omitempty"`
-// 	ServerCrashTime75ThPercentile    *int64  `json:"ServerCrashTime_75th_percentile,omitempty"`
-// 	ServerCrashTime90ThPercentile    *int64  `json:"ServerCrashTime_90th_percentile,omitempty"`
-// 	ServerCrashTime95ThPercentile    *int64  `json:"ServerCrashTime_95th_percentile,omitempty"`
-// 	ServerCrashTime98ThPercentile    *int64  `json:"ServerCrashTime_98th_percentile,omitempty"`
-// 	ServerCrashTime99ThPercentile    *int64  `json:"ServerCrashTime_99th_percentile,omitempty"`
-// 	ServerCrashTime999ThPercentile   *int64  `json:"ServerCrashTime_99.9th_percentile,omitempty"`
-// 	ServerCrashSubmittedCount        *int64  `json:"ServerCrashSubmittedCount,omitempty"`
-// 	ServerCrashFailedCount           *int64  `json:"ServerCrashFailedCount,omitempty"`
-// }
-
 func QueryMetric() *hbaseData {
 	var hmaster_data hmasterData
 	// 查询master的特定指标
 	query_url := fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=Server")
+	fmt.Println("query_url: ", query_url)
 	body := HttpRequest(true, query_url, 0)
 	mm, _ := hbase.UnmarshalMasterMain(body)
 	hmaster_data.numRegionServers = *mm.Beans[0].NumRegionServers
@@ -439,9 +359,11 @@ func newHbaseCollector() *hbaseCollector {
 	var master_metrics hbaseMasterMetric
 	var regionMetricList []hbaseRegionMetric
 	jmx_http_url := initUrl()
+	fmt.Println("jmx_http_url: ", jmx_http_url)
 	region_num := len(*jmx_http_url.regionserversUrls)
-	length := 0
-	for {
+	fmt.Println("region_num: ", region_num)
+	// length := 0
+	for length := 0; length < region_num; length++ {
 		// var service_alive_collector hbaseRegionMetric
 		var region_metrics hbaseRegionMetric
 		region_metrics.NumActiveHandler = prometheus.NewDesc("num_active_handler", "Show active handler's num",
@@ -529,11 +451,9 @@ func newHbaseCollector() *hbaseCollector {
 			prometheus.Labels{})
 		region_metrics.FSWriteTimeMaxValType = prometheus.GaugeValue
 		regionMetricList = append(regionMetricList, region_metrics)
-		length += 1
-		if length == region_num {
-			break
-		}
 	}
+
+	fmt.Println("regionserver metric init over......")
 	master_metrics.NumRegionServers = prometheus.NewDesc("num_regionservers", "the num of regionserver",
 		[]string{"cluster", "host", "ip"},
 		prometheus.Labels{})
