@@ -5,7 +5,8 @@ import (
 	"alive_exporter/hadoop"
 	"alive_exporter/kafka"
 	"alive_exporter/micro_service"
-	"alive_exporter/zookeeper"
+	"alive_exporter/spark"
+	"alive_exporter/utils"
 	"os"
 
 	// "alive_exporter/utils"
@@ -58,7 +59,7 @@ type SparkHandler struct {
 
 func (handler SparkHandler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/spark/base/metrics":
+	case "/spark/metrics":
 		for _, value := range handler.metrics {
 			fmt.Fprintf(writer, "%s", value)
 		}
@@ -76,29 +77,31 @@ func main() {
 	// 查询数据库数据
 	// utils.Query("")
 
-	// 服务存活collector
-	// fmt.Println("*&&&&&&&&&&&&&&&&&&", utils.ValueQuery(""))
-	// serviceCollector := newServiceAliveCollector()
-	// // prometheus.MustRegister(serviceCollector)
-	// r := prometheus.NewRegistry()
-	// r.MustRegister(serviceCollector)
-	// handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
+	// 激活服务存活exporter
+	fmt.Println("*&&&&&&&&&&&&&&&&&&", utils.ValueQuery(""))
+	serviceCollector := newServiceAliveCollector()
+	// prometheus.MustRegister(serviceCollector)
+	r := prometheus.NewRegistry()
+	r.MustRegister(serviceCollector)
+	handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
+	http.Handle("/alive/metrics", handler)
 
+	// 激活hbase exporter
 	hbaseCollector := newHbaseCollector()
+	fmt.Println("after newHbaseCollector......")
 	hbaseR := prometheus.NewRegistry()
+	fmt.Println("after prometheus.NewRegistry()......")
 	hbaseR.MustRegister(hbaseCollector)
 	hbaseHandler := promhttp.HandlerFor(hbaseR, promhttp.HandlerOpts{})
-
-	// QueryMetric()
-	// http.Handle("/metrics", handler)
 	http.Handle("/hbase/metrics", hbaseHandler)
+	fmt.Println("http.Handle(\"/hbase/metrics\", hbaseHandler)")
 
-	// // 数组传入所有的master和standby地址
-	// url_array := []string{"http://124.65.131.14"}
-	// // 查询spark的metric信息，默认为查询测试集群
-	// print_metrics := spark.GetMetrics(url_array)
-	// sparkHandler := SparkHandler{metrics: print_metrics}
-	// http.Handle("/spark/base/metrics", sparkHandler)
+	// 激活spark exporter
+	// 数组传入所有的master和standby地址
+	// 查询spark的metric信息，默认为查询测试集群
+	print_metrics := spark.GetMetrics()
+	sparkHandler := SparkHandler{metrics: print_metrics}
+	http.Handle("/spark/metrics", sparkHandler)
 
 	fmt.Println("命令行的参数有", len(os.Args))
 	mode := "normal"
@@ -160,8 +163,8 @@ func main() {
 		prometheus.MustRegister(hadoop_collector)
 		http.Handle("/hadoop/metrics", promhttp.Handler())
 
-		zookeeper.ZookeeperExporter()
-		zookeeper.Watch()
+		// zookeeper.ZookeeperExporter()
+		// zookeeper.Watch()
 
 		log.Info("Beginning to serve on port :38080")
 		log.Fatal(http.ListenAndServe(":38080", nil))
