@@ -8,7 +8,7 @@
 #   passwd: 123456
 #   service_name: testdb
 
-
+cluster: bigdata-dev-cluster1
 masterhttp:
   ips: 
     - 192.168.10.220
