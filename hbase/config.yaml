@@ -1,0 +1,12 @@
+cluster:
+  clustername: bigdata-dev-cluster
+  masterjmxport: 16010
+  regionserverjmxport: 16030
+  hosts:
+    - 192.168.10.220
+    - 192.168.10.221
+    - 192.168.10.222 
+  names:
+    - bigdata-dev01
+    - bigdata-dev02
+    - bigdata-dev03
