@@ -3,6 +3,7 @@ package kafka
 import (
 	"fmt"
 	"io/ioutil"
+	"runtime"
 	"syscall"
 
 	"github.com/Shopify/sarama"
@@ -11,6 +12,7 @@ import (
 
 type KafkConfigure struct {
 	Cluster struct {
+		Name  string   `yaml:"name"`
 		Hosts []string `yaml:"hosts"`
 		Port  int      `yaml:"port"`
 		Env   string   `yaml:"env"`
@@ -24,7 +26,15 @@ type DiskStatus struct {
 	Free uint64 `json:"free"`
 }
 
+func runFuncName() string {
+	pc := make([]uintptr, 1)
+	runtime.Callers(2, pc)
+	f := runtime.FuncForPC(pc[0])
+	return f.Name()
+}
+
 func Parse_kafka_config() *KafkConfigure {
+	fmt.Println("in function: ", runFuncName())
 	bytes, _ := ioutil.ReadFile("./kafka/config.yaml")
 	kafkaConfig := new(KafkConfigure)
 	err := yaml.Unmarshal(bytes, kafkaConfig)

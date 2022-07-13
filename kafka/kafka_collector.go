@@ -207,6 +207,8 @@ func (collector *kafkaCollector) Describe(ch chan<- *prometheus.Desc) {
 //Collect implements required collect function for all promehteus collectors
 func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 
+	// 获取kafka的配置信息
+	kafka_config := Parse_kafka_config()
 	collector = NewKafkaCollector()
 	// 获取kafka的metric数据
 	//    disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate_metric := GetKafkaMetrics()
@@ -219,14 +221,14 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 	for idx, disk_desc := range collector.kafkaMetrics.DiskUsage {
 		ch <- prometheus.MustNewConstMetric(disk_desc, prometheus.GaugeValue,
 			float64(disk_status[idx].Used/disk_status[idx].All),
-			"cluster", fmt.Sprintf("host_%d", idx), fmt.Sprintf("ip_%d", idx), fmt.Sprintf("broker_id_%d", idx), disk_status[idx].Path)
+			kafka_config.Cluster.Name, fmt.Sprintf("host_%d", idx), fmt.Sprintf("ip_%d", idx), fmt.Sprintf("broker_id_%d", idx), disk_status[idx].Path)
 	}
-	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.BrokerNum, collector.kafkaMetrics.BrokerNumValueType, float64(total_brokers), "cluster")
-	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.BrokerAliveNum, collector.kafkaMetrics.BrokerAliveNumValType, float64(alive_brokers), "cluster")
-	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.TopicNum, collector.kafkaMetrics.TopicNumValType, float64(topic_num_metric), "cluster")
+	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.BrokerNum, collector.kafkaMetrics.BrokerNumValueType, float64(total_brokers), kafka_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.BrokerAliveNum, collector.kafkaMetrics.BrokerAliveNumValType, float64(alive_brokers), kafka_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.TopicNum, collector.kafkaMetrics.TopicNumValType, float64(topic_num_metric), kafka_config.Cluster.Name)
 
 	// consumer group num
-	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.ConsumerGroupNum, collector.kafkaMetrics.ConsumerGroupNumType, float64(consumer_group_num_metric), "cluster")
+	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.ConsumerGroupNum, collector.kafkaMetrics.ConsumerGroupNumType, float64(consumer_group_num_metric), kafka_config.Cluster.Name)
 
 	offsets_info := make([]int64, 0)
 	topic_info := make([]string, 0)
@@ -243,7 +245,7 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 	for idx, partition_replication_desc := range collector.kafkaMetrics.TopicPartitionReplicationNum {
-		ch <- prometheus.MustNewConstMetric(partition_replication_desc, collector.kafkaMetrics.TopicPartitionReplicationNumValType, float64(topic_partition_replication_info[idx]), "cluster", topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
+		ch <- prometheus.MustNewConstMetric(partition_replication_desc, collector.kafkaMetrics.TopicPartitionReplicationNumValType, float64(topic_partition_replication_info[idx]), kafka_config.Cluster.Name, topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
 	}
 
 	// topic partition num
@@ -259,7 +261,7 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 		// 	[]string{"cluster", "topic"},
 		// 	prometheus.Labels{})
 		// kafka_metrics.TopicPartitionNumValType = prometheus.GaugeValue
-		ch <- prometheus.MustNewConstMetric(partition_desc, collector.kafkaMetrics.TopicPartitionNumValType, float64(partition_info[idx]), "cluster", topic_info[idx])
+		ch <- prometheus.MustNewConstMetric(partition_desc, collector.kafkaMetrics.TopicPartitionNumValType, float64(partition_info[idx]), kafka_config.Cluster.Name, topic_info[idx])
 	}
 
 	topic_info = make([]string, 0)
@@ -272,7 +274,7 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 	for idx, produce_offset_desc := range collector.kafkaMetrics.TopicProduceOffset {
-		ch <- prometheus.MustNewConstMetric(produce_offset_desc, collector.kafkaMetrics.TopicProduceOffsetValType, float64(offsets_info[idx]), "cluster", topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
+		ch <- prometheus.MustNewConstMetric(produce_offset_desc, collector.kafkaMetrics.TopicProduceOffsetValType, float64(offsets_info[idx]), kafka_config.Cluster.Name, topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
 	}
 
 	consumer_group_info = make([]string, 0)
@@ -295,7 +297,7 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for idx, consumer_topic_partition_offsets_desc := range collector.kafkaMetrics.TopicConsumergroupOffset {
-		ch <- prometheus.MustNewConstMetric(consumer_topic_partition_offsets_desc, collector.kafkaMetrics.TopicConsumergroupOffsetValType, float64(offsets_info[idx]), "cluster", consumer_group_info[idx], topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
+		ch <- prometheus.MustNewConstMetric(consumer_topic_partition_offsets_desc, collector.kafkaMetrics.TopicConsumergroupOffsetValType, float64(offsets_info[idx]), kafka_config.Cluster.Name, consumer_group_info[idx], topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
 	}
 
 	// 处理分区副本均衡率
@@ -307,7 +309,7 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 		replication_balance_rate_info = append(replication_balance_rate_info, replication_rate)
 	}
 	for idx, replication_balance_rate_desc := range collector.kafkaMetrics.ReplicationBalanceRate {
-		ch <- prometheus.MustNewConstMetric(replication_balance_rate_desc, collector.kafkaMetrics.ReplicationBalanceRateValType, float64(replication_balance_rate_info[idx]), "cluster", topic_info[idx])
+		ch <- prometheus.MustNewConstMetric(replication_balance_rate_desc, collector.kafkaMetrics.ReplicationBalanceRateValType, float64(replication_balance_rate_info[idx]), kafka_config.Cluster.Name, topic_info[idx])
 	}
 
 	// 处理分区的均衡率
@@ -319,7 +321,7 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for idx, partiton_balance_rate_desc := range collector.kafkaMetrics.PartitionBalanceRate {
-		ch <- prometheus.MustNewConstMetric(partiton_balance_rate_desc, collector.kafkaMetrics.PartitionBalanceRateValType, float64(partition_balance_rate_info[idx]), "cluster", topic_info[idx])
+		ch <- prometheus.MustNewConstMetric(partiton_balance_rate_desc, collector.kafkaMetrics.PartitionBalanceRateValType, float64(partition_balance_rate_info[idx]), kafka_config.Cluster.Name, topic_info[idx])
 
 	}
 
