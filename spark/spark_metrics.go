@@ -48,30 +48,30 @@ func GetMetrics() []string {
 	url_s := yamlConfig.Masterhttp.Ips
 	fmt.Println("url_s:", url_s)
 	ports := yamlConfig.Applicationhttp.Ports
+	ports = append(ports, yamlConfig.Workerhttp.Port)
 	fmt.Println("ports: ", ports)
 	// 抓取master的网页地址，获取active的地址
 	// 添加is_active_node指标
 	var active_node_index int
 	for idx, url := range url_array {
-		ports = []int{4040}
+
 		for _, port := range ports {
 			//获取driver进程的堆栈内存使用率
 			// master_metric_url := yamlConfig.Masterhttp.Ips[idx] + ":" + fmt.Sprintf("%d", yamlConfig.Masterhttp.Port) + yamlConfig.Masterhttp.Path
 			// fmt.Println("master_metric_url", master_metric_url)
-			driver_url := yamlConfig.Applicationhttp.Ips[idx] + ":" + fmt.Sprintf("%d", port) + yamlConfig.Applicationhttp.MainPath
-			fmt.Println("driver_url: ", driver_url)
+			metric_url := yamlConfig.Applicationhttp.Ips[idx] + ":" + fmt.Sprintf("%d", port) + yamlConfig.Applicationhttp.MainPath
+			fmt.Println("metric_url: ", metric_url)
 
-			driver_url = fmt.Sprintf(url+":%d/metrics/prometheus", port)
-			fmt.Println("driver_url: ", driver_url)
+			metric_url = fmt.Sprintf(url+":%d/metrics/prometheus", port)
+			fmt.Println("metric_url: ", metric_url)
 
-			driver_response := utils.GetUrl(driver_url)
-			if driver_response == "" {
+			metric_response := utils.GetUrl(metric_url)
+			if metric_response == "" {
 				fmt.Println(fmt.Sprintf("机器:%s 上没有运行的程序", url))
-				continue
 			}
 
 			// fmt.Println("driver_response: ", driver_response)
-			for _, line := range strings.Split(driver_response, "\n") {
+			for _, line := range strings.Split(metric_response, "\n") {
 				if strings.Contains(line, "_driver_jvm_heap_usage_Value") {
 					fmt.Println("contains: ", line)
 					reg := regexp.MustCompile("metrics_(.*)_driver_jvm_heap_usage_Value.*")
@@ -79,6 +79,22 @@ func GetMetrics() []string {
 					fmt.Println("app name: ", app_name)
 					arrs = append(arrs, "driver_jvm_heap_usage{type=\"gauges\", application_name=\""+app_name+"\", host=\""+url+"\" }\n")
 				}
+
+				if strings.Contains(line, "metrics_jvm_heap_usage_Value") {
+					line = strings.ReplaceAll(line, "metrics_jvm_heap_usage_Value", "worker_jvm_heap_usage")
+					regexp := regexp.MustCompile("[^{]*{(.*)}.*")
+					ss := regexp.FindStringSubmatch(line)
+					line = strings.ReplaceAll(line, ss[1], ss[1]+","+"host=\""+url+"\" ")
+					arrs = append(arrs, line+"\n")
+				}
+
+				// if strings.Contains(line, "metrics_jvm_heap_usage_Value") {
+				// 	line = strings.ReplaceAll(line, "metrics_jvm_heap_usage_Value", "master_jvm_heap_usage")
+				// 	ss := regexp.FindStringSubmatch(line)
+				// 	line = strings.ReplaceAll(line, ss[1], ss[1]+","+"host=\""+url_array[active_node_index]+"\" ")
+				// 	arrs = append(arrs, line+"\n")
+				// }
+
 			}
 		}
 
@@ -106,6 +122,13 @@ func GetMetrics() []string {
 			fmt.Println("match strings: ", match_strings[1])
 			// strconv.Itoa(match_strings[1])    int to string...
 			arrs = append(arrs, "master_finished_apps{type=\"gauges\", host=\""+host+"\"} "+match_strings[1]+"\n")
+
+			reg = regexp.MustCompile("(\\d+) <a href=\"#running-app\">Running</a>")
+			match_strings = reg.FindStringSubmatch(response)
+			fmt.Println("match strings: ", match_strings[1])
+			// strconv.Itoa(match_strings[1])    int to string...
+			arrs = append(arrs, "master_running_apps{type=\"gauges\", host=\""+host+"\"} "+match_strings[1]+"\n")
+
 		} else if is_standby_node {
 			arrs = append(arrs, "is_active_master"+"{type=\"gauges\", host=\""+host+"\"} 0\n")
 		} else {
@@ -119,7 +142,6 @@ func GetMetrics() []string {
 	// fmt.Println("match strings: ", match_strings)
 
 	// 查询active http metric数据
-	// response := utils.GetUrl(urls[active_node_index]+"metrics/prometheus")
 	response := utils.GetUrl(url_array[active_node_index] + ":8080/metrics/prometheus/")
 	if response == "" {
 		fmt.Println("active master的指标数据为空！！！！")
@@ -155,15 +177,13 @@ func GetMetrics() []string {
 	cluster := fmt.Sprintf("cluster=\"%s\"", yamlConfig.Cluster)
 	print_metrics := []string{}
 	for _, line := range arrs {
-		// strings.Split(line, "\n")
-		// b := regexp.MatchString(line)
-		// fmt.Println("match result: ", b)
 		ss := regexp.FindStringSubmatch(line)
 		//匹配到的话 0为全串，1，2...为()内的串
-		fmt.Println("find string: ", ss[1])
+		// fmt.Println("find string: ", ss[1])
 		s := strings.ReplaceAll(line, ss[1], ss[1]+","+cluster)
 		print_metrics = append(print_metrics, s)
 	}
+	fmt.Println("prit_metrics: ", print_metrics)
 
 	// 解析active地址中的有用的metric信息
 	return print_metrics
@@ -175,6 +195,11 @@ type YamlConfig struct {
 	// applicationConf HttpConf   `yaml:"application_http"`
 	Cluster    string `yaml:"cluster"`
 	Masterhttp struct {
+		Ips  []string `yaml:"ips"`
+		Port int      `yaml:"port"`
+		Path string   `yaml:"path"`
+	}
+	Workerhttp struct {
 		Ips  []string `yaml:"ips"`
 		Port int      `yaml:"port"`
 		Path string   `yaml:"path"`

@@ -8,13 +8,21 @@
 #   passwd: 123456
 #   service_name: testdb
 
-cluster: bigdata-dev-cluster1
+cluster: bigdata-dev-cluster
 masterhttp:
   ips: 
     - 192.168.10.220
     - 192.168.10.221
     - 192.168.10.222
   port: 8080
+  path: /metrics/prometheus
+
+workerhttp:
+  ips:
+    - 192.168.10.220
+    - 192.168.10.221
+    - 192.168.10.222
+  port: 8081
   path: /metrics/prometheus
   
 applicationhttp:
