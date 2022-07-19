@@ -1,0 +1,7 @@
+cluster:
+  name: bigdata-dev-cluster
+  ips:
+    - 192.168.10.107
+    - 192.168.10.108
+    - 192.168.10.109
+  

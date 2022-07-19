@@ -89,18 +89,21 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 
 		buildInfo: opts.BuildInfo,
 
+		// 当前抓取的个数
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: opts.Namespace,
 			Name:      "exporter_scrapes_total",
 			Help:      "Current total redis scrapes.",
 		}),
 
+		// 当前抓取的运行时长
 		scrapeDuration: prometheus.NewSummary(prometheus.SummaryOpts{
 			Namespace: opts.Namespace,
 			Name:      "exporter_scrape_duration_seconds",
 			Help:      "Durations of scrapes by the exporter",
 		}),
 
+		// 请求exporter遇到的错误总数
 		targetScrapeRequestErrors: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: opts.Namespace,
 			Name:      "target_scrape_request_errors_total",
@@ -111,17 +114,17 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 			// # Server
 			"uptime_in_seconds": "uptime_in_seconds",
 			"process_id":        "process_id",
-			"io_threads_active": "io_threads_active",
+			// "io_threads_active": "io_threads_active",
 
 			// # Clients
-			"connected_clients":        "connected_clients",
-			"blocked_clients":          "blocked_clients",
-			"tracking_clients":         "tracking_clients",
-			"clients_in_timeout_table": "clients_in_timeout_table",
+			"connected_clients": "connected_clients",
+			"blocked_clients":   "blocked_clients",
+			// "tracking_clients":         "tracking_clients",
+			// "clients_in_timeout_table": "clients_in_timeout_table",
 
 			// redis 2,3,4.x
-			"client_longest_output_list": "client_longest_output_list",
-			"client_biggest_input_buf":   "client_biggest_input_buf",
+			// "client_longest_output_list": "client_longest_output_list",
+			// "client_biggest_input_buf":   "client_biggest_input_buf",
 
 			// the above two metrics were renamed in redis 5.x
 			"client_recent_max_output_buffer": "client_recent_max_output_buffer_bytes",
@@ -147,11 +150,11 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 			"number_of_cached_scripts": "number_of_cached_scripts",
 			"maxmemory":                "memory_max_bytes",
 
-			"maxmemory_reservation":         "memory_max_reservation_bytes",
-			"maxmemory_desired_reservation": "memory_max_reservation_desired_bytes",
+			// "maxmemory_reservation":         "memory_max_reservation_bytes",
+			// "maxmemory_desired_reservation": "memory_max_reservation_desired_bytes",
 
-			"maxfragmentationmemory_reservation":         "memory_max_fragmentation_reservation_bytes",
-			"maxfragmentationmemory_desired_reservation": "memory_max_fragmentation_reservation_desired_bytes",
+			// "maxfragmentationmemory_reservation":         "memory_max_fragmentation_reservation_bytes",
+			// "maxfragmentationmemory_desired_reservation": "memory_max_fragmentation_reservation_desired_bytes",
 
 			"mem_fragmentation_ratio": "mem_fragmentation_ratio",
 			"mem_fragmentation_bytes": "mem_fragmentation_bytes",
@@ -201,16 +204,16 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 			"aof_delayed_fsync":            "aof_delayed_fsync",
 			"aof_last_bgrewrite_status":    "aof_last_bgrewrite_status",
 			"aof_last_write_status":        "aof_last_write_status",
-			"module_fork_in_progress":      "module_fork_in_progress",
-			"module_fork_last_cow_size":    "module_fork_last_cow_size",
+			// "module_fork_in_progress":      "module_fork_in_progress",
+			// "module_fork_last_cow_size":    "module_fork_last_cow_size",
 
 			// # Stats
-			"pubsub_channels":         "pubsub_channels",
-			"pubsub_patterns":         "pubsub_patterns",
-			"latest_fork_usec":        "latest_fork_usec",
-			"tracking_total_keys":     "tracking_total_keys",
-			"tracking_total_items":    "tracking_total_items",
-			"tracking_total_prefixes": "tracking_total_prefixes",
+			"pubsub_channels":  "pubsub_channels",
+			"pubsub_patterns":  "pubsub_patterns",
+			"latest_fork_usec": "latest_fork_usec",
+			// "tracking_total_keys":     "tracking_total_keys",
+			// "tracking_total_items":    "tracking_total_items",
+			// "tracking_total_prefixes": "tracking_total_prefixes",
 
 			// # Replication
 			"connected_slaves":               "connected_slaves",
@@ -221,41 +224,41 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 			"master_repl_offset":             "master_repl_offset",
 			"second_repl_offset":             "second_repl_offset",
 			"slave_expires_tracked_keys":     "slave_expires_tracked_keys",
-			"slave_priority":                 "slave_priority",
-			"sync_full":                      "replica_resyncs_full",
-			"sync_partial_ok":                "replica_partial_resync_accepted",
-			"sync_partial_err":               "replica_partial_resync_denied",
+			// "slave_priority":                 "slave_priority",
+			"sync_full":        "replica_resyncs_full",
+			"sync_partial_ok":  "replica_partial_resync_accepted",
+			"sync_partial_err": "replica_partial_resync_denied",
 
 			// # Cluster
-			"cluster_stats_messages_sent":     "cluster_messages_sent_total",
-			"cluster_stats_messages_received": "cluster_messages_received_total",
+			// "cluster_stats_messages_sent":     "cluster_messages_sent_total",
+			// "cluster_stats_messages_received": "cluster_messages_received_total",
 
 			// # Tile38
 			// based on https://tile38.com/commands/server/
-			"tile38_aof_size":             "tile38_aof_size_bytes",
-			"tile38_avg_point_size":       "tile38_avg_item_size_bytes",
-			"tile38_sys_cpus":             "tile38_cpus_total",
-			"tile38_heap_released_bytes":  "tile38_heap_released_bytes",
-			"tile38_heap_alloc_bytes":     "tile38_heap_size_bytes",
-			"tile38_http_transport":       "tile38_http_transport",
-			"tile38_in_memory_size":       "tile38_in_memory_size_bytes",
-			"tile38_max_heap_size":        "tile38_max_heap_size_bytes",
-			"tile38_alloc_bytes":          "tile38_mem_alloc_bytes",
-			"tile38_num_collections":      "tile38_num_collections_total",
-			"tile38_num_hooks":            "tile38_num_hooks_total",
-			"tile38_num_objects":          "tile38_num_objects_total",
-			"tile38_num_points":           "tile38_num_points_total",
-			"tile38_pointer_size":         "tile38_pointer_size_bytes",
-			"tile38_read_only":            "tile38_read_only",
-			"tile38_go_threads":           "tile38_threads_total",
-			"tile38_go_goroutines":        "tile38_go_goroutines_total",
-			"tile38_last_gc_time_seconds": "tile38_last_gc_time_seconds",
-			"tile38_next_gc_bytes":        "tile38_next_gc_bytes",
+			// "tile38_aof_size":             "tile38_aof_size_bytes",
+			// "tile38_avg_point_size":       "tile38_avg_item_size_bytes",
+			// "tile38_sys_cpus":             "tile38_cpus_total",
+			// "tile38_heap_released_bytes":  "tile38_heap_released_bytes",
+			// "tile38_heap_alloc_bytes":     "tile38_heap_size_bytes",
+			// "tile38_http_transport":       "tile38_http_transport",
+			// "tile38_in_memory_size":       "tile38_in_memory_size_bytes",
+			// "tile38_max_heap_size":        "tile38_max_heap_size_bytes",
+			// "tile38_alloc_bytes":          "tile38_mem_alloc_bytes",
+			// "tile38_num_collections":      "tile38_num_collections_total",
+			// "tile38_num_hooks":            "tile38_num_hooks_total",
+			// "tile38_num_objects":          "tile38_num_objects_total",
+			// "tile38_num_points":           "tile38_num_points_total",
+			// "tile38_pointer_size":         "tile38_pointer_size_bytes",
+			// "tile38_read_only":            "tile38_read_only",
+			// "tile38_go_threads":           "tile38_threads_total",
+			// "tile38_go_goroutines":        "tile38_go_goroutines_total",
+			// "tile38_last_gc_time_seconds": "tile38_last_gc_time_seconds",
+			// "tile38_next_gc_bytes":        "tile38_next_gc_bytes",
 
-			// addtl. KeyDB metrics
-			"server_threads":        "server_threads_total",
-			"long_lock_waits":       "long_lock_waits_total",
-			"current_client_thread": "current_client_thread",
+			// // addtl. KeyDB metrics
+			// "server_threads":        "server_threads_total",
+			// "long_lock_waits":       "long_lock_waits_total",
+			// "current_client_thread": "current_client_thread",
 		},
 
 		metricMapCounters: map[string]string{
@@ -266,29 +269,29 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 			"total_net_input_bytes":  "net_input_bytes_total",
 			"total_net_output_bytes": "net_output_bytes_total",
 
-			"expired_keys":    "expired_keys_total",
-			"cached_keys":     "cached_keys_total",
+			"expired_keys": "expired_keys_total",
+			// "cached_keys":     "cached_keys_total",
 			"evicted_keys":    "evicted_keys_total",
 			"keyspace_hits":   "keyspace_hits_total",
 			"keyspace_misses": "keyspace_misses_total",
 
-			"used_cpu_sys":              "cpu_sys_seconds_total",
-			"used_cpu_user":             "cpu_user_seconds_total",
-			"used_cpu_sys_children":     "cpu_sys_children_seconds_total",
-			"used_cpu_user_children":    "cpu_user_children_seconds_total",
-			"used_cpu_sys_main_thread":  "cpu_sys_main_thread_seconds_total",
-			"used_cpu_user_main_thread": "cpu_user_main_thread_seconds_total",
+			"used_cpu_sys":           "cpu_sys_seconds_total",
+			"used_cpu_user":          "cpu_user_seconds_total",
+			"used_cpu_sys_children":  "cpu_sys_children_seconds_total",
+			"used_cpu_user_children": "cpu_user_children_seconds_total",
+			// "used_cpu_sys_main_thread":  "cpu_sys_main_thread_seconds_total",
+			// "used_cpu_user_main_thread": "cpu_user_main_thread_seconds_total",
 
-			"unexpected_error_replies":     "unexpected_error_replies",
-			"total_error_replies":          "total_error_replies",
-			"total_reads_processed":        "total_reads_processed",
-			"total_writes_processed":       "total_writes_processed",
-			"io_threaded_reads_processed":  "io_threaded_reads_processed",
-			"io_threaded_writes_processed": "io_threaded_writes_processed",
-			"dump_payload_sanitizations":   "dump_payload_sanitizations",
+			// "unexpected_error_replies":     "unexpected_error_replies",
+			// "total_error_replies":          "total_error_replies",
+			// "total_reads_processed":        "total_reads_processed",
+			// "total_writes_processed":       "total_writes_processed",
+			// "io_threaded_reads_processed":  "io_threaded_reads_processed",
+			// "io_threaded_writes_processed": "io_threaded_writes_processed",
+			// "dump_payload_sanitizations":   "dump_payload_sanitizations",
 
-			"storage_provider_read_hits":   "storage_provider_read_hits",
-			"storage_provider_read_misses": "storage_provider_read_misses",
+			// "storage_provider_read_hits":   "storage_provider_read_hits",
+			// "storage_provider_read_misses": "storage_provider_read_misses",
 		},
 	}
 
@@ -326,9 +329,9 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 		log.Debugf("countKeys: %#v", countKeys)
 	}
 
-	if opts.InclSystemMetrics {
-		e.metricMapGauges["total_system_memory"] = "total_system_memory_bytes"
-	}
+	// if opts.InclSystemMetrics {
+	e.metricMapGauges["total_system_memory"] = "total_system_memory_bytes"
+	// }
 
 	e.metricDescriptions = map[string]*prometheus.Desc{}
 
@@ -337,6 +340,7 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 		connectedClientsLabels = append(connectedClientsLabels, "port")
 	}
 
+	// 指标描述和指标label映射数据结构
 	for k, desc := range map[string]struct {
 		txt  string
 		lbls []string
@@ -402,9 +406,10 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 	} {
 		e.metricDescriptions[k] = newMetricDescr(opts.Namespace, k, desc.txt, desc.lbls)
 	}
-
+	fmt.Println("********************")
 	if e.options.MetricsPath == "" {
-		e.options.MetricsPath = "/metrics"
+		fmt.Println("set  e.options.MetricsPath.....")
+		e.options.MetricsPath = "/redis/metrics"
 	}
 
 	e.mux = http.NewServeMux()
@@ -425,11 +430,11 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 			e.options.Registry.MustRegister(buildInfoCollector)
 		}
 	}
+	// e.mux.HandleFunc("/", e.indexHandler)
+	// e.mux.HandleFunc("/scrape", e.scrapeHandler)
+	// e.mux.HandleFunc("/health", e.healthHandler)
 
-	e.mux.HandleFunc("/", e.indexHandler)
-	e.mux.HandleFunc("/scrape", e.scrapeHandler)
-	e.mux.HandleFunc("/health", e.healthHandler)
-
+	fmt.Println("after e.options.MetricsPath.....")
 	return e, nil
 }
 
@@ -567,6 +572,7 @@ func (e *Exporter) scrapeRedisHost(ch chan<- prometheus.Metric) error {
 	}
 
 	dbCount := 0
+	// 使用config get * 命令获取数据库的个数
 	if config, err := digoredis.Strings(doRedisCmd(c, e.options.ConfigCommandName, "GET", "*")); err == nil {
 		log.Debugf("Redis CONFIG GET * result: [%#v]", config)
 		dbCount, err = e.extractConfigMetrics(ch, config)
@@ -589,10 +595,10 @@ func (e *Exporter) scrapeRedisHost(ch chan<- prometheus.Metric) error {
 	}
 	log.Debugf("Redis INFO ALL result: [%#v]", infoAll)
 
+	// 如果是集群模式，则使用CLUSTER INFO抓取信息
 	if strings.Contains(infoAll, "cluster_enabled:1") {
 		if clusterInfo, err := digoredis.String(doRedisCmd(c, "CLUSTER", "INFO")); err == nil {
 			e.extractClusterInfoMetrics(ch, clusterInfo)
-
 			// in cluster mode Redis only supports one database so no extra DB number padding needed
 			dbCount = 1
 		} else {
@@ -606,7 +612,7 @@ func (e *Exporter) scrapeRedisHost(ch chan<- prometheus.Metric) error {
 	}
 
 	log.Debugf("dbCount: %d", dbCount)
-
+	// 解析info all返回的数据
 	e.extractInfoMetrics(ch, infoAll, dbCount)
 
 	e.extractLatencyMetrics(ch, c)
@@ -624,31 +630,28 @@ func (e *Exporter) scrapeRedisHost(ch chan<- prometheus.Metric) error {
 		e.extractCheckKeyMetrics(ch, c)
 	}
 
-	e.extractSlowLogMetrics(ch, c)
-
-	e.extractStreamMetrics(ch, c)
+	// e.extractSlowLogMetrics(ch, c)
+	// e.extractStreamMetrics(ch, c)
 
 	e.extractCountKeysMetrics(ch, c)
 
-	e.extractKeyGroupMetrics(ch, c, dbCount)
+	// e.extractKeyGroupMetrics(ch, c, dbCount)
 
 	if strings.Contains(infoAll, "# Sentinel") {
 		e.extractSentinelMetrics(ch, c)
 	}
 
-	if e.options.ExportClientList {
-		e.extractConnectedClientMetrics(ch, c)
-	}
-
-	if e.options.IsTile38 {
-		e.extractTile38Metrics(ch, c)
-	}
-
-	if len(e.options.LuaScript) > 0 {
-		if err := e.extractLuaScriptMetrics(ch, c); err != nil {
-			return err
-		}
-	}
+	// if e.options.ExportClientList {
+	// 	e.extractConnectedClientMetrics(ch, c)
+	// }
+	// if e.options.IsTile38 {
+	// 	e.extractTile38Metrics(ch, c)
+	// }
+	// if len(e.options.LuaScript) > 0 {
+	// 	if err := e.extractLuaScriptMetrics(ch, c); err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }
