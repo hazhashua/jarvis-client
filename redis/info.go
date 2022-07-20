@@ -103,13 +103,13 @@ func (e *Exporter) extractInfoMetrics(ch chan<- prometheus.Metric, info string, 
 			if keysTotal, keysEx, avgTTL, keysCached, ok := parseDBKeyspaceString(fieldKey, fieldValue); ok {
 				dbName := fieldKey
 
-				e.registerConstMetricGauge(ch, "db_keys", keysTotal, redis_config.Cluster.Name, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
-				e.registerConstMetricGauge(ch, "db_keys_expiring", keysEx, redis_config.Cluster.Name, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
+				e.registerConstMetricGauge(ch, "db_keys", keysTotal, redis_config.Cluster.Name, e.redisHost, e.redisIp, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
+				e.registerConstMetricGauge(ch, "db_keys_expiring", keysEx, redis_config.Cluster.Name, e.redisHost, e.redisIp, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
 				if keysCached > -1 {
-					e.registerConstMetricGauge(ch, "db_keys_cached", keysCached, redis_config.Cluster.Name, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
+					e.registerConstMetricGauge(ch, "db_keys_cached", keysCached, redis_config.Cluster.Name, e.redisHost, e.redisIp, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
 				}
 				if avgTTL > -1 {
-					e.registerConstMetricGauge(ch, "db_avg_ttl_seconds", avgTTL, redis_config.Cluster.Name, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
+					e.registerConstMetricGauge(ch, "db_avg_ttl_seconds", avgTTL, redis_config.Cluster.Name, e.redisHost, e.redisIp, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
 				}
 				handledDBs[dbName] = true
 				continue
@@ -133,8 +133,8 @@ func (e *Exporter) extractInfoMetrics(ch chan<- prometheus.Metric, info string, 
 	for dbIndex := 0; dbIndex < dbCount; dbIndex++ {
 		dbName := "db" + strconv.Itoa(dbIndex)
 		if _, exists := handledDBs[dbName]; !exists {
-			e.registerConstMetricGauge(ch, "db_keys", 0, redis_config.Cluster.Name, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
-			e.registerConstMetricGauge(ch, "db_keys_expiring", 0, redis_config.Cluster.Name, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
+			e.registerConstMetricGauge(ch, "db_keys", 0, redis_config.Cluster.Name, e.redisHost, e.redisIp, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
+			e.registerConstMetricGauge(ch, "db_keys_expiring", 0, redis_config.Cluster.Name, e.redisHost, e.redisIp, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, dbName)
 		}
 	}
 
@@ -151,6 +151,8 @@ func (e *Exporter) extractInfoMetrics(ch chan<- prometheus.Metric, info string, 
 	if keyValues["role"] == "slave" {
 		e.registerConstMetricGauge(ch, "slave_info", 1,
 			redis_config.Cluster.Name,
+			e.redisHost,
+			e.redisIp,
 			redis_config.Cluster.ScrapeHost,
 			redis_config.Cluster.ScrapeIp,
 			keyValues["master_host"],
@@ -284,9 +286,9 @@ func (e *Exporter) handleMetricsReplication(ch chan<- prometheus.Metric, masterH
 	// only slaves have this field
 	if fieldKey == "master_link_status" {
 		if fieldValue == "up" {
-			e.registerConstMetricGauge(ch, "master_link_up", 1, redis_config.Cluster.Name, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, masterHost, masterPort)
+			e.registerConstMetricGauge(ch, "master_link_up", 1, redis_config.Cluster.Name, e.redisHost, e.redisIp, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, masterHost, masterPort)
 		} else {
-			e.registerConstMetricGauge(ch, "master_link_up", 0, redis_config.Cluster.Name, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, masterHost, masterPort)
+			e.registerConstMetricGauge(ch, "master_link_up", 0, redis_config.Cluster.Name, e.redisHost, e.redisIp, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, masterHost, masterPort)
 		}
 		return true
 	}
@@ -294,7 +296,7 @@ func (e *Exporter) handleMetricsReplication(ch chan<- prometheus.Metric, masterH
 
 	case "master_last_io_seconds_ago", "slave_repl_offset", "master_sync_in_progress":
 		val, _ := strconv.Atoi(fieldValue)
-		e.registerConstMetricGauge(ch, fieldKey, float64(val), redis_config.Cluster.Name, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, masterHost, masterPort)
+		e.registerConstMetricGauge(ch, fieldKey, float64(val), redis_config.Cluster.Name, e.redisHost, e.redisIp, redis_config.Cluster.ScrapeHost, redis_config.Cluster.ScrapeIp, masterHost, masterPort)
 		return true
 	}
 
@@ -304,6 +306,8 @@ func (e *Exporter) handleMetricsReplication(ch chan<- prometheus.Metric, masterH
 			"connected_slave_offset_bytes",
 			slaveOffset,
 			redis_config.Cluster.Name,
+			e.redisHost,
+			e.redisIp,
 			redis_config.Cluster.ScrapeHost,
 			redis_config.Cluster.ScrapeIp,
 			slaveIP, slavePort, slaveState,
@@ -314,6 +318,8 @@ func (e *Exporter) handleMetricsReplication(ch chan<- prometheus.Metric, masterH
 				"connected_slave_lag_seconds",
 				slaveLag,
 				redis_config.Cluster.Name,
+				e.redisHost,
+				e.redisIp,
 				redis_config.Cluster.ScrapeHost,
 				redis_config.Cluster.ScrapeIp,
 				slaveIP, slavePort, slaveState,
@@ -330,6 +336,8 @@ func (e *Exporter) handleMetricsServer(ch chan<- prometheus.Metric, fieldKey str
 		if uptime, err := strconv.ParseFloat(fieldValue, 64); err == nil {
 			e.registerConstMetricGauge(ch, "start_time_seconds", float64(time.Now().Unix())-uptime,
 				redis_config.Cluster.Name,
+				e.redisHost,
+				e.redisIp,
 				redis_config.Cluster.ScrapeHost,
 				redis_config.Cluster.ScrapeIp)
 		}
@@ -484,19 +492,29 @@ func (e *Exporter) handleMetricsCommandStats(ch chan<- prometheus.Metric, fieldK
 	if err == nil {
 		e.registerConstMetric(ch, "commands_total", calls, prometheus.CounterValue,
 			redis_config.Cluster.Name,
+			e.redisHost,
+			e.redisIp,
 			redis_config.Cluster.ScrapeHost,
 			redis_config.Cluster.ScrapeIp,
 			cmd)
 		e.registerConstMetric(ch, "commands_duration_seconds_total", usecTotal/1e6, prometheus.CounterValue,
 			redis_config.Cluster.Name,
+			e.redisHost,
+			e.redisIp,
 			redis_config.Cluster.ScrapeHost,
 			redis_config.Cluster.ScrapeIp, cmd)
 		if extendedStats {
-			e.registerConstMetric(ch, "commands_rejected_calls_total", rejectedCalls, prometheus.CounterValue, redis_config.Cluster.Name,
+			e.registerConstMetric(ch, "commands_rejected_calls_total", rejectedCalls, prometheus.CounterValue,
+				redis_config.Cluster.Name,
+				e.redisHost,
+				e.redisIp,
 				redis_config.Cluster.ScrapeHost,
 				redis_config.Cluster.ScrapeIp,
 				cmd)
-			e.registerConstMetric(ch, "commands_failed_calls_total", failedCalls, prometheus.CounterValue, redis_config.Cluster.Name,
+			e.registerConstMetric(ch, "commands_failed_calls_total", failedCalls, prometheus.CounterValue,
+				redis_config.Cluster.Name,
+				e.redisHost,
+				e.redisIp,
 				redis_config.Cluster.ScrapeHost,
 				redis_config.Cluster.ScrapeIp,
 				cmd)
