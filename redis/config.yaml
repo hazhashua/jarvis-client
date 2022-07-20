@@ -4,4 +4,12 @@ cluster:
     - 192.168.10.107
     - 192.168.10.108
     - 192.168.10.109
+  hosts:
+    - redis-dev-1
+    - redis-dev-2
+    - redis-dev-3
+  ippwds:
+    - rhcloud@123.com
+    - rhcloud@123.com
+    - rhcloud@123.com
   

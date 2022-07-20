@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"runtime"
 	"strconv"
@@ -31,11 +30,21 @@ var (
 //     - 192.168.10.107
 //     - 192.168.10.108
 //     - 192.168.10.109
+//   hosts:
+//     - redis-dev-1
+//     - redis-dev-2
+//     - redis-dev-3
+//   ippwds:
+//     - rhcloud@123.com
+//     - rhcloud@123.com
+//     - rhcloud@123.com
 
 type RedisConfig struct {
 	Cluster struct {
-		Name string   `yaml:"name"`
-		Ips  []string `yaml:"ips"`
+		Name   string   `yaml:"name"`
+		Ips    []string `yaml:"ips"`
+		Hosts  []string `yaml:"hosts"`
+		Ippwds []string `yaml:"ippwds"`
 	}
 }
 
@@ -95,7 +104,7 @@ func RedisMain() {
 		checkKeysBatchSize = flag.Int64("check-keys-batch-size", getEnvInt64("REDIS_EXPORTER_CHECK_KEYS_BATCH_SIZE", 1000), "Approximate number of keys to process in each execution, larger value speeds up scanning.\nWARNING: Still Redis is a single-threaded app, huge COUNT can affect production environment.")
 		scriptPath         = flag.String("script", getEnv("REDIS_EXPORTER_SCRIPT", ""), "Path to Lua Redis script for collecting extra metrics")
 		// listenAddress      = flag.String("web.listen-address", getEnv("REDIS_EXPORTER_WEB_LISTEN_ADDRESS", ":9121"), "Address to listen on for web interface and telemetry.")
-		listenAddress     = flag.String("web.listen-address", getEnv("REDIS_EXPORTER_WEB_LISTEN_ADDRESS", ":38081"), "Address to listen on for web interface and telemetry.")
+		// listenAddress     = flag.String("web.listen-address", getEnv("REDIS_EXPORTER_WEB_LISTEN_ADDRESS", ":38081"), "Address to listen on for web interface and telemetry.")
 		metricPath        = flag.String("web.telemetry-path", getEnv("REDIS_EXPORTER_WEB_TELEMETRY_PATH", "/redis/metrics"), "Path under which to expose metrics.")
 		logFormat         = flag.String("log-format", getEnv("REDIS_EXPORTER_LOG_FORMAT", "txt"), "Log format, valid options are txt and json")
 		configCommand     = flag.String("config-command", getEnv("REDIS_EXPORTER_CONFIG_COMMAND", "CONFIG"), "What to use for the CONFIG command")
@@ -125,7 +134,7 @@ func RedisMain() {
 	flag.Set("redisPwd", "rhcloud@123.com")
 	flag.Parse()
 
-	*redisPwd = "rhcloud@123.com"
+	*redisPwd = redis_config.Cluster.Ippwds[0]
 
 	switch *logFormat {
 	case "json":
@@ -224,6 +233,7 @@ func RedisMain() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("redis exporter: ", exp)
 
 	// Verify that initial client keypair and CA are accepted
 	// if (*tlsClientCertFile != "") != (*tlsClientKeyFile != "") {
@@ -252,8 +262,10 @@ func RedisMain() {
 	// } else {
 	// 	log.Fatal(http.ListenAndServe(*listenAddress, exp))
 	// }
-	fmt.Println("listenAddress: ", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, exp))
+
+	// redis不再单独开端口监听
+	// fmt.Println("listenAddress: ", *listenAddress)
+	// log.Fatal(http.ListenAndServe(*listenAddress, exp))
 
 }
 
