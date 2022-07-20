@@ -381,7 +381,7 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 		"sentinel_master_sentinels":                    {txt: "The number of sentinels monitoring this master", lbls: []string{"cluster", "exporter_host", "exporter_ip", "master_name", "master_address"}},
 		"sentinel_master_slaves":                       {txt: "The number of slaves of the master", lbls: []string{"cluster", "exporter_host", "exporter_ip", "master_name", "master_address"}},
 		"sentinel_master_status":                       {txt: "Master status on Sentinel", lbls: []string{"cluster", "exporter_host", "exporter_ip", "master_name", "master_address", "master_status"}},
-		"sentinel_masters":                             {txt: "The number of masters this sentinel is watching"},
+		"sentinel_masters":                             {txt: "The number of masters this sentinel is watching", lbls: []string{"cluster", "exporter_host", "exporter_ip"}},
 		"sentinel_running_scripts":                     {txt: "Number of scripts in execution right now"},
 		"sentinel_scripts_queue_length":                {txt: "Queue of user scripts to execute"},
 		"sentinel_simulate_failure_flags":              {txt: "Failures simulations"},
@@ -390,7 +390,7 @@ func NewRedisExporter(redisURI string, opts Options) (*Exporter, error) {
 		"slave_repl_offset":                            {txt: "Slave replication offset", lbls: []string{"cluster", "exporter_host", "exporter_ip", "master_host", "master_port"}},
 		"slowlog_last_id":                              {txt: `Last id of slowlog`},
 		"slowlog_length":                               {txt: `Total slowlog`},
-		"start_time_seconds":                           {txt: "Start time of the Redis instance since unix epoch in seconds."},
+		"start_time_seconds":                           {txt: "Start time of the Redis instance since unix epoch in seconds.", lbls: []string{"cluster", "exporter_host", "exporter_ip"}},
 		"stream_group_consumer_idle_seconds":           {txt: `Consumer idle time in seconds`, lbls: []string{"cluster", "exporter_host", "exporter_ip", "db", "stream", "group", "consumer"}},
 		"stream_group_consumer_messages_pending":       {txt: `Pending number of messages for this specific consumer`, lbls: []string{"cluster", "exporter_host", "exporter_ip", "db", "stream", "group", "consumer"}},
 		"stream_group_consumers":                       {txt: `Consumers count of stream group`, lbls: []string{"cluster", "exporter_host", "exporter_ip", "db", "stream", "group"}},
@@ -537,6 +537,9 @@ func (e *Exporter) extractConfigMetrics(ch chan<- prometheus.Metric, config []st
 func (e *Exporter) scrapeRedisHost(ch chan<- prometheus.Metric) error {
 	defer log.Debugf("scrapeRedisHost() done")
 
+	// 抓取配置信息，作为metric的tag数据来源
+	redis_config := Parse_redis_config()
+
 	startTime := time.Now()
 	c, err := e.connectToRedis()
 	connectTookSeconds := time.Since(startTime).Seconds()
@@ -619,7 +622,7 @@ func (e *Exporter) scrapeRedisHost(ch chan<- prometheus.Metric) error {
 
 	log.Debugf("dbCount: %d", dbCount)
 	// 解析info all返回的数据
-	e.extractInfoMetrics(ch, infoAll, dbCount)
+	e.extractInfoMetrics(ch, infoAll, dbCount, *redis_config)
 
 	e.extractLatencyMetrics(ch, c)
 

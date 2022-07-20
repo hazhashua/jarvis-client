@@ -38,13 +38,17 @@ var (
 //     - rhcloud@123.com
 //     - rhcloud@123.com
 //     - rhcloud@123.com
+//   scrapehost: redis-dev-1
+//   scrapeip: 192.168.10.107
 
 type RedisConfig struct {
 	Cluster struct {
-		Name   string   `yaml:"name"`
-		Ips    []string `yaml:"ips"`
-		Hosts  []string `yaml:"hosts"`
-		Ippwds []string `yaml:"ippwds"`
+		Name       string   `yaml:"name"`
+		Ips        []string `yaml:"ips"`
+		Hosts      []string `yaml:"hosts"`
+		Ippwds     []string `yaml:"ippwds"`
+		ScrapeHost string   `yaml:"scrapehost"`
+		ScrapeIp   string   `yaml:"scrapeip"`
 	}
 }
 

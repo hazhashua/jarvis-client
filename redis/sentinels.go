@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (e *Exporter) handleMetricsSentinel(ch chan<- prometheus.Metric, fieldKey string, fieldValue string) bool {
+func (e *Exporter) handleMetricsSentinel(ch chan<- prometheus.Metric, fieldKey string, fieldValue string, redis_config RedisConfig) bool {
 
 	switch fieldKey {
 
@@ -25,9 +25,19 @@ func (e *Exporter) handleMetricsSentinel(ch chan<- prometheus.Metric, fieldKey s
 		if masterStatus == "ok" {
 			masterStatusNum = 1
 		}
-		e.registerConstMetricGauge(ch, "sentinel_master_status", masterStatusNum, masterName, masterAddress, masterStatus)
-		e.registerConstMetricGauge(ch, "sentinel_master_slaves", masterSlaves, masterName, masterAddress)
-		e.registerConstMetricGauge(ch, "sentinel_master_sentinels", masterSentinels, masterName, masterAddress)
+		e.registerConstMetricGauge(ch, "sentinel_master_status", masterStatusNum, redis_config.Cluster.Name,
+			redis_config.Cluster.ScrapeHost,
+			redis_config.Cluster.ScrapeIp,
+			masterName, masterAddress, masterStatus)
+		e.registerConstMetricGauge(ch, "sentinel_master_slaves", masterSlaves, redis_config.Cluster.Name,
+			redis_config.Cluster.ScrapeHost,
+			redis_config.Cluster.ScrapeIp,
+			masterName, masterAddress)
+		e.registerConstMetricGauge(ch, "sentinel_master_sentinels", masterSentinels,
+			redis_config.Cluster.Name,
+			redis_config.Cluster.ScrapeHost,
+			redis_config.Cluster.ScrapeIp,
+			masterName, masterAddress)
 		return true
 	}
 
