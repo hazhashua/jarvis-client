@@ -24,10 +24,12 @@ type BuildInfo struct {
 // Exporter implements the prometheus.Exporter interface, and exports Redis metrics.
 type Exporter struct {
 	sync.Mutex
-
-	redisAddr    string
-	redisIp      string
-	redisHost    string
+	// 保存当前处理的redis实例的索引
+	current_redis_idx int
+	redisAddr         string
+	redis_config      RedisConfig
+	// redisIp      string
+	// redisHost    string
 	redisCluster string
 	namespace    string
 
@@ -81,13 +83,19 @@ type Options struct {
 }
 
 // NewRedisExporter returns a new exporter of Redis metrics.
-func NewRedisExporter(redisURI string, host string, ip string, cluster string, opts Options) (*Exporter, error) {
+func NewRedisExporter(redis_config RedisConfig, opts Options) (*Exporter, error) {
 	log.Debugf("NewRedisExporter options: %#v", opts)
 
+	ip := redis_config.Cluster.Ips[0]
+	// host := redis_config.Cluster.Hosts[0]
+	cluster := redis_config.Cluster.Name
+	redis_addr := fmt.Sprintf("redis://%s:6379", ip)
+
 	e := &Exporter{
-		redisAddr:    redisURI,
-		redisHost:    host,
-		redisIp:      ip,
+		redis_config: redis_config,
+		redisAddr:    redis_addr,
+		// redisHost:    host,
+		// redisIp:      ip,
 		redisCluster: cluster,
 		options:      opts,
 		namespace:    opts.Namespace,
@@ -457,16 +465,21 @@ func NewRedisExporter(redisURI string, host string, ip string, cluster string, o
 
 // Describe outputs Redis metric descriptions.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	for _, desc := range e.metricDescriptions {
-		ch <- desc
-	}
-	// cluster, host , ip :=   e.redisCluster, e.redisHost, e.redisIp
-	for _, v := range e.metricMapGauges {
-		ch <- newMetricDescr(e.options.Namespace, v, v+" metric", []string{"cluster", "host", "ip"})
-	}
+	rc := e.redis_config
+	// 基于监控的redis的实例个数配置注册desc
+	for idx := 0; idx < len(rc.Cluster.Ips); idx++ {
 
-	for _, v := range e.metricMapCounters {
-		ch <- newMetricDescr(e.options.Namespace, v, v+" metric", []string{"cluster", "host", "ip"})
+		for _, desc := range e.metricDescriptions {
+			ch <- desc
+		}
+		// cluster, host , ip :=   e.redisCluster, e.redisHost, e.redisIp
+		for _, v := range e.metricMapGauges {
+			ch <- newMetricDescr(e.options.Namespace, v, v+" metric", []string{"cluster", "host", "ip"})
+		}
+
+		for _, v := range e.metricMapCounters {
+			ch <- newMetricDescr(e.options.Namespace, v, v+" metric", []string{"cluster", "host", "ip"})
+		}
 	}
 
 	ch <- e.totalScrapes.Desc()
@@ -480,21 +493,26 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	defer e.Unlock()
 	e.totalScrapes.Inc()
 
-	if e.redisAddr != "" {
-		startTime := time.Now()
-		var up float64
-		if err := e.scrapeRedisHost(ch); err != nil {
-			e.registerConstMetricGauge(ch, "exporter_last_scrape_error", 1.0, fmt.Sprintf("%s", err))
-		} else {
-			up = 1
-			e.registerConstMetricGauge(ch, "exporter_last_scrape_error", 0, "")
+	for idx, ip := range e.redis_config.Cluster.Ips {
+		fmt.Println("暴露第", idx, "个redis的监控数据")
+		e.redisAddr = fmt.Sprintf("redis://%s:6379", ip)
+		e.current_redis_idx = idx
+		if e.redisAddr != "" {
+			startTime := time.Now()
+			var up float64
+			if err := e.scrapeRedisHost(ch); err != nil {
+				e.registerConstMetricGauge(ch, "exporter_last_scrape_error", 1.0, fmt.Sprintf("%s", err))
+			} else {
+				up = 1
+				e.registerConstMetricGauge(ch, "exporter_last_scrape_error", 0, "")
+			}
+
+			e.registerConstMetricGauge(ch, "up", up)
+
+			took := time.Since(startTime).Seconds()
+			e.scrapeDuration.Observe(took)
+			e.registerConstMetricGauge(ch, "exporter_last_scrape_duration_seconds", took)
 		}
-
-		e.registerConstMetricGauge(ch, "up", up)
-
-		took := time.Since(startTime).Seconds()
-		e.scrapeDuration.Observe(took)
-		e.registerConstMetricGauge(ch, "exporter_last_scrape_duration_seconds", took)
 	}
 
 	ch <- e.totalScrapes

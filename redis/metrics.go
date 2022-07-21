@@ -78,7 +78,7 @@ func (e *Exporter) parseAndRegisterConstMetric(ch chan<- prometheus.Metric, fiel
 		val = val / 1e6
 	}
 	fmt.Println("开始注册metric desc :", metricName)
-	e.registerConstMetric(ch, metricName, val, t, e.redisCluster, e.redisHost, e.redisIp)
+	e.registerConstMetric(ch, metricName, val, t, e.redisCluster, e.redis_config.Cluster.Hosts[e.current_redis_idx], e.redis_config.Cluster.Ips[e.current_redis_idx])
 }
 
 func (e *Exporter) registerConstMetricGauge(ch chan<- prometheus.Metric, metric string, val float64, labels ...string) {
