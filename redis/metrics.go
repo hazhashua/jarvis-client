@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,6 +11,10 @@ import (
 )
 
 var metricNameRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
+
+func defaultLabels() []string {
+	return []string{"cluster", "host", "ip"}
+}
 
 func sanitizeMetricName(n string) string {
 	return metricNameRE.ReplaceAllString(n, "_")
@@ -34,6 +39,7 @@ func (e *Exporter) includeMetric(s string) bool {
 func (e *Exporter) parseAndRegisterConstMetric(ch chan<- prometheus.Metric, fieldKey, fieldValue string) {
 	orgMetricName := sanitizeMetricName(fieldKey)
 	metricName := orgMetricName
+	fmt.Println("in parseAndRegisterConstMetric, fieldKey: ", fieldKey, " fieldValue: ", fieldValue, "  metricName: ", metricName)
 	if newName, ok := e.metricMapGauges[metricName]; ok {
 		metricName = newName
 	} else {
@@ -71,8 +77,8 @@ func (e *Exporter) parseAndRegisterConstMetric(ch chan<- prometheus.Metric, fiel
 		metricName = "latest_fork_seconds"
 		val = val / 1e6
 	}
-
-	e.registerConstMetric(ch, metricName, val, t)
+	fmt.Println("开始注册metric desc :", metricName)
+	e.registerConstMetric(ch, metricName, val, t, e.redisCluster, e.redisHost, e.redisIp)
 }
 
 func (e *Exporter) registerConstMetricGauge(ch chan<- prometheus.Metric, metric string, val float64, labels ...string) {
@@ -81,12 +87,16 @@ func (e *Exporter) registerConstMetricGauge(ch chan<- prometheus.Metric, metric 
 
 func (e *Exporter) registerConstMetric(ch chan<- prometheus.Metric, metric string, val float64, valType prometheus.ValueType, labelValues ...string) {
 	descr := e.metricDescriptions[metric]
+	labels := defaultLabels()
 	if descr == nil {
-		descr = newMetricDescr(e.options.Namespace, metric, metric+" metric", labelValues)
+		descr = newMetricDescr(e.options.Namespace, metric, metric+" metric", labels)
 	}
 
 	if m, err := prometheus.NewConstMetric(descr, valType, val, labelValues...); err == nil {
+		fmt.Println("metric: ", metric, " 写入ch......")
 		ch <- m
+	} else {
+		fmt.Println("创建metric: ", metric, " 失败....", err.Error())
 	}
 }
 

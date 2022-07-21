@@ -200,8 +200,8 @@ func RedisMain() {
 
 	exp, err := NewRedisExporter(
 		*redisAddr,
-		*redisIp,
 		*redisHost,
+		*redisIp,
 		*redisCluster,
 		Options{
 			// User:                  *redisUser,

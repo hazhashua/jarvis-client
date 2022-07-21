@@ -87,6 +87,7 @@ func NewRedisExporter(redisURI string, host string, ip string, cluster string, o
 	e := &Exporter{
 		redisAddr:    redisURI,
 		redisHost:    host,
+		redisIp:      ip,
 		redisCluster: cluster,
 		options:      opts,
 		namespace:    opts.Namespace,
@@ -216,6 +217,7 @@ func NewRedisExporter(redisURI string, host string, ip string, cluster string, o
 			// # Stats
 			"pubsub_channels": "pubsub_channels",
 			"pubsub_patterns": "pubsub_patterns",
+
 			// "latest_fork_usec": "latest_fork_usec",
 			// "tracking_total_keys":     "tracking_total_keys",
 			// "tracking_total_items":    "tracking_total_items",
@@ -368,7 +370,7 @@ func NewRedisExporter(redisURI string, host string, ip string, cluster string, o
 		// "db_keys_cached":                               {txt: "Total number of cached keys by DB", lbls: []string{"cluster", "exporter_host", "exporter_ip", "db"}},
 		// "errors_total":                                 {txt: `Total number of errors per error type`, lbls: []string{"cluster", "exporter_host", "exporter_ip", "err"}},
 		// "exporter_last_scrape_error":                   {txt: "The last scrape error status.", lbls: []string{"cluster", "exporter_host", "exporter_ip", "err"}},
-		// "instance_info":                                {txt: "Information about the Redis instance", lbls: []string{"cluster", "exporter_host", "exporter_ip", "role", "redis_version", "redis_build_id", "redis_mode", "os", "maxmemory_policy", "tcp_port", "run_id", "process_id"}},
+		"instance_info": {txt: "Information about the Redis instance", lbls: []string{"cluster", "host", "ip", "exporter_host", "exporter_ip", "role", "redis_version", "redis_build_id", "redis_mode", "os", "maxmemory_policy", "tcp_port", "run_id", "process_id"}},
 		// "key_group_count":                              {txt: `Count of keys in key group`, lbls: []string{"cluster", "exporter_host", "exporter_ip", "db", "key_group"}},
 		// "key_group_memory_usage_bytes":                 {txt: `Total memory usage of key group in bytes`, lbls: []string{"cluster", "exporter_host", "exporter_ip", "db", "key_group"}},
 		// "key_size":                                     {txt: `The length or size of "key"`, lbls: []string{"cluster", "exporter_host", "exporter_ip", "db", "key"}},

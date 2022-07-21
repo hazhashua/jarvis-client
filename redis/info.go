@@ -120,6 +120,7 @@ func (e *Exporter) extractInfoMetrics(ch chan<- prometheus.Metric, info string, 
 		}
 
 		if !e.includeMetric(fieldKey) {
+			fmt.Println("*********************没有找到指标: ", fieldKey, " continue......")
 			continue
 		}
 
@@ -139,6 +140,11 @@ func (e *Exporter) extractInfoMetrics(ch chan<- prometheus.Metric, info string, 
 	}
 
 	e.registerConstMetricGauge(ch, "instance_info", 1,
+		redis_config.Cluster.Name,
+		e.redisHost,
+		e.redisIp,
+		redis_config.Cluster.ScrapeHost,
+		redis_config.Cluster.ScrapeIp,
 		keyValues["role"],
 		keyValues["redis_version"],
 		keyValues["redis_build_id"],
