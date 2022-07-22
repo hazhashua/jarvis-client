@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -69,13 +70,13 @@ func (e *Exporter) connectToRedisCluster() (redis.Conn, error) {
 	if strings.Contains(uri, "://") {
 		u, _ := url.Parse(uri)
 		if u.Port() == "" {
-			uri = u.Host + ":6379"
+			uri = u.Host + fmt.Sprintf(":%d", e.redis_config.Cluster.RedisPort)
 		} else {
 			uri = u.Host
 		}
 	} else {
 		if frags := strings.Split(uri, ":"); len(frags) != 2 {
-			uri = uri + ":6379"
+			uri = uri + fmt.Sprintf(":%d", e.redis_config.Cluster.RedisPort)
 		}
 	}
 

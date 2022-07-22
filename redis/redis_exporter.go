@@ -506,7 +506,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	for idx, ip := range e.redis_config.Cluster.Ips {
 		fmt.Println("暴露第", idx, "个redis的监控数据")
-		e.redisAddr = fmt.Sprintf("redis://%s:6379", ip)
+		e.redisAddr = fmt.Sprintf("redis://%s:%d", ip, e.redis_config.Cluster.RedisPort)
 		e.current_redis_idx = idx
 		if e.redisAddr != "" {
 			startTime := time.Now()
