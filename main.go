@@ -1,12 +1,15 @@
 package main
 
 import (
-	"alive_exporter/config"
-	"alive_exporter/hadoop"
-	"alive_exporter/kafka"
-	"alive_exporter/micro_service"
-	"alive_exporter/spark"
-	"alive_exporter/utils"
+	"metric_exporter/config"
+	"metric_exporter/hadoop"
+	"metric_exporter/kafka"
+	"metric_exporter/micro_service"
+	"metric_exporter/redis"
+	"metric_exporter/service_alive"
+	"metric_exporter/spark"
+	"metric_exporter/utils"
+	"metric_exporter/zookeeper"
 	"os"
 
 	// "alive_exporter/utils"
@@ -20,10 +23,13 @@ import (
 )
 
 func comineServiceInfo() map[string]map[string]string {
+	k8s_config := micro_service.Parse_k8s_config()
+	fmt.Println("k8s_config: ", k8s_config.Cluster.Name)
+	master0 := k8s_config.Cluster.Master[0]
 
 	var k8sConfig config.K8sConfig = config.K8sConfig{
-		ServiceURL:  "http://124.65.131.14:38080/api/v1/services",
-		EndpointURL: "http://124.65.131.14:38080/api/v1/endpoints",
+		ServiceURL:  fmt.Sprintf("http://%s:%s/api/v1/services", master0, k8s_config.Cluster.ApiServerPort),  //"http://124.65.131.14:38080/api/v1/services",
+		EndpointURL: fmt.Sprintf("http://%s:%s/api/v1/endpoints", master0, k8s_config.Cluster.ApiServerPort), //"http://124.65.131.14:38080/api/v1/endpoints",
 	}
 
 	serviceinfo := micro_service.GetServiceInfo(k8sConfig.ServiceURL)
@@ -58,6 +64,7 @@ type SparkHandler struct {
 }
 
 func (handler SparkHandler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
+	handler.metrics = spark.GetMetrics()
 	switch r.URL.Path {
 	case "/spark/metrics":
 		for _, value := range handler.metrics {
@@ -79,8 +86,7 @@ func main() {
 
 	// 激活服务存活exporter
 	fmt.Println("*&&&&&&&&&&&&&&&&&&", utils.ValueQuery(""))
-	serviceCollector := newServiceAliveCollector()
-	// prometheus.MustRegister(serviceCollector)
+	serviceCollector := service_alive.NewServiceAliveCollector()
 	r := prometheus.NewRegistry()
 	r.MustRegister(serviceCollector)
 	handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
@@ -88,13 +94,10 @@ func main() {
 
 	// 激活hbase exporter
 	hbaseCollector := newHbaseCollector()
-	fmt.Println("after newHbaseCollector......")
 	hbaseR := prometheus.NewRegistry()
-	fmt.Println("after prometheus.NewRegistry()......")
 	hbaseR.MustRegister(hbaseCollector)
 	hbaseHandler := promhttp.HandlerFor(hbaseR, promhttp.HandlerOpts{})
 	http.Handle("/hbase/metrics", hbaseHandler)
-	fmt.Println("http.Handle(\"/hbase/metrics\", hbaseHandler)")
 
 	// 激活spark exporter
 	// 数组传入所有的master和standby地址
@@ -102,78 +105,75 @@ func main() {
 	print_metrics := spark.GetMetrics()
 	sparkHandler := SparkHandler{metrics: print_metrics}
 	http.Handle("/spark/metrics", sparkHandler)
-
 	fmt.Println("命令行的参数有", len(os.Args))
-	mode := "normal"
-	produce := true
-	// 遍历 os.Args 切片，就可以得到所有的命令行输入参数值
-	for idx, value := range os.Args {
-		fmt.Printf("args[%v]=%v\n", idx, value)
-		if value == "kafka" {
-			mode = "kafka"
-		}
-		if value == "produce" || value == "producer" {
-			produce = true
-		}
-		if value == "consume" || value == "consumer" {
-			produce = false
-		}
-	}
-	if mode == "kafka" {
-		if produce == true {
-			kafka.AsyncProducer()
-		} else {
-			kafka.ConsumeTest()
-		}
 
-	} else {
-		fmt.Println("kafka.Parse_kafka_config()..........................")
-		// kafka.Parse_kafka_config()
-		// kafka.GetKafkaMetrics()
+	// if produce == true {
+	// 	kafka.AsyncProducer()
+	// } else {
+	// 	kafka.ConsumeTest()
+	// }
 
-		// go generateaAliveValue(serviceAliveCollector.channel)
-		// go getAliveValueLoop(serviceAliveCollector.channel)
+	// fmt.Println("kafka.Parse_kafka_config()..........................")
+	// kafka.Parse_kafka_config()
+	// kafka.GetKafkaMetrics()
 
-		//Create a new instance of the foocollector and
-		//register it with the prometheus client.
-		// foo := newFooCollector()
-		// prometheus.MustRegister(foo)
+	// go generateaAliveValue(serviceAliveCollector.channel)
+	// go getAliveValueLoop(serviceAliveCollector.channel)
 
-		// go generateValue(foo.channel)
-		// go getValueLoop(foo.channel)
+	//Create a new instance of the foocollector and
+	//register it with the prometheus client.
+	// foo := newFooCollector()
+	// prometheus.MustRegister(foo)
 
-		// ch := chan <- prometheus.Metric
-		// foo.Collectx(make(chan<- prometheus.Metric), 100)
+	// go generateValue(foo.channel)
+	// go getValueLoop(foo.channel)
 
-		//This section will start the HTTP server and expose
-		//any metrics on the /metrics endpoint.
+	// ch := chan <- prometheus.Metric
+	// foo.Collectx(make(chan<- prometheus.Metric), 100)
 
-		// 带全部参数 注册句柄
-		// serviceCollector := newServiceAliveCollector()
-		// prometheus.MustRegister(serviceCollector)
-		// http.Handle("/metrics", promhttp.Handler())
+	//This section will start the HTTP server and expose
+	//any metrics on the /metrics endpoint.
 
-		// kafka_collector := kafka.NewKafkaCollector()
-		// prometheus.MustRegister(kafka_collector)
-		// http.Handle("/kafka/metrics", promhttp.Handler())
+	// 带全部参数 注册句柄
+	// serviceCollector := newServiceAliveCollector()
+	// prometheus.MustRegister(serviceCollector)
+	// http.Handle("/metrics", promhttp.Handler())
 
-		// http://bigdata-dev01:8088/jmx?qry=Hadoop:service=ResourceManager,name=QueueMetrics,q0=root,q1=default
+	// 激活kafka exporter
+	kafka_collector := kafka.NewKafkaCollector()
+	kafka_r := prometheus.NewRegistry()
+	kafka_r.MustRegister(kafka_collector)
+	kafka_handler := promhttp.HandlerFor(kafka_r, promhttp.HandlerOpts{})
+	http.Handle("/kafka/metrics", kafka_handler)
 
-		hadoop_collector := hadoop.NewHadoopCollector()
-		prometheus.MustRegister(hadoop_collector)
-		http.Handle("/hadoop/metrics", promhttp.Handler())
+	// http://bigdata-dev01:8088/jmx?qry=Hadoop:service=ResourceManager,name=QueueMetrics,q0=root,q1=default
 
-		// zookeeper.ZookeeperExporter()
-		// zookeeper.Watch()
+	// serviceCollector := micro_service.newServiceAliveCollector()
+	// service_r := prometheus.NewRegistry()
+	// r.MustRegister(serviceCollector)
+	// handler := promhttp.HandlerFor(service_r, promhttp.HandlerOpts{})
+	// http.Handle("/alive/metrics", handler)
 
-		log.Info("Beginning to serve on port :38080")
-		log.Fatal(http.ListenAndServe(":38080", nil))
+	// 激活hadoop exporter
+	hadoop_collector := hadoop.NewHadoopCollector()
+	hadoop_r := prometheus.NewRegistry()
+	hadoop_r.MustRegister(hadoop_collector)
+	hadoop_handler := promhttp.HandlerFor(hadoop_r, promhttp.HandlerOpts{})
+	http.Handle("/hadoop/metrics", hadoop_handler)
 
-		// time.Sleep(100)
-		// kafka_collector = kafka.NewKafkaCollector()
-		// prometheus.MustRegister(kafka_collector)
-		// http.Handle("/kafka/metrics", promhttp.Handler())
+	// 激活redis exporter
+	redis.RedisExporter()
 
-	}
+	// 激活zookeeper exporter
+	zookeeper.ZookeeperExporter()
+	// zookeeper.Watch()
+
+	log.Info("Beginning to serve on port :38080")
+	log.Fatal(http.ListenAndServe(":38080", nil))
+
+	// time.Sleep(100)
+	// kafka_collector = kafka.NewKafkaCollector()
+	// prometheus.MustRegister(kafka_collector)
+	// http.Handle("/kafka/metrics", promhttp.Handler())
 
 }
