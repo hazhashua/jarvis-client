@@ -49,6 +49,7 @@ type RedisConfig struct {
 		Ippwds     []string `yaml:"ippwds"`
 		ScrapeHost string   `yaml:"scrapehost"`
 		ScrapeIp   string   `yaml:"scrapeip"`
+		RedisPort  int      `yaml:"redisport"`
 	}
 }
 
@@ -90,7 +91,7 @@ func Parse_redis_config() *RedisConfig {
 	return redis_config
 }
 
-func RedisMain() {
+func RedisExporter() {
 	redis_config := Parse_redis_config()
 	// ip := redis_config.Cluster.Ips[0]
 	// host := redis_config.Cluster.Hosts[0]

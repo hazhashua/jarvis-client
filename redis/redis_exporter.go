@@ -33,6 +33,8 @@ type Exporter struct {
 	redisCluster string
 	namespace    string
 
+	// 存储redis集群模式
+	clusterMode               prometheus.Gauge
 	totalScrapes              prometheus.Counter
 	scrapeDuration            prometheus.Summary
 	targetScrapeRequestErrors prometheus.Counter
@@ -89,7 +91,7 @@ func NewRedisExporter(redis_config RedisConfig, opts Options) (*Exporter, error)
 	ip := redis_config.Cluster.Ips[0]
 	// host := redis_config.Cluster.Hosts[0]
 	cluster := redis_config.Cluster.Name
-	redis_addr := fmt.Sprintf("redis://%s:6379", ip)
+	redis_addr := fmt.Sprintf("redis://%s:%d", ip, redis_config.Cluster.RedisPort)
 
 	e := &Exporter{
 		redis_config: redis_config,
@@ -101,6 +103,14 @@ func NewRedisExporter(redis_config RedisConfig, opts Options) (*Exporter, error)
 		namespace:    opts.Namespace,
 
 		buildInfo: opts.BuildInfo,
+
+		// redis的集群模式
+		clusterMode: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace:   opts.Namespace,
+			Name:        "cluster_mode",
+			Help:        "print redis cluster mode",
+			ConstLabels: map[string]string{"mode": "sentinel"},
+		}),
 
 		// 当前抓取的个数
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
@@ -482,6 +492,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		}
 	}
 
+	ch <- e.clusterMode.Desc()
 	ch <- e.totalScrapes.Desc()
 	ch <- e.scrapeDuration.Desc()
 	ch <- e.targetScrapeRequestErrors.Desc()
@@ -514,7 +525,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.registerConstMetricGauge(ch, "exporter_last_scrape_duration_seconds", took)
 		}
 	}
-
+	e.clusterMode.Set(1)
+	ch <- e.clusterMode
 	ch <- e.totalScrapes
 	ch <- e.scrapeDuration
 	ch <- e.targetScrapeRequestErrors
