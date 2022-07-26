@@ -130,6 +130,65 @@ func QueryPartitionTbls(mysql_connection utils.MysqlConnect) {
 		} else {
 			fmt.Println("数据库名: ", name, " 表名: ", tbl_name, "分区表id: ", tbl_id)
 		}
+	}
+	db.Close()
+}
+
+// 查询内部表外部表信息
+func QueryExternalTbls(mysql_connection utils.MysqlConnect) {
+	db := utils.GetConnection(mysql_connection)
+	// 查询所有表及其是不是分区表
+	sqlstr := "SELECT dbs.name, tbls.tbl_name, tbls.tbl_type FROM  tbls join dbs on tbls.db_id=dbs.db_id"
+	stmt, _ := db.Prepare(sqlstr)
+	defer stmt.Close()
+	res, _ := stmt.Query()
+	defer res.Close()
+	for res.Next() {
+		var name string
+		var tbl_name string
+		var tbl_type string
+		err := res.Scan(&name, &tbl_name, &tbl_type)
+		if err != nil {
+			fmt.Println("读取内外部表数据错误！")
+		}
+		if tbl_type == "MANAGED_TABLE" {
+			fmt.Println("数据库名: ", name, " 表名: ", tbl_name, " 表类型: 内部表")
+		} else if tbl_type == "EXTERNAL_TABLE" {
+			fmt.Println("数据库名: ", name, " 表名: ", tbl_name, "表类型: 外部表")
+		}
+	}
+	db.Close()
+}
+
+func QueryTableFileInfo(mysql_connection utils.MysqlConnect) {
+	db := utils.GetConnection(mysql_connection)
+	// 查询所有表及其是不是分区表
+	sqlstr := `SELECT dbs.name, tbls.tbl_name, tp.param_key, tp.param_value
+				FROM 
+					(SELECT * 
+						FROM TABLE_PARAMS 
+						WHERE 
+						PARAM_KEY IN ("numFiles","totalSize")
+					) tp 
+				JOIN tbls 
+				ON tp.tbl_id=tbls.tbl_id 
+				JOIN dbs 
+				on dbs.db_id=tbls.db_id`
+	stmt, _ := db.Prepare(sqlstr)
+	defer stmt.Close()
+	res, _ := stmt.Query()
+	defer res.Close()
+	for res.Next() {
+		var name string
+		var tbl_name string
+		var tbl_type string
+		var type_value string
+		err := res.Scan(&name, &tbl_name, &tbl_type, &type_value)
+		if err != nil {
+			fmt.Println("读取表存储相关数据错误！")
+		}
+
+		fmt.Println("数据库名: ", name, " 表名: ", tbl_name, " 表指标类型: ", tbl_type, " 表指标值: ", type_value)
 
 	}
 	db.Close()
