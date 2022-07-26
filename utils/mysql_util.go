@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -23,6 +26,13 @@ type ServicePort struct {
 	PortType     *string
 }
 
+type MysqlConnect struct {
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // type Sortable interface {
 // 	Len() int
 // 	Less(int, int) bool
@@ -30,7 +40,10 @@ type ServicePort struct {
 // }
 
 func ValueQuery(sqlstr string) int {
-	dsn := "test:@tcp(localhost:3306)/test?charset=utf8&parseTime=true"
+	// dsn := "test:@tcp(localhost:3306)/test?charset=utf8&parseTime=true"
+	//      root:pwd@123@tcp(127.0.0.1:3306)/test
+	dsn := "root:pwd@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
+
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
@@ -66,7 +79,12 @@ func Query(sqlstr string) []ServicePort {
 	/*
 		查询服务和端口信息
 	*/
-	dsn := "test:@tcp(localhost:3306)/test?charset=utf8&parseTime=true"
+	// 本机 test用户，默认密码为空
+	// dsn := "test:@tcp(localhost:3306)/test?charset=utf8&parseTime=true"
+
+	// 开发环境 root用户， pwd@123密码
+	dsn := "root:pwd\\@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
+
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
@@ -138,12 +156,16 @@ func ReSerialize() []ServicePort {
 	// fmt.Println("port_infos: ", string(port_infos))
 	servicePorts := make([]ServicePort, 0)
 	for _, ele := range strings.Split(string(port_infos), "\n") {
+		if ele == "" {
+			fmt.Println("line data empty, continue...")
+			continue
+		}
 		// fmt.Println("ele: ", ele)
-		var servicePort ServicePort
-		json.Unmarshal([]byte(ele), &servicePort)
-		fmt.Println(servicePort.ID, *servicePort.ServiceName, *servicePort.ChildService, *servicePort.ClusterName, *servicePort.IP, servicePort.Port, *servicePort.PortType)
+		var servicePort = new(ServicePort)
+		json.Unmarshal([]byte(ele), servicePort)
+		fmt.Println(servicePort.ID, servicePort.ServiceName, servicePort.ChildService, servicePort.ClusterName, servicePort.IP, servicePort.Port, servicePort.PortType)
 
-		servicePorts = append(servicePorts, servicePort)
+		servicePorts = append(servicePorts, *servicePort)
 	}
 	return servicePorts
 
@@ -153,4 +175,54 @@ func painc_err(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func GetConnection(mysql_connection MysqlConnect) *sql.DB {
+	// 获取初始化的mysql db 结构体
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8&parseTime=true", mysql_connection.Username, mysql_connection.Password, mysql_connection.Host, mysql_connection.Port)
+	fmt.Println("mysql 连接串: ", dsn)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		fmt.Println("mysql打开连接失败......")
+		panic(err)
+	}
+	// See "Important settings" section.
+	db.SetConnMaxLifetime(time.Minute * 3)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(10)
+	return db
+
+}
+
+type Dbs struct {
+	Db_id           int    `json:"DB_ID"`
+	Desc            string `json:"DESC"`
+	Db_location_uri string `json:"DB_LOCATION_URI"`
+	Name            string `json:"NAME"`
+	Owner_name      string `json:"OWNER"`
+	Owner_type      string `json:"OWNER_TYPE"`
+	Ctlg_name       string `json:"CTLG_NAME"`
+}
+
+func (*Dbs) limitf() (num int) {
+	return 100
+}
+
+func QueryDbs(mysql_connection MysqlConnect) {
+	var mysql_db *gorm.DB
+	dsn_str := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8", mysql_connection.Username, mysql_connection.Password, mysql_connection.Host, mysql_connection.Port)
+	mysql_db, err := gorm.Open("mysql", dsn_str)
+	if err != nil {
+		fmt.Println("failed to connect database:", err)
+		return
+	}
+	fmt.Println("connect database success")
+	mysql_db.SingularTable(true)
+	var dbs []Dbs
+	mysql_db.Limit(100).Find(&dbs)
+	fmt.Println("end QueryDbs......")
+	fmt.Println(dbs[0])
+
+	// mysql_db.
+
 }
