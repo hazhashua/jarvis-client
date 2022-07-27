@@ -1,6 +1,7 @@
 package hive
 
 import (
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"metric_exporter/utils"
@@ -20,6 +21,8 @@ import (
 //       port: 3306
 //       user: root
 //       password: pwd@123
+//   scrapehost: bigdata-dev01
+//   scrapeip: 192.168.10.220
 type HiveConfig struct {
 	Cluster struct {
 		Name    string   `yaml:"name"`
@@ -31,7 +34,29 @@ type HiveConfig struct {
 			User     string `yaml:"user"`
 			Password string `yaml:"password"`
 		}
+		ScrapeHost string `yaml:"scrapehost"`
+		ScrapeIp   string `yaml:"scrapeip"`
 	}
+}
+
+type DBS struct {
+	DbId         int     `json:"DB_ID"`
+	Desc         *string `json:"DESC"`
+	DbLocaionUri *string `json:"DB_LOCATIONURI"`
+	Name         *string `json:"NAME"`
+	OwnerName    *string `json:"OWNERNAME"`
+	OwnerType    *string `json:"OWNER_TYPE"`
+	CtlgName     *string `json:"CTLG_NAME"`
+}
+
+type DBTables struct {
+	Name          *string       `json:"NAME"`
+	TblId         sql.NullInt16 `json:"TBLID"`
+	DbId          *string       `json:"DBID"`
+	Owner         *string       `json:OWNER`
+	TblName       *string       `json:TBLNAME`
+	TblType       *string       `json:"TBLTYPE"`
+	IsPartitioned int           `json:"ISPARTITION"`
 }
 
 func Parse_hive_config() *HiveConfig {
@@ -55,13 +80,9 @@ func Parse_hive_config() *HiveConfig {
 // hive_canceled_ops	Hive 操作数量: 取消的操作数量
 // hive_error_ops	Hive 操作数量: 出错的操作数量
 
-// 库，表个数
-func GetDbs() {
+// 获取库个数
+func GetDbs() []DBS {
 	hive_config := Parse_hive_config()
-	// host := hive_config.Cluster.Mysql.Host
-	// port := hive_config.Cluster.Mysql.Port
-	// username := hive_config.Cluster.Mysql.User
-	// password := hive_config.Cluster.Mysql.Password
 	mysql_connection := utils.MysqlConnect{
 		Host:     hive_config.Cluster.Mysql.Host,
 		Port:     hive_config.Cluster.Mysql.Port,
@@ -70,20 +91,39 @@ func GetDbs() {
 	}
 
 	// db := utils.GetConnection(mysql_connection)
-	dbs := utils.QueryDbs(mysql_connection)
+	// dbs := QueryDbs(mysql_connection)
+	// fmt.Println("数据库个数: ", len(dbs))
 
-	for _, db := range dbs {
-		fmt.Print(db.Db_id, db.Desc, db.Db_location_uri, db.Name, db.Owner_name, db.Owner_type, db.Ctlg_name, "\n")
+	db := utils.GetConnection(mysql_connection)
+	sqlstr := "SELECT * FROM DBS"
+	stmt, _ := db.Prepare(sqlstr)
+	defer stmt.Close()
+	res, _ := stmt.Query()
+	defer res.Close()
+	dbs := make([]DBS, 0)
+	for res.Next() {
+		var db DBS
+		err := res.Scan(&db.DbId, &db.Desc, &db.DbLocaionUri, &db.Name, &db.OwnerName, &db.OwnerType, &db.CtlgName)
+		if err != nil {
+			fmt.Println("err: ", err.Error())
+		}
+		fmt.Println("数据库信息: ", db)
+		dbs = append(dbs, db)
 	}
-	fmt.Println("数据库个数: ", len(dbs))
-
+	db.Close()
+	return dbs
 }
 
 type output interface {
 	output() (string, string, string, string, string)
 }
 
-func QueryTbls(mysql_connection utils.MysqlConnect) {
+type DbTables struct {
+	Name     string `json:"name"`
+	TableNum int    `json:"tablenum"`
+}
+
+func QueryTbls(mysql_connection utils.MysqlConnect) []DbTables {
 	// dsn := "root:pwd@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
 	// db, err := sql.Open("mysql", dsn)
 	// if err != nil {
@@ -99,65 +139,96 @@ func QueryTbls(mysql_connection utils.MysqlConnect) {
 	defer stmt.Close()
 	res, _ := stmt.Query()
 	defer res.Close()
+	tables := make([]DbTables, 0)
 	for res.Next() {
-		var name string
-		var num int
-		err := res.Scan(&name, &num)
+		// var name string
+		// var num int
+		var table DbTables
+		err := res.Scan(&table.Name, &table.TableNum)
 		if err != nil {
 			fmt.Println("err: ", err.Error())
 		}
-		fmt.Println("数据库名: ", name, " 表个数: ", num)
+		tables = append(tables, table)
+		fmt.Println("数据库名: ", table.Name, " 表个数: ", table.TableNum)
 	}
 	db.Close()
+	return tables
 }
 
 // 查询分区表的信息
-func QueryPartitionTbls(mysql_connection utils.MysqlConnect) {
+func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTables {
 	db := utils.GetConnection(mysql_connection)
 	// 查询所有表及其是不是分区表
-	sqlstr := "SELECT dbs.name, tbls.tbl_name, prts.tbl_id FROM tbls LEFT OUTER JOIN partitions prts ON tbls.tbl_id=prts.tbl_id LEFT OUTER JOIN dbs ON tbls.db_id=dbs.db_id ORDER BY dbs.name DESC"
+	sqlstr := "SELECT dbs.name, tbls.tbl_name, prts.tbl_id, tbls.tbl_type FROM tbls LEFT OUTER JOIN partitions prts ON tbls.tbl_id=prts.tbl_id LEFT OUTER JOIN dbs ON tbls.db_id=dbs.db_id ORDER BY dbs.name DESC"
 	stmt, _ := db.Prepare(sqlstr)
 	defer stmt.Close()
 	res, _ := stmt.Query()
 	defer res.Close()
+	tables := make([]DBTables, 0)
 	for res.Next() {
-		var name string
-		var tbl_name string
-		var tbl_id int
-		err := res.Scan(&name, &tbl_name, &tbl_id)
-		if err != nil {
-			fmt.Println("数据库名: ", name, " 表名: ", tbl_name, " 非分区表")
+		// var name string
+		// var tbl_name string
+		// var tbl_id int
+		var table DBTables
+		var tbl_id sql.NullInt64
+		err := res.Scan(table.Name, table.TblName, &tbl_id, table.TblType)
+		if tbl_id.Valid {
+			table.IsPartitioned = 1
 		} else {
-			fmt.Println("数据库名: ", name, " 表名: ", tbl_name, "分区表id: ", tbl_id)
+			table.IsPartitioned = 0
 		}
+		if err != nil {
+			fmt.Println("err: ", err.Error())
+		}
+		tables = append(tables, table)
 	}
 	db.Close()
+	return tables
 }
 
-// 查询内部表外部表信息
-func QueryExternalTbls(mysql_connection utils.MysqlConnect) {
+// type DBTables struct {
+// 	Name          *string       `json:"NAME"`
+// 	TblId         sql.NullInt16 `json:"TBLID"`
+// 	DbId          *string       `json:"DBID"`
+// 	Owner         *string       `json:OWNER`
+// 	TblName       *string       `json:TBLNAME`
+// 	TblType       *string       `json:"TBLTYPE"`
+// 	IsPartitioned int           `json:"ISPARTITION"`
+// }
+
+// 查询表详细信息
+func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTables {
 	db := utils.GetConnection(mysql_connection)
 	// 查询所有表及其是不是分区表
-	sqlstr := "SELECT dbs.name, tbls.tbl_name, tbls.tbl_type FROM  tbls join dbs on tbls.db_id=dbs.db_id"
+	sqlstr := `SELECT 
+		dbs.name, tbls.tbl_name, tbls.tbl_type, prts.tbl_id 
+		FROM tbls 
+		LEFT OUTER JOIN partitions prts 
+		ON tbls.tbl_id=prts.tbl_id 
+		LEFT OUTER JOIN dbs 
+		ON tbls.db_id=dbs.db_id 
+		ORDER BY dbs.name DESC`
 	stmt, _ := db.Prepare(sqlstr)
 	defer stmt.Close()
 	res, _ := stmt.Query()
 	defer res.Close()
+	var db_tables []DBTables
 	for res.Next() {
-		var name string
-		var tbl_name string
-		var tbl_type string
-		err := res.Scan(&name, &tbl_name, &tbl_type)
+		var tbl_id sql.NullInt64
+		var table DBTables
+		err := res.Scan(&table.Name, &table.TblName, &table.TblType, &tbl_id)
 		if err != nil {
-			fmt.Println("读取内外部表数据错误！")
+			fmt.Println("读取table表详细数据错误！")
 		}
-		if tbl_type == "MANAGED_TABLE" {
-			fmt.Println("数据库名: ", name, " 表名: ", tbl_name, " 表类型: 内部表")
-		} else if tbl_type == "EXTERNAL_TABLE" {
-			fmt.Println("数据库名: ", name, " 表名: ", tbl_name, "表类型: 外部表")
+		if tbl_id.Valid {
+			table.IsPartitioned = 1
+		} else {
+			table.IsPartitioned = 0
 		}
+		db_tables = append(db_tables, table)
 	}
 	db.Close()
+	return db_tables
 }
 
 func QueryTableFileInfo(mysql_connection utils.MysqlConnect) {
