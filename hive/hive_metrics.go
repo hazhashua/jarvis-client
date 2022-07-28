@@ -40,13 +40,13 @@ type HiveConfig struct {
 }
 
 type DBS struct {
-	DbId         int     `json:"DB_ID"`
-	Desc         *string `json:"DESC"`
-	DbLocaionUri *string `json:"DB_LOCATIONURI"`
-	Name         *string `json:"NAME"`
-	OwnerName    *string `json:"OWNERNAME"`
-	OwnerType    *string `json:"OWNER_TYPE"`
-	CtlgName     *string `json:"CTLG_NAME"`
+	DbId         int            `json:"DB_ID"`
+	Desc         sql.NullString `json:"DESC"`
+	DbLocaionUri *string        `json:"DB_LOCATIONURI"`
+	Name         *string        `json:"NAME"`
+	OwnerName    *string        `json:"OWNERNAME"`
+	OwnerType    *string        `json:"OWNER_TYPE"`
+	CtlgName     *string        `json:"CTLG_NAME"`
 }
 
 type DBTables struct {
@@ -103,17 +103,16 @@ func GetDbs() []DBS {
 	dbs := make([]DBS, 0)
 	for res.Next() {
 		var db DBS
-		db.Desc = new(string)
 		db.DbLocaionUri = new(string)
 		db.Name = new(string)
 		db.OwnerName = new(string)
 		db.OwnerType = new(string)
 		db.CtlgName = new(string)
-		err := res.Scan(&db.DbId, db.Desc, db.DbLocaionUri, db.Name, db.OwnerName, db.OwnerType, db.CtlgName)
+		err := res.Scan(&db.DbId, &db.Desc, db.DbLocaionUri, db.Name, db.OwnerName, db.OwnerType, db.CtlgName)
 		if err != nil {
 			fmt.Println("err: ", err.Error())
 		}
-		fmt.Println("数据库信息: ", db)
+		fmt.Println("数据库信息: ", *db.DbLocaionUri)
 		dbs = append(dbs, db)
 	}
 	db.Close()

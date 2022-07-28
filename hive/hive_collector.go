@@ -179,7 +179,12 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 	dbs := GetDbs()
 	// []string{"db_desc", "db_location_uri", "name", "owner_name", "cluster", "exporter_host", "exporter_ip"},
 	for idx, desc := range exporter.dbInfoDescriptions {
-		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(1), *dbs[idx].Desc, *dbs[idx].DbLocaionUri, *dbs[idx].Name, *dbs[idx].OwnerName, hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
+		fmt.Printf("*dbs[%d]: %s,  %s, %s, %s", idx, dbs[idx].Desc.String, *dbs[idx].DbLocaionUri, *dbs[idx].Name, *dbs[idx].OwnerName)
+		var desc_str string
+		if !dbs[idx].Desc.Valid {
+			desc_str = ""
+		}
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(1), desc_str, *dbs[idx].DbLocaionUri, *dbs[idx].Name, *dbs[idx].OwnerName, hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
 	}
 
 	// 写表的详细指标数据
