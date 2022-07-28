@@ -196,7 +196,13 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 		if *db_tables[idx].TblType == "EXTERNAL_TABLE" {
 			is_external = "1"
 		}
-		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(1), *db_tables[idx].Name, *db_tables[idx].TblName, is_external, string(db_tables[idx].IsPartitioned), hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
+		var is_partitioned string
+		if db_tables[idx].IsPartitioned == 1 {
+			is_partitioned = "1"
+		} else {
+			is_partitioned = "0"
+		}
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(1), *db_tables[idx].Name, *db_tables[idx].TblName, is_external, is_partitioned, hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
 	}
 	ch <- exporter.clusterMode
 }
