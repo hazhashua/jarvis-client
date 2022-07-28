@@ -1,0 +1,15 @@
+# hive 服务的配置信息
+cluster:
+  name: bigdata-dev-cluster
+  hosts:
+    - 192.168.10.220
+    - 192.168.10.221
+    - 192.168.10.222
+  rpcport: 10000
+  mysql:
+      host: 192.168.10.223
+      port: 3306
+      user: root
+      password: pwd@123
+  scrapehost: bigdata-dev01
+  scrapeip: 192.168.10.220
