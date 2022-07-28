@@ -53,8 +53,8 @@ type DBTables struct {
 	Name          *string       `json:"NAME"`
 	TblId         sql.NullInt16 `json:"TBLID"`
 	DbId          *string       `json:"DBID"`
-	Owner         *string       `json:OWNER`
-	TblName       *string       `json:TBLNAME`
+	Owner         *string       `json:"OWNER"`
+	TblName       *string       `json:"TBLNAME"`
 	TblType       *string       `json:"TBLTYPE"`
 	IsPartitioned int           `json:"ISPARTITION"`
 }
@@ -103,7 +103,13 @@ func GetDbs() []DBS {
 	dbs := make([]DBS, 0)
 	for res.Next() {
 		var db DBS
-		err := res.Scan(&db.DbId, &db.Desc, &db.DbLocaionUri, &db.Name, &db.OwnerName, &db.OwnerType, &db.CtlgName)
+		db.Desc = new(string)
+		db.DbLocaionUri = new(string)
+		db.Name = new(string)
+		db.OwnerName = new(string)
+		db.OwnerType = new(string)
+		db.CtlgName = new(string)
+		err := res.Scan(&db.DbId, db.Desc, db.DbLocaionUri, db.Name, db.OwnerName, db.OwnerType, db.CtlgName)
 		if err != nil {
 			fmt.Println("err: ", err.Error())
 		}
@@ -169,7 +175,12 @@ func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTables {
 		// var name string
 		// var tbl_name string
 		// var tbl_id int
-		var table DBTables
+		table := new(DBTables)
+		table.Name = new(string)
+		table.DbId = new(string)
+		table.Owner = new(string)
+		table.TblName = new(string)
+		table.TblType = new(string)
 		var tbl_id sql.NullInt64
 		err := res.Scan(table.Name, table.TblName, &tbl_id, table.TblType)
 		if tbl_id.Valid {
@@ -180,7 +191,7 @@ func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTables {
 		if err != nil {
 			fmt.Println("err: ", err.Error())
 		}
-		tables = append(tables, table)
+		tables = append(tables, *table)
 	}
 	db.Close()
 	return tables

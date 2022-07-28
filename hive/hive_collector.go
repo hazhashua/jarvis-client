@@ -32,6 +32,7 @@ type HiveExporter struct {
 }
 
 func NewHiveExporter() *HiveExporter {
+
 	// hive_exporter := new(HiveExporter)
 	hiveConfig := *Parse_hive_config()
 	hiveCluster := Parse_hive_config().Cluster.Name
@@ -57,7 +58,7 @@ func NewHiveExporter() *HiveExporter {
 	} {
 		metricDescriptions[metric] = prometheus.NewDesc(prometheus.BuildFQName("", "", metric), desc.txt, desc.lbls, nil)
 	}
-
+	fmt.Println("in NewHiveExporter......")
 	db_num := len(GetDbs())
 	dbInfoDescriptions := make([]*prometheus.Desc, db_num)
 
@@ -110,35 +111,17 @@ func (exporter *HiveExporter) Describe(ch chan<- *prometheus.Desc) {
 	for _, desc := range exporter.metricDescriptions {
 		ch <- desc
 	}
-	db_num := len(GetDbs())
-	exporter.dbInfoDescriptions = make([]*prometheus.Desc, db_num)
+	fmt.Println("in Describe......")
 	for _, db_desc := range exporter.dbInfoDescriptions {
 		// 创建counter desc 并写入 ch
 		fmt.Println("db_desc: ", db_desc)
 		ch <- db_desc
 	}
-
-	// 获取table表数据
-	hive_config := Parse_hive_config()
-	mysql_connection := utils.MysqlConnect{
-		Host:     hive_config.Cluster.Mysql.Host,
-		Port:     hive_config.Cluster.Mysql.Port,
-		Username: hive_config.Cluster.Mysql.User,
-		Password: hive_config.Cluster.Mysql.Password,
-	}
-	db_tables := QueryTbls(mysql_connection)
-	table_num := 0
-	for _, table := range db_tables {
-		table_num += table.TableNum
-	}
-	exporter.tableInfoDescriptions = make([]*prometheus.Desc, table_num)
-
 	for _, table_desc := range exporter.tableInfoDescriptions {
 		// 创建counter desc 并写入 ch
 		fmt.Println("table_desc: ", table_desc)
 		ch <- table_desc
 	}
-
 	ch <- exporter.clusterMode.Desc()
 
 }
@@ -178,6 +161,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 	// 获取内外部表相关指标信息
 	external_value := 0
 	for _, table := range db_tables {
+		fmt.Println(*table.TblType, *table.DbId, *table.TblName)
 		if *table.TblType == "EXTERNAL_TABLE" {
 			external_value += 1
 		}
@@ -191,6 +175,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 	// }
 
 	// 写数据库的详细指标数据
+	fmt.Println("in Collect......")
 	dbs := GetDbs()
 	// []string{"db_desc", "db_location_uri", "name", "owner_name", "cluster", "exporter_host", "exporter_ip"},
 	for idx, desc := range exporter.dbInfoDescriptions {
