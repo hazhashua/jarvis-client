@@ -3,6 +3,7 @@ package hive
 import (
 	"fmt"
 	"metric_exporter/utils"
+	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -92,7 +93,7 @@ func NewHiveExporter() *HiveExporter {
 		tableInfoDescriptions[idx] = prometheus.NewDesc(
 			prometheus.BuildFQName("", "", "table_info"),
 			"show the table detail info",
-			[]string{"db_name", "table_name", "is_external", "is_partitioned", "cluster", "exporter_host", "exporter_ip"},
+			[]string{"db_name", "table_name", "is_external", "is_partitioned", "num_files", "total_size", "cluster", "exporter_host", "exporter_ip"},
 			nil,
 		)
 	}
@@ -202,7 +203,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 		} else {
 			is_partitioned = "0"
 		}
-		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(1), *db_tables[idx].Name, *db_tables[idx].TblName, is_external, is_partitioned, hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(1), *db_tables[idx].Name, *db_tables[idx].TblName, is_external, is_partitioned, strconv.Itoa(db_tables[idx].NumFiles), strconv.Itoa(db_tables[idx].TotalSize), hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
 	}
 	ch <- exporter.clusterMode
 }

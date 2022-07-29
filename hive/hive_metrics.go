@@ -57,6 +57,8 @@ type DBTables struct {
 	TblName       *string       `json:"TBLNAME"`
 	TblType       *string       `json:"TBLTYPE"`
 	IsPartitioned int           `json:"ISPARTITION"`
+	NumFiles      int           `json:"NUMFILES"`
+	TotalSize     int           `json:"TOTALSIZE"`
 }
 
 func Parse_hive_config() *HiveConfig {
@@ -210,14 +212,22 @@ func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTables {
 func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTables {
 	db := utils.GetConnection(mysql_connection)
 	// 查询所有表及其是不是分区表
-	sqlstr := `SELECT 
-		dbs.name, tbls.tbl_name, tbls.tbl_type, prts.tbl_id 
-		FROM tbls 
+	sqlstr := `select  name, tbl_name, tbl_type, tbl_id, 
+	IF(param_key is not null, SUBSTRING_INDEX(param_key,',', 1),'') key1,  IF(param_value is not null, SUBSTRING_INDEX(param_value, ',', 1), '') value1 , 
+	if(param_key is not null, SUBSTRING_INDEX(param_key,',', -1),'') key2, if( param_value is not null, SUBSTRING_INDEX(param_value, ',', -1), '') value2  
+	FROM ( 
+		select dbs.name name , tbls.tbl_name tbl_name, tbls.tbl_type tbl_type, prts.tbl_id tbl_id, GROUP_CONCAT(tp.PARAM_KEY) param_key, GROUP_CONCAT(tp.param_value) param_value  
+		from tbls   
 		LEFT OUTER JOIN partitions prts 
-		ON tbls.tbl_id=prts.tbl_id 
-		LEFT OUTER JOIN dbs 
-		ON tbls.db_id=dbs.db_id 
-		ORDER BY dbs.name DESC`
+		ON tbls.tbl_id=prts.tbl_id   
+		LEFT OUTER JOIN (
+			SELECT * FROM TABLE_PARAMS WHERE PARAM_KEY in ('numFiles', 'totalSize') 
+			) tp  
+		on tp.tbl_id=tbls.tbl_id 
+		LEFT OUTER JOIN dbs  
+		ON dbs.db_id=tbls.db_id  
+		GROUP BY dbs.name, tbls.tbl_name, tbls.tbl_type, prts.tbl_id 
+	) tmp`
 	stmt, _ := db.Prepare(sqlstr)
 	defer stmt.Close()
 	res, _ := stmt.Query()
@@ -226,7 +236,9 @@ func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTables {
 	for res.Next() {
 		var tbl_id sql.NullInt64
 		var table DBTables
-		err := res.Scan(&table.Name, &table.TblName, &table.TblType, &tbl_id)
+		var k1, k2 string
+		var v1, v2 int
+		err := res.Scan(&table.Name, &table.TblName, &table.TblType, &tbl_id, &k1, &v1, &k2, &v2)
 		if err != nil {
 			fmt.Println("读取table表详细数据错误！")
 		}
@@ -234,6 +246,13 @@ func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTables {
 			table.IsPartitioned = 1
 		} else {
 			table.IsPartitioned = 0
+		}
+		if k1 == "numFiles" {
+			table.NumFiles = v1
+			table.TotalSize = v2
+		} else {
+			table.NumFiles = v2
+			table.TotalSize = v1
 		}
 		db_tables = append(db_tables, table)
 	}
@@ -244,17 +263,17 @@ func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTables {
 func QueryTableFileInfo(mysql_connection utils.MysqlConnect) {
 	db := utils.GetConnection(mysql_connection)
 	// 查询所有表及其是不是分区表
-	sqlstr := `SELECT dbs.name, tbls.tbl_name, tp.param_key, tp.param_value
-				FROM 
+	sqlstr := `SELECT dbs.name name, tbls.tbl_name tbl_name, tp.param_key key, tp.param_value value
+				FROM tbls
+				LEFT OUTER JOIN
 					(SELECT * 
 						FROM TABLE_PARAMS 
 						WHERE 
 						PARAM_KEY IN ("numFiles","totalSize")
 					) tp 
-				JOIN tbls 
 				ON tp.tbl_id=tbls.tbl_id 
-				JOIN dbs 
-				on dbs.db_id=tbls.db_id`
+				LEFT OUTER JOIN dbs 
+				on dbs.db_id=tbls.db_id ORDER BY name, tbl_name asc`
 	stmt, _ := db.Prepare(sqlstr)
 	defer stmt.Close()
 	res, _ := stmt.Query()
