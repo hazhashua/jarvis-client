@@ -3,6 +3,7 @@ package main
 import (
 	"metric_exporter/config"
 	"metric_exporter/hadoop"
+	"metric_exporter/hive"
 	"metric_exporter/kafka"
 	"metric_exporter/micro_service"
 	"metric_exporter/redis"
@@ -107,16 +108,6 @@ func main() {
 	http.Handle("/spark/metrics", sparkHandler)
 	fmt.Println("命令行的参数有", len(os.Args))
 
-	// if produce == true {
-	// 	kafka.AsyncProducer()
-	// } else {
-	// 	kafka.ConsumeTest()
-	// }
-
-	// fmt.Println("kafka.Parse_kafka_config()..........................")
-	// kafka.Parse_kafka_config()
-	// kafka.GetKafkaMetrics()
-
 	// go generateaAliveValue(serviceAliveCollector.channel)
 	// go getAliveValueLoop(serviceAliveCollector.channel)
 
@@ -155,9 +146,9 @@ func main() {
 	// http.Handle("/alive/metrics", handler)
 
 	// 激活hadoop exporter
-	hadoop_collector := hadoop.NewHadoopCollector()
+	hadoop_exporter := hadoop.NewHadoopCollector()
 	hadoop_r := prometheus.NewRegistry()
-	hadoop_r.MustRegister(hadoop_collector)
+	hadoop_r.MustRegister(hadoop_exporter)
 	hadoop_handler := promhttp.HandlerFor(hadoop_r, promhttp.HandlerOpts{})
 	http.Handle("/hadoop/metrics", hadoop_handler)
 
@@ -167,6 +158,17 @@ func main() {
 	// 激活zookeeper exporter
 	zookeeper.ZookeeperExporter()
 	// zookeeper.Watch()
+
+	hive_exporter := hive.NewHiveExporter()
+	if hive_exporter == nil {
+		fmt.Println("hive_exporter is nil")
+	}
+	fmt.Printf("hive_exporter: %v \n", hive_exporter)
+	hive_r := prometheus.NewRegistry()
+	fmt.Println("hive_exporter is nil ", hive_exporter == nil)
+	hive_r.MustRegister(hive_exporter)
+	hive_handler := promhttp.HandlerFor(hive_r, promhttp.HandlerOpts{})
+	http.Handle("/hive/metrics", hive_handler)
 
 	log.Info("Beginning to serve on port :38080")
 	log.Fatal(http.ListenAndServe(":38080", nil))
