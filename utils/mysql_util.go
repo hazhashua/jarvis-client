@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"reflect"
 	"strings"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -75,6 +75,130 @@ func ValueQuery(sqlstr string) int {
 	return count_value
 }
 
+func ReflectNewByValue(target interface{}) *reflect.Value {
+	if target == nil {
+		fmt.Println("反射参数不能为空......")
+		return nil
+	}
+	typet := reflect.TypeOf(target)
+	if typet.Kind() == reflect.Ptr {
+		typet = typet.Elem()
+	}
+
+	value := reflect.New(typet)
+	return &value
+}
+
+func ReflectNewByString(typestr string) interface{} {
+	// 根据typestr字符串，返回type类型的指针变量
+	typestr = strings.ToLower(typestr)
+	var typeValue interface{}
+	if strings.Contains(typestr, "int") && !strings.Contains(typestr, "uint") {
+		typeValue = new(int64)
+	}
+	if strings.Contains(typestr, "uint") {
+		typeValue = new(uint64)
+	}
+	if strings.Contains(typestr, "float") {
+		typeValue = new(float64)
+	}
+	if strings.Contains(typestr, "string") {
+		typeValue = new(string)
+	}
+	return typeValue
+}
+
+// 返回参数列表
+func argsList(columns []string, types []string) []interface{} {
+	var anyVariable interface{}
+	var anyVariables []interface{}
+	for _, typev := range types {
+		anyVariable = ReflectNewByString(typev)
+		fmt.Println("*value: ", anyVariable)
+		anyVariables = append(anyVariables, anyVariable)
+	}
+	return anyVariables
+}
+
+type SchemaTable struct {
+	CatalogName             string `json:"catalog_name"`
+	SchemaName              string `json:"schema_name"`
+	DefaultCharacterSetName string `json:"default_character_set_name"`
+	Default_Collation_Name  string `json:"default_collation_name"`
+	SqlPath                 string `json:"sql_path"`
+}
+
+// 查询数据库，返回json string类型
+func ExecuteSchemaQuery(db *sql.DB, sqlStr string, columns []string, types []string) []SchemaTable {
+	if &sqlStr == nil || sqlStr == "" {
+		return nil
+	}
+	stmt, err2 := db.Prepare(sqlStr)
+	defer stmt.Close()
+	painc_err(err2)
+	res, err := stmt.Query()
+	defer res.Close()
+	painc_err(err)
+	schemaTables := make([]SchemaTable, 0)
+	for res.Next() {
+		st := new(SchemaTable)
+		if len(columns) == 1 {
+			fmt.Println("")
+		} else if len(columns) == 2 {
+			fmt.Println("查询两个字断...")
+			res.Scan(&st.SchemaName, &st.DefaultCharacterSetName)
+		} else if len(columns) == 3 {
+			fmt.Println("查询三个字断...")
+		} else if len(columns) == 4 {
+			fmt.Println("查询4个字断...")
+		} else if len(columns) == 5 {
+			fmt.Println("查询5个字断...")
+		}
+		schemaTables = append(schemaTables, *st)
+	}
+	db.Close()
+	return schemaTables
+}
+
+type TableTable struct {
+	TableSchema string `json:"table_schema"`
+	TableName   string `json:"table_name"`
+	TableRows   int    `json:"table_rows"`
+	DataSize    int    `json:"data_size"`
+	IndexSize   int    `json:"index_size"`
+}
+
+func ExecuteTableQuery(db *sql.DB, sqlStr string, columns []string, types []string) []TableTable {
+	if &sqlStr == nil || sqlStr == "" {
+		return nil
+	}
+	stmt, err2 := db.Prepare(sqlStr)
+	defer stmt.Close()
+	painc_err(err2)
+	res, err := stmt.Query()
+	defer res.Close()
+	painc_err(err)
+	tableTables := make([]TableTable, 0)
+	for res.Next() {
+		tt := new(TableTable)
+		if len(columns) == 1 {
+			fmt.Println("")
+		} else if len(columns) == 2 {
+			fmt.Println("查询两个字断...")
+		} else if len(columns) == 3 {
+			fmt.Println("查询三个字断...")
+		} else if len(columns) == 4 {
+			fmt.Println("查询4个字断...")
+		} else if len(columns) == 5 {
+			fmt.Println("查询5个字断...")
+			res.Scan(&tt.TableSchema, &tt.TableName, &tt.TableRows, &tt.DataSize, &tt.IndexSize)
+		}
+		tableTables = append(tableTables, *tt)
+	}
+	db.Close()
+	return tableTables
+}
+
 func Query(sqlstr string) []ServicePort {
 	/*
 		查询服务和端口信息
@@ -83,7 +207,8 @@ func Query(sqlstr string) []ServicePort {
 	// dsn := "test:@tcp(localhost:3306)/test?charset=utf8&parseTime=true"
 
 	// 开发环境 root用户， pwd@123密码
-	dsn := "root:pwd\\@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
+	// "%s:%s@tcp(%s:%d)/hive?charset=utf8&parseTime=true"
+	dsn := fmt.Sprintf("%s:%s@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true", "root", "pwd@123")
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -94,6 +219,7 @@ func Query(sqlstr string) []ServicePort {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
 
+	// 执行sql查询
 	if &sqlstr == nil || sqlstr == "" {
 		// sqlstr = "SELECT * FROM test.datasource_alive da"
 		sqlstr = "SELECT * FROM test.service_port sp"
@@ -115,6 +241,7 @@ func Query(sqlstr string) []ServicePort {
 		fmt.Println(service_port.ID, *service_port.ServiceName, *service_port.ChildService, *service_port.ClusterName, *service_port.IP, service_port.Port, *service_port.PortType)
 	}
 	db.Close()
+
 	fmt.Println("len: ", len(service_port_slice))
 	return service_port_slice
 }
@@ -179,7 +306,7 @@ func painc_err(err error) {
 
 func GetConnection(mysql_connection MysqlConnect) *sql.DB {
 	// 获取初始化的mysql db 结构体
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8&parseTime=true", mysql_connection.Username, mysql_connection.Password, mysql_connection.Host, mysql_connection.Port)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/hive?charset=utf8&parseTime=true", mysql_connection.Username, mysql_connection.Password, mysql_connection.Host, mysql_connection.Port)
 	fmt.Println("mysql 连接串: ", dsn)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -194,35 +321,31 @@ func GetConnection(mysql_connection MysqlConnect) *sql.DB {
 
 }
 
-type Dbs struct {
-	Db_id           int    `json:"DB_ID"`
-	Desc            string `json:"DESC"`
-	Db_location_uri string `json:"DB_LOCATION_URI"`
-	Name            string `json:"NAME"`
-	Owner_name      string `json:"OWNER"`
-	Owner_type      string `json:"OWNER_TYPE"`
-	Ctlg_name       string `json:"CTLG_NAME"`
-}
+// 查询库数据
+func SchemaQuery(query string, mysqlConnector MysqlConnect, columns []string, types []string) []SchemaTable {
+	db := GetConnection(mysqlConnector)
 
-func (*Dbs) limitf() (num int) {
-	return 100
-}
-
-func QueryDbs(mysql_connection MysqlConnect) {
-	var mysql_db *gorm.DB
-	dsn_str := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8", mysql_connection.Username, mysql_connection.Password, mysql_connection.Host, mysql_connection.Port)
-	mysql_db, err := gorm.Open("mysql", dsn_str)
-	if err != nil {
-		fmt.Println("failed to connect database:", err)
-		return
+	if query == "" || columns == nil {
+		query = "SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME FROM schemata"
+		columns = []string{"schema_name", "character_set"}
 	}
-	fmt.Println("connect database success")
-	mysql_db.SingularTable(true)
-	var dbs []Dbs
-	mysql_db.Limit(100).Find(&dbs)
-	fmt.Println("end QueryDbs......")
-	fmt.Println(dbs[0])
 
-	// mysql_db.
+	st := ExecuteSchemaQuery(db, query, columns, types)
+	return st
+}
+
+// 查询表数据
+func TableQuery(query string, mysqlConnector MysqlConnect, columns []string, types []string) []TableTable {
+	db := GetConnection(mysqlConnector)
+	if query == "" || columns == nil {
+		query = `SELECT 
+			TABLE_SCHEMA, TABLE_NAME, TABLE_ROWS, 
+			concat(truncate(data_length/1024/1024,3),' MB') as data_size, 
+			concat(truncate(index_length/1024/1024,3),' MB') as index_size 
+			FROM information_schema.tables ORDER BY data_length DESC;`
+		columns = []string{"schema_name", "table_name", "table_rows", "data_size", "index_size"}
+	}
+	tt := ExecuteTableQuery(db, query, columns, types)
+	return tt
 
 }
