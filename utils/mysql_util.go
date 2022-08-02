@@ -199,6 +199,36 @@ func ExecuteTableQuery(db *sql.DB, sqlStr string, columns []string, types []stri
 	return tableTables
 }
 
+type Variable struct {
+	VariableName string `json:"variable_name"`
+	Value        string `json:"value"`
+}
+
+func ExecuteConnectionQuery(db *sql.DB, sqlStr string, columns []string, types []string) []Variable {
+	if &sqlStr == nil || sqlStr == "" {
+		return nil
+	}
+	stmt, err2 := db.Prepare(sqlStr)
+	defer stmt.Close()
+	painc_err(err2)
+	res, err := stmt.Query()
+	defer res.Close()
+	painc_err(err)
+	variables := make([]Variable, 0)
+	for res.Next() {
+		variable := new(Variable)
+		if len(columns) == 1 {
+			fmt.Println("查询单个字段...")
+		} else if len(columns) == 2 {
+			fmt.Println("查询两个字段...")
+			res.Scan(&variable.VariableName, &variable.Value)
+		}
+		variables = append(variables, *variable)
+	}
+	db.Close()
+	return variables
+}
+
 func Query(sqlstr string) []ServicePort {
 	/*
 		查询服务和端口信息
@@ -331,6 +361,7 @@ func SchemaQuery(query string, mysqlConnector MysqlConnect, columns []string, ty
 	}
 
 	st := ExecuteSchemaQuery(db, query, columns, types)
+	// db.Close()
 	return st
 }
 
@@ -346,6 +377,25 @@ func TableQuery(query string, mysqlConnector MysqlConnect, columns []string, typ
 		columns = []string{"schema_name", "table_name", "table_rows", "data_size", "index_size"}
 	}
 	tt := ExecuteTableQuery(db, query, columns, types)
+	// db.Close()
 	return tt
 
+}
+
+func ConnectionQuery(mysqlConnector MysqlConnect, columns []string, types []string) []Variable {
+
+	maxconnectionQuery := "SHOW VARIABLES LIKE 'MAX_CONNECTIONS'"
+	userconnectionQuery := "SHOW VARIABLE LIKE 'MAX_USER_CONNECTIONS'"
+	if len(columns) == 0 {
+		columns = []string{"variable_name", "value"}
+		types = []string{"string", "int"}
+	}
+
+	db := GetConnection(mysqlConnector)
+	variables := ExecuteConnectionQuery(db, maxconnectionQuery, columns, types)
+
+	variablesUser := ExecuteConnectionQuery(db, userconnectionQuery, columns, types)
+
+	variables = append(variables, variablesUser[0])
+	return variables
 }
