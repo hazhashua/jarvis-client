@@ -394,8 +394,8 @@ func TableQuery(mysqlConnector MysqlConnect) []TableTable {
 
 	query := `SELECT 
 			TABLE_SCHEMA, TABLE_NAME, TABLE_ROWS, 
-			concat(truncate(data_length/1024/1024,3),' MB') as data_size, 
-			concat(truncate(index_length/1024/1024,3),' MB') as index_size 
+			data_length as data_size, 
+			index_length as index_size 
 			FROM information_schema.tables ORDER BY data_length DESC;`
 	columns := []string{"schema_name", "table_name", "table_rows", "data_size", "index_size"}
 	types := []string{"string", "string", "int", "int", "int"}
