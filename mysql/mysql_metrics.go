@@ -19,14 +19,14 @@ import (
 type MysqlConfig struct {
 	Cluster struct {
 		Name  string   `yaml:"name"`
-		Hosts []string `yaml:"hosts"`
+		Ips   []string `yaml:"ips"`
 		Port  int      `yaml:"port"`
 		Roles []string `yaml:"roles"`
 	}
 }
 
 func Parse_mysql_config() *MysqlConfig {
-	if bytes, err := ioutil.ReadFile("./config.yaml"); err != nil {
+	if bytes, err := ioutil.ReadFile("./mysql/config.yaml"); err != nil {
 		var mysql_config MysqlConfig
 		yaml.Unmarshal(bytes, &mysql_config)
 		return &mysql_config
