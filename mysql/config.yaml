@@ -3,5 +3,5 @@ cluster:
   ips:
     - 192.168.10.70
   port: 3306
-  roles:
+  role:
     - master

@@ -27,10 +27,11 @@ type ServicePort struct {
 }
 
 type MysqlConnect struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Host      string `json:"host"`
+	Port      int    `json:"port"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	DefaultDB string `json:"defaultdb"`
 }
 
 // type Sortable interface {
@@ -124,7 +125,7 @@ type SchemaTable struct {
 	CatalogName             string `json:"catalog_name"`
 	SchemaName              string `json:"schema_name"`
 	DefaultCharacterSetName string `json:"default_character_set_name"`
-	Default_Collation_Name  string `json:"default_collation_name"`
+	DefaultCollationName    string `json:"default_collation_name"`
 	SqlPath                 string `json:"sql_path"`
 }
 
@@ -201,10 +202,10 @@ func ExecuteTableQuery(db *sql.DB, sqlStr string, columns []string, types []stri
 
 type Variable struct {
 	VariableName string `json:"variable_name"`
-	Value        string `json:"value"`
+	Value        int    `json:"value"`
 }
 
-func ExecuteConnectionQuery(db *sql.DB, sqlStr string, columns []string, types []string) []Variable {
+func ExecuteVariableQuery(db *sql.DB, sqlStr string, columns []string, types []string) []Variable {
 	if &sqlStr == nil || sqlStr == "" {
 		return nil
 	}
@@ -225,8 +226,31 @@ func ExecuteConnectionQuery(db *sql.DB, sqlStr string, columns []string, types [
 		}
 		variables = append(variables, *variable)
 	}
-	db.Close()
 	return variables
+}
+
+func ExecuteStatusQuery(db *sql.DB, sqlStr string, columns []string, types []string) []Status {
+	if &sqlStr == nil || sqlStr == "" {
+		return nil
+	}
+	stmt, err2 := db.Prepare(sqlStr)
+	defer stmt.Close()
+	painc_err(err2)
+	res, err := stmt.Query()
+	defer res.Close()
+	painc_err(err)
+	statuses := make([]Status, 0)
+	for res.Next() {
+		status := new(Status)
+		if len(columns) == 1 {
+			fmt.Println("查询单个字段...")
+		} else if len(columns) == 5 {
+			fmt.Println("查询5个字段...")
+			res.Scan(&status.File, &status.Position, &status.BinlogDoDB, &status.BinlogIgnoreDB, &status.ExecutedGtidSet)
+		}
+		statuses = append(statuses, *status)
+	}
+	return statuses
 }
 
 func Query(sqlstr string) []ServicePort {
@@ -336,7 +360,7 @@ func painc_err(err error) {
 
 func GetConnection(mysql_connection MysqlConnect) *sql.DB {
 	// 获取初始化的mysql db 结构体
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/hive?charset=utf8&parseTime=true", mysql_connection.Username, mysql_connection.Password, mysql_connection.Host, mysql_connection.Port)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=true", mysql_connection.Username, mysql_connection.Password, mysql_connection.Host, mysql_connection.Port, mysql_connection.DefaultDB)
 	fmt.Println("mysql 连接串: ", dsn)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -352,13 +376,12 @@ func GetConnection(mysql_connection MysqlConnect) *sql.DB {
 }
 
 // 查询库数据
-func SchemaQuery(query string, mysqlConnector MysqlConnect, columns []string, types []string) []SchemaTable {
+func SchemaQuery(mysqlConnector MysqlConnect) []SchemaTable {
 	db := GetConnection(mysqlConnector)
 
-	if query == "" || columns == nil {
-		query = "SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME FROM schemata"
-		columns = []string{"schema_name", "character_set"}
-	}
+	query := "SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME FROM schemata"
+	columns := []string{"schema_name", "character_set"}
+	types := []string{"string", "string"}
 
 	st := ExecuteSchemaQuery(db, query, columns, types)
 	// db.Close()
@@ -366,36 +389,80 @@ func SchemaQuery(query string, mysqlConnector MysqlConnect, columns []string, ty
 }
 
 // 查询表数据
-func TableQuery(query string, mysqlConnector MysqlConnect, columns []string, types []string) []TableTable {
+func TableQuery(mysqlConnector MysqlConnect) []TableTable {
 	db := GetConnection(mysqlConnector)
-	if query == "" || columns == nil {
-		query = `SELECT 
+
+	query := `SELECT 
 			TABLE_SCHEMA, TABLE_NAME, TABLE_ROWS, 
 			concat(truncate(data_length/1024/1024,3),' MB') as data_size, 
 			concat(truncate(index_length/1024/1024,3),' MB') as index_size 
 			FROM information_schema.tables ORDER BY data_length DESC;`
-		columns = []string{"schema_name", "table_name", "table_rows", "data_size", "index_size"}
-	}
+	columns := []string{"schema_name", "table_name", "table_rows", "data_size", "index_size"}
+	types := []string{"string", "string", "int", "int", "int"}
+
 	tt := ExecuteTableQuery(db, query, columns, types)
 	// db.Close()
 	return tt
 
 }
 
-func ConnectionQuery(mysqlConnector MysqlConnect, columns []string, types []string) []Variable {
+func ConnectionQuery(mysqlConnector MysqlConnect) []Variable {
 
 	maxconnectionQuery := "SHOW VARIABLES LIKE 'MAX_CONNECTIONS'"
-	userconnectionQuery := "SHOW VARIABLE LIKE 'MAX_USER_CONNECTIONS'"
-	if len(columns) == 0 {
-		columns = []string{"variable_name", "value"}
-		types = []string{"string", "int"}
-	}
+	userconnectionQuery := "SHOW VARIABLES LIKE 'MAX_USER_CONNECTIONS'"
+	currentConnectionQuery := "SHOW status LIKE '%Threads_connected'"
+
+	columns := []string{"variable_name", "value"}
+	types := []string{"string", "int"}
 
 	db := GetConnection(mysqlConnector)
-	variables := ExecuteConnectionQuery(db, maxconnectionQuery, columns, types)
+	variables := ExecuteVariableQuery(db, maxconnectionQuery, columns, types)
 
-	variablesUser := ExecuteConnectionQuery(db, userconnectionQuery, columns, types)
+	variablesUser := ExecuteVariableQuery(db, userconnectionQuery, columns, types)
+
+	variablesCurrent := ExecuteVariableQuery(db, currentConnectionQuery, columns, types)
 
 	variables = append(variables, variablesUser[0])
+	variables = append(variables, variablesCurrent[0])
+	db.Close()
 	return variables
+}
+
+func QpsAndSlowSqlQuery(mysqlConnector MysqlConnect) []Variable {
+	qpsQuery := "SHOW GLOBAL STATUS LIKE 'Queries'"
+	slowSqlQuery := "SHOW GLOBAL status like '%que%'"
+	columns := []string{"variable_name", "value"}
+	types := []string{"string", "int"}
+	db := GetConnection(mysqlConnector)
+	variables := ExecuteVariableQuery(db, qpsQuery, columns, types)
+	variablesSlow := ExecuteVariableQuery(db, slowSqlQuery, columns, types)
+	for _, variable := range variablesSlow {
+		if variable.VariableName == "Slow_queries" {
+			variables = append(variables, variable)
+		}
+	}
+	db.Close()
+	return variables
+}
+
+type Status struct {
+	File            string `json:"file"`
+	Position        string `json:"position"`
+	BinlogDoDB      string `json:"binlog_do_db"`
+	BinlogIgnoreDB  string `json:"binlog_ignore_db"`
+	ExecutedGtidSet string `json:"executed_gtid_set"`
+}
+
+func TpsQuery(mysqlConnector MysqlConnect) []Status {
+	tpsSql := "show master STATUS"
+
+	columns := []string{"file", "position", "binlog_do_db", "binlog_ignore_db", "executed_gtid_set"}
+	types := []string{"string", "int", "string", "string", "string"}
+
+	db := GetConnection(mysqlConnector)
+	statuses := ExecuteStatusQuery(db, tpsSql, columns, types)
+	db.Close()
+
+	return statuses
+
 }
