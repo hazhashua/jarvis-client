@@ -1,9 +1,9 @@
 package main
 
 import (
-	"alive_exporter/hbase"
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/hbase"
 	"net/http"
 	"strings"
 
@@ -32,26 +32,28 @@ type hmasterData struct {
 }
 
 type regionData struct {
-	numActiveHandler        int64
-	receivedBytes           int64
-	sentBytes               int64
-	numOpenConnections      int64
-	authenticationFailures  int64
-	authenticationSuccesses int64
-	readRequestCount        int64
-	writeRequestCount       int64
-	regionCount             int64
-	storeFileCount          int64
-	slowGetCount            int64
-	slowPutCount            int64
-	slowDeleteCount         int64
-	slowAppendCount         int64
-	slowIncrementCount      int64
-	fsReadTimeMax           int64
-	fsWriteTimeMax          int64
-	cluster                 string
-	host                    string
-	ip                      string
+	blockCacheCountHitPercent   float64
+	blockCacheExpressHitPercent float64
+	numActiveHandler            int64
+	receivedBytes               int64
+	sentBytes                   int64
+	numOpenConnections          int64
+	authenticationFailures      int64
+	authenticationSuccesses     int64
+	readRequestCount            int64
+	writeRequestCount           int64
+	regionCount                 int64
+	storeFileCount              int64
+	slowGetCount                int64
+	slowPutCount                int64
+	slowDeleteCount             int64
+	slowAppendCount             int64
+	slowIncrementCount          int64
+	fsReadTimeMax               int64
+	fsWriteTimeMax              int64
+	cluster                     string
+	host                        string
+	ip                          string
 }
 
 type hbaseData struct {
@@ -337,40 +339,44 @@ type hbaseCollector struct {
 
 type hbaseRegionMetric struct {
 	// 下面是regionserver的指标
-	NumActiveHandler               *prometheus.Desc
-	NumActiveHandlerValType        prometheus.ValueType
-	ReceivedBytes                  *prometheus.Desc
-	ReceivedBytesValType           prometheus.ValueType
-	SentBytes                      *prometheus.Desc
-	SentBytesValType               prometheus.ValueType
-	NumOpenConnections             *prometheus.Desc
-	NumOpenConnectionsValType      prometheus.ValueType
-	AuthenticationFailures         *prometheus.Desc
-	AuthenticationFailuresValType  prometheus.ValueType
-	AuthenticationSuccesses        *prometheus.Desc
-	AuthenticationSuccessesValType prometheus.ValueType
-	ReadRequestCount               *prometheus.Desc
-	ReadRequestCountValType        prometheus.ValueType
-	WriteRequestCount              *prometheus.Desc
-	WriteRequestCountValType       prometheus.ValueType
-	RegionCount                    *prometheus.Desc
-	RegionCountValType             prometheus.ValueType
-	StoreFileCount                 *prometheus.Desc
-	StoreFileCountValType          prometheus.ValueType
-	SlowGetCount                   *prometheus.Desc
-	SlowGetCountValType            prometheus.ValueType
-	SlowPutCount                   *prometheus.Desc
-	SlowPutCountValType            prometheus.ValueType
-	SlowDeleteCount                *prometheus.Desc
-	SlowDeleteCountValType         prometheus.ValueType
-	SlowAppendCount                *prometheus.Desc
-	SlowAppendCountValType         prometheus.ValueType
-	SlowIncrementCount             *prometheus.Desc
-	SlowIncrementCountValType      prometheus.ValueType
-	FSReadTimeMax                  *prometheus.Desc
-	FSReadTimeMaxValType           prometheus.ValueType
-	FSWriteTimeMax                 *prometheus.Desc
-	FSWriteTimeMaxValType          prometheus.ValueType
+	BlockCacheCountHitPercent          *prometheus.Desc
+	BlockCacheCountHitPercentValType   prometheus.ValueType
+	BlockCacheExpressHitPercent        *prometheus.Desc
+	BlockCacheExpressHitPercentValType prometheus.ValueType
+	NumActiveHandler                   *prometheus.Desc
+	NumActiveHandlerValType            prometheus.ValueType
+	ReceivedBytes                      *prometheus.Desc
+	ReceivedBytesValType               prometheus.ValueType
+	SentBytes                          *prometheus.Desc
+	SentBytesValType                   prometheus.ValueType
+	NumOpenConnections                 *prometheus.Desc
+	NumOpenConnectionsValType          prometheus.ValueType
+	AuthenticationFailures             *prometheus.Desc
+	AuthenticationFailuresValType      prometheus.ValueType
+	AuthenticationSuccesses            *prometheus.Desc
+	AuthenticationSuccessesValType     prometheus.ValueType
+	ReadRequestCount                   *prometheus.Desc
+	ReadRequestCountValType            prometheus.ValueType
+	WriteRequestCount                  *prometheus.Desc
+	WriteRequestCountValType           prometheus.ValueType
+	RegionCount                        *prometheus.Desc
+	RegionCountValType                 prometheus.ValueType
+	StoreFileCount                     *prometheus.Desc
+	StoreFileCountValType              prometheus.ValueType
+	SlowGetCount                       *prometheus.Desc
+	SlowGetCountValType                prometheus.ValueType
+	SlowPutCount                       *prometheus.Desc
+	SlowPutCountValType                prometheus.ValueType
+	SlowDeleteCount                    *prometheus.Desc
+	SlowDeleteCountValType             prometheus.ValueType
+	SlowAppendCount                    *prometheus.Desc
+	SlowAppendCountValType             prometheus.ValueType
+	SlowIncrementCount                 *prometheus.Desc
+	SlowIncrementCountValType          prometheus.ValueType
+	FSReadTimeMax                      *prometheus.Desc
+	FSReadTimeMaxValType               prometheus.ValueType
+	FSWriteTimeMax                     *prometheus.Desc
+	FSWriteTimeMaxValType              prometheus.ValueType
 }
 
 type hbaseMasterMetric struct {
@@ -406,6 +412,17 @@ func newHbaseCollector() *hbaseCollector {
 	for length := 0; length < region_num; length++ {
 		// var service_alive_collector hbaseRegionMetric
 		var region_metrics hbaseRegionMetric
+
+		region_metrics.BlockCacheCountHitPercent = prometheus.NewDesc("blockcache_count_hit_percent", "show the hit percent of the blockcache to all read request",
+			[]string{"cluster", "host", "ip"},
+			prometheus.Labels{})
+		region_metrics.BlockCacheCountHitPercentValType = prometheus.GaugeValue
+
+		region_metrics.BlockCacheExpressHitPercent = prometheus.NewDesc("blockcache_express_hit_percent", "show the hit percent of the blockcache to the request to the cache",
+			[]string{"cluster", "host", "ip"},
+			prometheus.Labels{})
+		region_metrics.BlockCacheExpressHitPercentValType = prometheus.GaugeValue
+
 		region_metrics.NumActiveHandler = prometheus.NewDesc("num_active_handler", "Show active handler's num",
 			[]string{"cluster", "host", "ip"},
 			prometheus.Labels{})
@@ -542,6 +559,8 @@ func newHbaseCollector() *hbaseCollector {
 //It essentially writes all descriptors to the prometheus desc channel.
 func (collector *hbaseCollector) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range collector.regionMetrics {
+		ch <- metric.BlockCacheCountHitPercent
+		ch <- metric.BlockCacheExpressHitPercent
 		ch <- metric.NumActiveHandler
 		ch <- metric.ReceivedBytes
 		ch <- metric.SentBytes
@@ -580,6 +599,8 @@ func (collector *hbaseCollector) Collect(ch chan<- prometheus.Metric) {
 	for index, region_info := range collector.regionMetrics {
 		// ch <- prometheus.MustNewConstMetric(alive.aliveMetric, prometheus.GaugeValue, float64(da[index].MetricValue), *da[index].ClusterName, *da[index].ServiceName, *da[index].ChildService, *da[index].IP, fmt.Sprintf("%d", da[index].Port), *da[index].PortType)
 		//NumActiveHandler
+		ch <- prometheus.MustNewConstMetric(region_info.BlockCacheCountHitPercent, prometheus.GaugeValue, hbase_data.regionDatas[index].blockCacheCountHitPercent, hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.BlockCacheExpressHitPercent, prometheus.GaugeValue, hbase_data.regionDatas[index].blockCacheExpressHitPercent, hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
 		ch <- prometheus.MustNewConstMetric(region_info.NumActiveHandler, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].numActiveHandler), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
 		ch <- prometheus.MustNewConstMetric(region_info.ReceivedBytes, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].receivedBytes), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
 		ch <- prometheus.MustNewConstMetric(region_info.SentBytes, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].sentBytes), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
