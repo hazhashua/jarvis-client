@@ -90,6 +90,7 @@ func (e *MysqlExporter) Describe(ch chan<- *prometheus.Desc) {
 
 func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	// 实现exporter的collector方法
+	e = NewMysqlExporter()
 	mysqlConfig := Parse_mysql_config()
 	fmt.Println(mysqlConfig.Cluster.Ips)
 	fmt.Println(mysqlConfig.Cluster.Port)
