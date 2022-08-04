@@ -12,6 +12,13 @@ type HadoopMetric struct {
 	// 下面是master的指标
 	// ServiceStatus        []*prometheus.Desc
 	// ServiceStatusValType prometheus.ValueType
+	// hdfs块大小
+	BlockSize        *prometheus.Desc
+	BlockSizeValType prometheus.ValueType
+	// hdfs副本数
+	ReplicationNum        *prometheus.Desc
+	ReplicationNumValType prometheus.ValueType
+
 	NumLiveDataNodes        *prometheus.Desc
 	NumLiveDataNodesValType prometheus.ValueType
 	NumDeadDataNodes        *prometheus.Desc
@@ -151,6 +158,15 @@ func NewHadoopCollector() *HadoopCollector {
 	// 		prometheus.Labels{}))
 	// }
 	// hadoop_metrics.ServiceStatusValType = prometheus.GaugeValue
+	hadoop_metrics.BlockSize = prometheus.NewDesc("hdfs_block_size", "hdfs块大小,单位MB",
+		[]string{"cluster"},
+		prometheus.Labels{})
+	hadoop_metrics.BlockSizeValType = prometheus.GaugeValue
+
+	hadoop_metrics.ReplicationNum = prometheus.NewDesc("hdfs_replication_num", "每个hdfs块的副本个数",
+		[]string{"cluster"},
+		prometheus.Labels{})
+	hadoop_metrics.ReplicationNumValType = prometheus.GaugeValue
 
 	hadoop_metrics.NumLiveDataNodes = prometheus.NewDesc("num_live_datanodes", "存活的datanode个数",
 		[]string{"cluster"},
@@ -477,6 +493,7 @@ func (collector *HadoopCollector) Describe(ch chan<- *prometheus.Desc) {
 func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// collector = NewHadoopCollector()
+
 	hadoop_config := Parse_hadoop_config()
 	yarn_urls := make([]string, 0)
 	namenode_urls := make([]string, 0)
@@ -491,6 +508,10 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
 	num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total := GetAliveInfo(yarn_urls, namenode_urls)
 	fmt.Println(num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
+
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.BlockSize, collector.hadoopMetrics.BlockSizeValType, 128, hadoop_config.Cluster.name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.ReplicationNum, collector.hadoopMetrics.ReplicationNumValType, 3, hadoop_config.Cluster.name)
+
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumLiveDataNodes, collector.hadoopMetrics.NumLiveDataNodesValType, float64(*num_live_datanodes), hadoop_config.Cluster.name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumDeadDataNodes, collector.hadoopMetrics.NumDeadDataNodesValType, float64(*num_dead_datanodes), hadoop_config.Cluster.name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumLiveNameNodes, collector.hadoopMetrics.NumDeadNameNodesValType, float64(*num_active_nms), hadoop_config.Cluster.name)

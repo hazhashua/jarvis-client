@@ -1,8 +1,8 @@
 package hadoop
 
 import (
-	"alive_exporter/utils"
 	"fmt"
+	"metric_exporter/utils"
 )
 
 // 8020为namenode rpc端口
