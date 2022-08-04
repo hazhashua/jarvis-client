@@ -269,6 +269,8 @@ func QueryMetric() *hbaseData {
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=Server")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		region_server, _ := hbase.UnmarshalRegionserverServer(body)
+		region_data.blockCacheCountHitPercent = *region_server.Beans[0].BlockCacheCountHitPercent
+		region_data.blockCacheExpressHitPercent = *region_server.Beans[0].BlockCacheExpressHitPercent
 		region_data.readRequestCount = *region_server.Beans[0].ReadRequestCount
 		region_data.writeRequestCount = *region_server.Beans[0].WriteRequestCount
 		region_data.regionCount = *region_server.Beans[0].RegionCount
