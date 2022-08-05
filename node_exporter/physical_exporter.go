@@ -113,5 +113,11 @@ func (e *MachineExporter) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (e *MachineExporter) collect(ch chan<- prometheus.Metric) {
+	// CpuUsageGet()
+	// MemUsageGet()
+	// DiskUsageGet()
+	// NetInfoGet()
+	// HostInfoGet()
+	// ProcessnfoGet()
 
 }
