@@ -9,6 +9,7 @@ import (
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/process"
 )
 
 func CpuUsageGet() {
@@ -94,6 +95,8 @@ func NetInfoGet() {
 		fmt.Println("获取数据库的连接信息.....")
 		for _, connectionStat := range connectionStats {
 			fmt.Println("connectionStat: ", connectionStat)
+			fmt.Println(connectionStat.Laddr.IP)
+			fmt.Println(connectionStat.Raddr.IP)
 		}
 	}
 
@@ -108,4 +111,15 @@ func NetInfoGet() {
 		fmt.Println("ioStat: ", ioStat)
 	}
 
+}
+
+func ProcessnfoGet() {
+	if processes, err := process.Processes(); err == nil {
+		for _, process := range processes {
+			fmt.Println("process.Pid: ", process.Pid)
+			ioCounterStat, _ := process.IOCounters()
+			fmt.Println("进程读字节数: ", ioCounterStat.ReadBytes)
+			fmt.Println("进程写字节数: ", ioCounterStat.WriteBytes)
+		}
+	}
 }
