@@ -269,36 +269,54 @@ func QueryMetric() *hbaseData {
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=Server")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		region_server, _ := hbase.UnmarshalRegionserverServer(body)
-		region_data.blockCacheCountHitPercent = *region_server.Beans[0].BlockCacheCountHitPercent
-		region_data.blockCacheExpressHitPercent = *region_server.Beans[0].BlockCacheExpressHitPercent
-		region_data.readRequestCount = *region_server.Beans[0].ReadRequestCount
-		region_data.writeRequestCount = *region_server.Beans[0].WriteRequestCount
-		region_data.regionCount = *region_server.Beans[0].RegionCount
-		region_data.storeFileCount = *region_server.Beans[0].StoreFileCount
-		region_data.slowGetCount = *region_server.Beans[0].SlowGetCount
-		region_data.slowPutCount = *region_server.Beans[0].SlowPutCount
-		region_data.slowDeleteCount = *region_server.Beans[0].SlowDeleteCount
-		region_data.slowAppendCount = *region_server.Beans[0].SlowAppendCount
-		region_data.slowIncrementCount = *region_server.Beans[0].SlowIncrementCount
+		if len(region_server.Beans) != 0 {
+			// jmx没有抓取到数据
+			region_data.blockCacheCountHitPercent = *region_server.Beans[0].BlockCacheCountHitPercent
+			region_data.blockCacheExpressHitPercent = *region_server.Beans[0].BlockCacheExpressHitPercent
+			region_data.readRequestCount = *region_server.Beans[0].ReadRequestCount
+			region_data.writeRequestCount = *region_server.Beans[0].WriteRequestCount
+			region_data.regionCount = *region_server.Beans[0].RegionCount
+			region_data.storeFileCount = *region_server.Beans[0].StoreFileCount
+			region_data.slowGetCount = *region_server.Beans[0].SlowGetCount
+			region_data.slowPutCount = *region_server.Beans[0].SlowPutCount
+			region_data.slowDeleteCount = *region_server.Beans[0].SlowDeleteCount
+			region_data.slowAppendCount = *region_server.Beans[0].SlowAppendCount
+			region_data.slowIncrementCount = *region_server.Beans[0].SlowIncrementCount
 
-		// server的读请求数
-		fmt.Println(*region_server.Beans[0].ReadRequestCount)
-		// server的写请求数
-		fmt.Println(*region_server.Beans[0].WriteRequestCount)
-		// regionserver的region个数
-		fmt.Println(*region_server.Beans[0].RegionCount)
-		// regionserver的store file个数
-		fmt.Println(*region_server.Beans[0].StoreFileCount)
-		// regionserver的slow get count
-		fmt.Println(*region_server.Beans[0].SlowGetCount)
-		// regionserver的slow put count
-		fmt.Println(*region_server.Beans[0].SlowPutCount)
-		// regionserver的slow delete count
-		fmt.Println(*region_server.Beans[0].SlowDeleteCount)
-		// regionserver的slow delete count
-		fmt.Println(*region_server.Beans[0].SlowAppendCount)
-		// regionserver的slow delete count
-		fmt.Println(*region_server.Beans[0].SlowIncrementCount)
+			// server的读请求数
+			fmt.Println(*region_server.Beans[0].ReadRequestCount)
+			// server的写请求数
+			fmt.Println(*region_server.Beans[0].WriteRequestCount)
+			// regionserver的region个数
+			fmt.Println(*region_server.Beans[0].RegionCount)
+			// regionserver的store file个数
+			fmt.Println(*region_server.Beans[0].StoreFileCount)
+			// regionserver的slow get count
+			fmt.Println(*region_server.Beans[0].SlowGetCount)
+			// regionserver的slow put count
+			fmt.Println(*region_server.Beans[0].SlowPutCount)
+			// regionserver的slow delete count
+			fmt.Println(*region_server.Beans[0].SlowDeleteCount)
+			// regionserver的slow delete count
+			fmt.Println(*region_server.Beans[0].SlowAppendCount)
+			// regionserver的slow delete count
+			fmt.Println(*region_server.Beans[0].SlowIncrementCount)
+
+		} else {
+			fmt.Println("jmx中没有抓取到数据......")
+			region_data.blockCacheCountHitPercent = -1
+			region_data.blockCacheExpressHitPercent = -1
+			region_data.readRequestCount = -1
+			region_data.writeRequestCount = -1
+			region_data.regionCount = -1
+			region_data.storeFileCount = -1
+			region_data.slowGetCount = -1
+			region_data.slowPutCount = -1
+			region_data.slowDeleteCount = -1
+			region_data.slowAppendCount = -1
+			region_data.slowIncrementCount = -1
+
+		}
 
 		//	Hadoop:service=HBase,name=RegionServer,sub=IO
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IO")
