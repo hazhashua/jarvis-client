@@ -331,8 +331,13 @@ type ProcessInfo struct {
 	processIoMap map[int32]ProcessIO
 }
 
-func ProcessnfoGet() *ProcessInfo {
+func ProcessNumGet() int {
+	//获得本机运行的进程数量
+	p, _ := process.Processes()
+	return len(p)
+}
 
+func ProcessnfoGet() *ProcessInfo {
 	processInfo := ProcessInfo{}
 	IoMap := make(map[int32]ProcessIO)
 	if processes, err := process.Processes(); err == nil {
@@ -346,7 +351,6 @@ func ProcessnfoGet() *ProcessInfo {
 				readBytes:  ioCounterStat.ReadBytes,
 				writeBytes: ioCounterStat.WriteBytes,
 			}
-
 		}
 	}
 	processInfo.processIoMap = IoMap
