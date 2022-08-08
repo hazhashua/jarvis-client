@@ -3,6 +3,7 @@ package nodeexporter
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/shirou/gopsutil/cpu"
@@ -201,7 +202,7 @@ type HostInfo struct {
 	bootTime uint64
 	plaform  string
 	// 主机的主要ip
-	ip string
+	id string
 }
 
 func HostInfoGet() *HostInfo {
@@ -220,7 +221,7 @@ func HostInfoGet() *HostInfo {
 		os:       infoStat.OS,
 		bootTime: infoStat.BootTime,
 		plaform:  infoStat.Platform,
-		ip:       infoStat.HostID,
+		id:       infoStat.HostID,
 	}
 }
 
@@ -237,6 +238,8 @@ type FlowInfo struct {
 
 type NetInfo struct {
 	deviceIds map[string]FlowInfo
+	ethInfo   map[string]string
+	ip        string
 }
 
 func NetDeviceNum() int {
@@ -248,16 +251,35 @@ func NetDeviceNum() int {
 // 获取网卡网络信息
 func NetInfoGet() *NetInfo {
 	// 获取网卡信息及读写相关信息
-	//网络连接相关信息
-	if connectionStats, err := net.Connections("all"); err == nil {
-		fmt.Println("获取网络的连接信息.....")
-		for _, connectionStat := range connectionStats {
-			// fmt.Println("connectionStat: ", connectionStat)
-			fmt.Println("localAddr: ", connectionStat.Laddr.IP, "   destAddr: ", connectionStat.Raddr.IP)
+	// //网络连接相关信息
+	// if connectionStats, err := net.Connections("all"); err == nil {
+	// 	fmt.Println("获取网络的连接信息.....")
+	// 	for _, connectionStat := range connectionStats {
+	// 		// fmt.Println("connectionStat: ", connectionStat)
+	// 		fmt.Println("localAddr: ", connectionStat.Laddr.IP, "   destAddr: ", connectionStat.Raddr.IP)
+	// 	}
+	// }
+
+	netInfo := NetInfo{}
+	// var interfaceName, ip string
+	interfaceInfo := make(map[string]string, 0)
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return &netInfo
+	}
+	for _, interfaceStat := range interfaces {
+		for _, v := range interfaceStat.Addrs {
+			fmt.Println("interfaceStat.Name: ", interfaceStat.Name, " net.InterfaceAddr: ", v.String(), v.Addr)
+			ips := strings.Split(v.Addr, "/")
+			fmt.Println("interface名称: ", interfaceStat.Name)
+			fmt.Println("ip地址: ", ips[0])
+			if ips[0] != "127.0.0.1" && len(strings.Split(ips[0], ".")) == 4 {
+				interfaceInfo[interfaceStat.Name] = ips[0]
+				netInfo.ip = ips[0]
+			}
 		}
 	}
 
-	netInfo := NetInfo{}
 	deviceFlows := make(map[string]FlowInfo, 0)
 	ioStats, _ := net.IOCounters(true)
 	for _, ioStat := range ioStats {
@@ -274,9 +296,29 @@ func NetInfoGet() *NetInfo {
 		}
 	}
 	netInfo.deviceIds = deviceFlows
+	netInfo.ethInfo = interfaceInfo
 	return &netInfo
 
 }
+
+// func getIpFromAddr(addr net.Addr) net.IP {
+// 	var ip net.IP
+// 	switch v := addr.(type) {
+// 	case *net.IPNet:
+// 		ip = v.IP
+// 	case *net.IPAddr:
+// 		ip = v.IP
+// 	}
+// 	if ip == nil || ip.IsLoopback() {
+// 		return nil
+// 	}
+// 	ip = ip.To4()
+// 	if ip == nil {
+// 		return nil // not an ipv4 address
+// 	}
+
+// 	return ip
+// }
 
 type ProcessIO struct {
 	processId  int32
