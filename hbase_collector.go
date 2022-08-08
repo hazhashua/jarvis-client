@@ -126,6 +126,7 @@ func initUrl() (int, *jmxHttpUrl) {
 		response, err2 := http.Get(master_url)
 		if err2 != nil {
 			fmt.Println("err2: ", err2.Error())
+			continue
 		}
 		defer response.Body.Close()
 		body, err := ioutil.ReadAll(response.Body)
