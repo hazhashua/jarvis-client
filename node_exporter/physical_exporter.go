@@ -159,24 +159,24 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	cpuInfo := CpuUsageGet()
 
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuCoresDesc, e.physicalMetrics.cpuCoresValType,
-		float64(cpuInfo.cores), nodeConfig.Cluster.name, hostInfo.hostName, "")
+		float64(cpuInfo.cores), nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip)
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuUsageDesc, e.physicalMetrics.cpuUsageValType,
-		cpuInfo.usage, nodeConfig.Cluster.name, hostInfo.hostName, "")
+		cpuInfo.usage, nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip)
 
 	memory := MemUsageGet()
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.memTotalDesc, e.physicalMetrics.memTotalValType,
-		float64(memory.total), nodeConfig.Cluster.name, hostInfo.hostName, "")
+		float64(memory.total), nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip)
 
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.memUsageDesc, e.physicalMetrics.memTotalValType,
-		float64(memory.usedPercent), nodeConfig.Cluster.name, hostInfo.hostName, "")
+		float64(memory.usedPercent), nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip)
 
 	disk := DiskUsageGet()
 	for i := 0; i < e.physicalDiskNum; i++ {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskTotalDesc[i], e.physicalMetrics.diskTotalValType[i],
-			float64(disk.total[i]), nodeConfig.Cluster.name, hostInfo.hostName, "", disk.deviceIds[i], disk.mountPoint[i])
+			float64(disk.total[i]), nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip, disk.deviceIds[i], disk.mountPoint[i])
 
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskUsedDesc[i], e.physicalMetrics.memTotalValType,
-			float64(disk.used[i]), nodeConfig.Cluster.name, hostInfo.hostName, "", disk.deviceIds[i], disk.mountPoint[i])
+			float64(disk.used[i]), nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip, disk.deviceIds[i], disk.mountPoint[i])
 	}
 	// devices := make([]string, 0)
 	// readBytess := make([]uint64, 0)
@@ -199,13 +199,13 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	i := 0
 	for key, value := range disk.readBytes {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskReadDesc[i], e.physicalMetrics.diskReadValType[i],
-			float64(value), nodeConfig.Cluster.name, hostInfo.hostName, "", key)
+			float64(value), nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip, key)
 		i += 1
 	}
 	i = 0
 	for key, value := range disk.writeBytes {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskWriteDesc[i], e.physicalMetrics.diskWriteValType[i],
-			float64(value), nodeConfig.Cluster.name, hostInfo.hostName, "", key)
+			float64(value), nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip, key)
 	}
 
 	netInfo := NetInfoGet()
@@ -219,10 +219,10 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 	for idx, deviceName := range deviceNames {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.networkReceiveDesc[idx], e.physicalMetrics.networkReceiveValType[idx],
-			float64(flowInfos[idx].receiveBytes), nodeConfig.Cluster.name, hostInfo.hostName, "", deviceName)
+			float64(flowInfos[idx].receiveBytes), nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip, deviceName)
 
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.networkSentDesc[idx], e.physicalMetrics.networkSentValType[idx],
-			float64(flowInfos[idx].sentBytes), nodeConfig.Cluster.name, hostInfo.hostName, "", deviceName)
+			float64(flowInfos[idx].sentBytes), nodeConfig.Cluster.name, hostInfo.hostName, hostInfo.ip, deviceName)
 	}
 
 }

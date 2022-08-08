@@ -252,9 +252,8 @@ func NetInfoGet() *NetInfo {
 	if connectionStats, err := net.Connections("all"); err == nil {
 		fmt.Println("获取网络的连接信息.....")
 		for _, connectionStat := range connectionStats {
-			fmt.Println("connectionStat: ", connectionStat)
-			fmt.Println(connectionStat.Laddr.IP)
-			fmt.Println(connectionStat.Raddr.IP)
+			// fmt.Println("connectionStat: ", connectionStat)
+			fmt.Println("localAddr: ", connectionStat.Laddr.IP, "   destAddr: ", connectionStat.Raddr.IP)
 		}
 	}
 
