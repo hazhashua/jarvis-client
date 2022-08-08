@@ -74,6 +74,8 @@ func NewNodeExporter() *MachineExporter {
 	physicalMetrics.memUsageValType = prometheus.GaugeValue
 	deviceNum := DiskDeviceNum()
 	deviceIoNum := DiskIoDeviceNum()
+	physicalMetrics.diskTotalDesc = make([]*prometheus.Desc, deviceNum)
+	physicalMetrics.diskUsedDesc = make([]*prometheus.Desc, deviceNum)
 	for i := 0; i < deviceNum; i++ {
 		physicalMetrics.diskTotalDesc[i] = prometheus.NewDesc("disk_total", "机器的总磁盘大小",
 			[]string{"cluster", "host", "ip"},
@@ -85,7 +87,8 @@ func NewNodeExporter() *MachineExporter {
 			prometheus.Labels{})
 		physicalMetrics.diskUsedValType[i] = prometheus.GaugeValue
 	}
-
+	physicalMetrics.diskReadDesc = make([]*prometheus.Desc, deviceIoNum)
+	physicalMetrics.diskWriteDesc = make([]*prometheus.Desc, deviceIoNum)
 	for i := 0; i < deviceIoNum; i++ {
 		physicalMetrics.diskReadDesc[i] = prometheus.NewDesc("disk_read_bytes", "磁盘每秒读速率",
 			[]string{"cluster", "host", "ip"},
@@ -99,6 +102,8 @@ func NewNodeExporter() *MachineExporter {
 	}
 
 	netDeviceNum := NetDeviceNum()
+	physicalMetrics.networkSentDesc = make([]*prometheus.Desc, netDeviceNum)
+	physicalMetrics.networkReceiveDesc = make([]*prometheus.Desc, netDeviceNum)
 	for i := 0; i < netDeviceNum; i++ {
 		physicalMetrics.networkReceiveDesc[i] = prometheus.NewDesc("network_receive_bytes", "网络设备每秒接收到的字节数",
 			[]string{"cluster", "host", "ip", "net_name"},
@@ -138,7 +143,7 @@ func (e *MachineExporter) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (e *MachineExporter) collect(ch chan<- prometheus.Metric) {
+func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 
 	// ch <- e.physicalMetrics.cpuCoresDesc
 	// ch <- e.physicalMetrics.cpuUsageDesc
