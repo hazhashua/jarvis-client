@@ -6,6 +6,8 @@ import (
 	"metric_exporter/hive"
 	"metric_exporter/kafka"
 	"metric_exporter/micro_service"
+	"metric_exporter/mysql"
+	nodeexporter "metric_exporter/node_exporter"
 	"metric_exporter/redis"
 	"metric_exporter/service_alive"
 	"metric_exporter/spark"
@@ -170,8 +172,22 @@ func main() {
 	hive_handler := promhttp.HandlerFor(hive_r, promhttp.HandlerOpts{})
 	http.Handle("/hive/metrics", hive_handler)
 
-	log.Info("Beginning to serve on port :38080")
-	log.Fatal(http.ListenAndServe(":38080", nil))
+	// 激活mysql exporter
+	mysql_exporter := mysql.NewMysqlExporter()
+	mysql_r := prometheus.NewRegistry()
+	mysql_r.MustRegister(mysql_exporter)
+	mysql_handler := promhttp.HandlerFor(mysql_r, promhttp.HandlerOpts{})
+	http.Handle("/mysql/metrics", mysql_handler)
+
+	// 激活物理机指标采集脚本
+	node_exporter := nodeexporter.NewNodeExporter()
+	node_r := prometheus.NewRegistry()
+	node_r.MustRegister(node_exporter)
+	node_handler := promhttp.HandlerFor(node_r, promhttp.HandlerOpts{})
+	http.Handle("/node/metrics", node_handler)
+
+	log.Info("Beginning to serve on port :49080")
+	log.Fatal(http.ListenAndServe(":49080", nil))
 
 	// time.Sleep(100)
 	// kafka_collector = kafka.NewKafkaCollector()
