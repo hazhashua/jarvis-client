@@ -2,6 +2,7 @@ package nodeexporter
 
 import (
 	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/shirou/gopsutil/cpu"
@@ -10,7 +11,27 @@ import (
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
 	"github.com/shirou/gopsutil/process"
+	"gopkg.in/yaml.v2"
 )
+
+type NodeConfig struct {
+	// cluster:
+	// 	name: bigdata-dev-cluster
+	Cluster struct {
+		name string `name:"name"`
+	}
+}
+
+func parseNodeConfig() *NodeConfig {
+	var nodeConfig NodeConfig
+	if bytes, err := ioutil.ReadFile("./node_exporter/config.yaml"); err == nil {
+		err2 := yaml.Unmarshal(bytes, &nodeConfig)
+		if err2 != nil {
+			fmt.Println("解析node配置文件失败")
+		}
+	}
+	return &nodeConfig
+}
 
 type CpuInfo struct {
 	cores int
@@ -93,14 +114,27 @@ func MemUsageGet() *Memory {
 
 type Disk struct {
 	// 磁盘设备编号
+	deviceNum  int
 	deviceIds  []string
 	mountPoint []string
 	total      []uint64
 	used       []uint64
 	free       []uint64
 	// 磁盘读写速率
-	readBytes  map[string]uint64
-	writeBytes map[string]uint64
+	ioDeviceNum int
+	readBytes   map[string]uint64
+	writeBytes  map[string]uint64
+}
+
+func DiskDeviceNum() int {
+	partitionStats, _ := disk.Partitions(false)
+	return len(partitionStats)
+}
+
+func DiskIoDeviceNum() int {
+	ioStatMap, _ := disk.IOCounters()
+	fmt.Println("io操作的磁盘数: ", len(ioStatMap))
+	return len(ioStatMap)
 }
 
 func DiskUsageGet() *Disk {
@@ -136,25 +170,27 @@ func DiskUsageGet() *Disk {
 		}
 	}
 	// 获取磁盘的io信息
+	ioDeviceNum := 0
 	if ioStatMap, err := disk.IOCounters(); err == nil {
 		for key, value := range ioStatMap {
 			fmt.Println("key: ", key)
 			fmt.Println("value: ", value)
-
+			ioDeviceNum += 1
 			readBytes[key] = value.ReadBytes
 			writeBytes[key] = value.WriteBytes
 		}
 	}
 
 	return &Disk{
-		deviceIds:  deviceIds,
-		mountPoint: mountPoint,
-		total:      total,
-		used:       used,
-		free:       free,
-
-		readBytes:  readBytes,
-		writeBytes: writeBytes,
+		deviceNum:   len(deviceIds),
+		deviceIds:   deviceIds,
+		mountPoint:  mountPoint,
+		total:       total,
+		used:        used,
+		free:        free,
+		ioDeviceNum: ioDeviceNum,
+		readBytes:   readBytes,
+		writeBytes:  writeBytes,
 	}
 }
 
@@ -203,10 +239,15 @@ type NetInfo struct {
 	deviceIds map[string]FlowInfo
 }
 
-// 获取网卡网络信息
-func NetInfoGet() {
-	// 获取网卡信息及读写相关信息
+func NetDeviceNum() int {
+	ioStats, _ := net.IOCounters(true)
+	fmt.Println("iostats: ", ioStats)
+	return len(ioStats)
+}
 
+// 获取网卡网络信息
+func NetInfoGet() *NetInfo {
+	// 获取网卡信息及读写相关信息
 	//网络连接相关信息
 	if connectionStats, err := net.Connections("all"); err == nil {
 		fmt.Println("获取网络的连接信息.....")
@@ -227,15 +268,14 @@ func NetInfoGet() {
 			receiveBytes:   ioStat.BytesRecv,
 			packageSent:    ioStat.PacketsSent,
 			packageReceive: ioStat.PacketsRecv,
-
-			errin:   ioStat.Errin,
-			errout:  ioStat.Errout,
-			dropin:  ioStat.Dropin,
-			dropout: ioStat.Dropout,
+			errin:          ioStat.Errin,
+			errout:         ioStat.Errout,
+			dropin:         ioStat.Dropin,
+			dropout:        ioStat.Dropout,
 		}
 	}
-
 	netInfo.deviceIds = deviceFlows
+	return &netInfo
 
 }
 
