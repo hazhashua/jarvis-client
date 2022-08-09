@@ -35,7 +35,7 @@ type DatsourceAlive struct {
 	ChildService *string
 	ClusterName  *string
 	IP           *string
-	Port         sql.NullInt16
+	Port         sql.NullInt64
 	PortType     *string
 	MetricValue  float32
 }
