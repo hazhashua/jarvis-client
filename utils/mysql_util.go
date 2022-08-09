@@ -22,7 +22,7 @@ type ServicePort struct {
 	ChildService *string
 	ClusterName  *string
 	IP           *string
-	Port         int
+	Port         sql.NullInt16
 	PortType     *string
 }
 

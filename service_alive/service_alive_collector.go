@@ -1,6 +1,7 @@
 package service_alive
 
 import (
+	"database/sql"
 	"fmt"
 	"metric_exporter/micro_service"
 	"metric_exporter/utils"
@@ -34,7 +35,7 @@ type DatsourceAlive struct {
 	ChildService *string
 	ClusterName  *string
 	IP           *string
-	Port         int
+	Port         sql.NullInt16
 	PortType     *string
 	MetricValue  float32
 }
