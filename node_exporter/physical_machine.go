@@ -19,7 +19,7 @@ type NodeConfig struct {
 	// cluster:
 	// 	name: bigdata-dev-cluster
 	Cluster struct {
-		name string `name:"name"`
+		Name string `name:"name"`
 	}
 }
 
@@ -31,6 +31,7 @@ func parseNodeConfig() *NodeConfig {
 			fmt.Println("解析node配置文件失败")
 		}
 	}
+	fmt.Println("nodeConfig.Cluster.name: ", nodeConfig.Cluster.Name)
 	return &nodeConfig
 }
 
