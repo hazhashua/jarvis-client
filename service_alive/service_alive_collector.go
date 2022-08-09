@@ -1,9 +1,9 @@
 package service_alive
 
 import (
-	"alive_exporter/micro_service"
-	"alive_exporter/utils"
 	"fmt"
+	"metric_exporter/micro_service"
+	"metric_exporter/utils"
 	"net"
 	"time"
 
@@ -103,7 +103,7 @@ func (collector *serviceCollector) Collect(ch chan<- prometheus.Metric) {
 	//Implement logic here to determine proper metric value to return to prometheus
 	//for each descriptor or call other functions that do so.
 
-	da := GetPortInfos()
+	da := GetAliveInfos()
 	// for _, alive := range da {
 	for index, alive := range collector.serviceAliveCollector {
 		ch <- prometheus.MustNewConstMetric(alive.aliveMetric, prometheus.GaugeValue, float64(da[index].MetricValue), *da[index].ClusterName, *da[index].ServiceName, *da[index].ChildService, *da[index].IP, fmt.Sprintf("%d", da[index].Port), *da[index].PortType)
@@ -123,10 +123,10 @@ func getServices(bytes []byte) {
 
 }
 
-func GetPortInfos() []DatsourceAlive {
+func GetAliveInfos() []DatsourceAlive {
 
 	//执行数据序列化
-	// utils.Serilize()
+	utils.Serilize()
 
 	//数据反序列化
 	sp := utils.ReSerialize()
@@ -143,7 +143,17 @@ func GetPortInfos() []DatsourceAlive {
 		datasourceAlive.Port = servicePort.Port
 		datasourceAlive.PortType = servicePort.PortType
 		fmt.Println("***: ", *servicePort.IP, servicePort.Port)
-		datasourceAlive.MetricValue = float32(CheckPorts(fmt.Sprintf("%s:%d", *servicePort.IP, servicePort.Port), "tcp"))
+		if *servicePort.ServiceName == "k8s" {
+			// 如果是k8s服务，则使用进程探活
+			alive := IsProcessRunning(*servicePort.ChildService)
+			if alive == true {
+				datasourceAlive.MetricValue = float32(1)
+			} else {
+				datasourceAlive.MetricValue = float32(0)
+			}
+		} else {
+			datasourceAlive.MetricValue = float32(CheckPorts(fmt.Sprintf("%s:%d", *servicePort.IP, servicePort.Port), "tcp"))
+		}
 		fmt.Println("datsourceAlive: ", datasourceAlive)
 
 		dataSources = append(dataSources, datasourceAlive)
