@@ -127,10 +127,17 @@ func GetEndpointInfo(url string) map[string]EndpointInfo {
 		fmt.Println("*data.Metadata.Name: ", *data.Metadata.Name)
 		// 如果数据中subsets长度大于0
 		if len(data.Subsets) > 0 {
+			var clusterIp string
+			if len(data.Subsets[0].Addresses) > 0 {
+				clusterIp = *data.Subsets[0].Addresses[0].IP
+			} else {
+				clusterIp = ""
+			}
 			var endpointInfo EndpointInfo = EndpointInfo{
 				EndpointName: *data.Metadata.SelfLink,
-				ClusterIP:    *data.Subsets[0].Addresses[0].IP,
+				ClusterIP:    clusterIp,
 			}
+
 			if data.Subsets[0].Addresses[0].NodeName != nil {
 				endpointInfo.IP = *data.Subsets[0].Addresses[0].NodeName
 			}
