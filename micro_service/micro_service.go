@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"gopkg.in/yaml.v2"
 )
 
 // 服务的地址信息，包括服务的名称和端口类型及端口
@@ -22,6 +24,45 @@ type EndpointInfo struct {
 	IP           string `json:"ip,omitempty"`
 }
 
+// cluster:
+//   name: 测试kubernetes集群
+//   master:
+//     - 192.168.10.20
+//     - 192.168.10.21
+//     - 192.168.10.22
+//   nodes:
+//     - 192.168.10.20
+//     - 192.168.10.21
+//     - 192.168.10.22
+//     - 192.168.10.23
+//     - 192.168.10.24
+//     - 192.168.10.32
+//     - 192.168.10.63
+//     - 192.168.10.111
+
+type K8sConfig struct {
+	Cluster struct {
+		Name          string   `yaml:"name"`
+		Master        []string `yaml:"master"`
+		Nodes         []string `yaml:"nodes"`
+		ApiServerPort string   `yaml:"apiserverport"`
+	}
+}
+
+func Parse_k8s_config() *K8sConfig {
+	bytes, err := ioutil.ReadFile("./micro_service/config.yaml")
+	if err != nil {
+		fmt.Println("读文件出错！")
+		return nil
+	}
+	k8sConfig := new(K8sConfig)
+	err2 := yaml.Unmarshal(bytes, &k8sConfig)
+	if err2 != nil {
+		fmt.Println("Unmarshal失败！")
+	}
+	return k8sConfig
+}
+
 func Get(url string) string {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -33,9 +74,7 @@ func Get(url string) string {
 		panic(err)
 	}
 	fmt.Println(string(body))
-
 	return string(body)
-
 }
 
 func GetServiceInfo(url string) map[string]ServiceInfo {
@@ -47,17 +86,14 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 	fmt.Println("&&&&&&&", data)
 	aPIV1Services, _ := UnmarshalAPIV1Services([]byte(data))
 	fmt.Println(*aPIV1Services.APIVersion, *aPIV1Services.Kind)
-
 	// 存储所有serviceinfo信息
 	var serviceInfoMap map[string]ServiceInfo
 	serviceInfoMap = make(map[string]ServiceInfo)
-
 	for _, item := range aPIV1Services.Items {
 		// 取出所有service的名称
 		// fmt.Println("service_name:", *(*item.Metadata).Name)
 		var service_name = *(*item.Metadata).Name
 		serviceInfo := ServiceInfo{ServiceName: service_name}
-
 		//获得所有service的地址和端口
 		for _, port := range (*item.Spec).Ports {
 			if port.Name != nil {
@@ -70,7 +106,6 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 				serviceInfo.IsNodePort = false
 			}
 			serviceInfoMap[service_name] = serviceInfo
-
 		}
 	}
 	fmt.Println("serviceinfoMap: ", serviceInfoMap)
@@ -82,15 +117,14 @@ func GetEndpointInfo(url string) map[string]EndpointInfo {
 	解析endpoint api内容
 	*/
 	endpoint_data := Get(url)
-	// fmt.Println("endpoint_data: ", endpoint_data)
+	fmt.Println("endpoint_data: ", endpoint_data)
 	aPIV1Endpoints, _ := UnmarshalAPIV1Endpoints([]byte(endpoint_data))
 	// fmt.Println(*aPIV1Endpoints.APIVersion, *aPIV1Endpoints.Kind, aPIV1Endpoints.Items, *aPIV1Endpoints.Metadata)
-
 	var endpointInfoMap map[string]EndpointInfo
 	endpointInfoMap = make(map[string]EndpointInfo)
 
 	for _, data := range aPIV1Endpoints.Items {
-		// fmt.Println("*data.Metadata.Name: ", *data.Metadata.Name)
+		fmt.Println("*data.Metadata.Name: ", *data.Metadata.Name)
 		// 如果数据中subsets长度大于0
 		if len(data.Subsets) > 0 {
 			var endpointInfo EndpointInfo = EndpointInfo{
@@ -108,7 +142,5 @@ func GetEndpointInfo(url string) map[string]EndpointInfo {
 		}
 	}
 	fmt.Println("endpointInfoMap:      ", endpointInfoMap)
-
 	return endpointInfoMap
-
 }

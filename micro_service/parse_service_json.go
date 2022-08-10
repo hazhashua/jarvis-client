@@ -26,17 +26,17 @@ type Item struct {
 }
 
 type ItemMetadata struct {
-	Name              *string      `json:"name,omitempty"`
-	Namespace         *Namespace   `json:"namespace,omitempty"`
-	SelfLink          *string      `json:"selfLink,omitempty"`
-	Uid               *string      `json:"uid,omitempty"`
-	ResourceVersion   *string      `json:"resourceVersion,omitempty"`
-	CreationTimestamp *string      `json:"creationTimestamp,omitempty"`
-	Labels            *Labels      `json:"labels,omitempty"`
-	Annotations       *Annotations `json:"annotations,omitempty"`
+	Name              *string             `json:"name,omitempty"`
+	Namespace         *Namespace          `json:"namespace,omitempty"`
+	SelfLink          *string             `json:"selfLink,omitempty"`
+	Uid               *string             `json:"uid,omitempty"`
+	ResourceVersion   *string             `json:"resourceVersion,omitempty"`
+	CreationTimestamp *string             `json:"creationTimestamp,omitempty"`
+	Labels            *Labels             `json:"labels,omitempty"`
+	Annotations       *ServiceAnnotations `json:"annotations,omitempty"`
 }
 
-type Annotations struct {
+type ServiceAnnotations struct {
 	KubectlKubernetesIoLastAppliedConfiguration *string `json:"kubectl.kubernetes.io/last-applied-configuration,omitempty"`
 	PrometheusIoPort                            *string `json:"prometheus.io/port,omitempty"`
 	PrometheusIoScrape                          *string `json:"prometheus.io/scrape,omitempty"`

@@ -1,8 +1,6 @@
 package micro_service
 
-import (
-	"encoding/json"
-)
+import "encoding/json"
 
 func UnmarshalAPIV1Endpoints(data []byte) (APIV1Endpoints, error) {
 	var r APIV1Endpoints
@@ -27,17 +25,17 @@ type EndpointItem struct {
 }
 
 type EndpointItemMetadata struct {
-	Name              *string              `json:"name,omitempty"`
-	Namespace         *Namespace           `json:"namespace,omitempty"`
-	SelfLink          *string              `json:"selfLink,omitempty"`
-	Uid               *string              `json:"uid,omitempty"`
-	ResourceVersion   *string              `json:"resourceVersion,omitempty"`
-	CreationTimestamp *string              `json:"creationTimestamp,omitempty"`
-	Labels            *EndpointLabels      `json:"labels,omitempty"`
-	Annotations       *EndpointAnnotations `json:"annotations,omitempty"`
+	Name              *string         `json:"name,omitempty"`
+	Namespace         *Namespace      `json:"namespace,omitempty"`
+	SelfLink          *string         `json:"selfLink,omitempty"`
+	Uid               *string         `json:"uid,omitempty"`
+	ResourceVersion   *string         `json:"resourceVersion,omitempty"`
+	CreationTimestamp *string         `json:"creationTimestamp,omitempty"`
+	Labels            *EndpointLabels `json:"labels,omitempty"`
+	Annotations       *Annotations    `json:"annotations,omitempty"`
 }
 
-type EndpointAnnotations struct {
+type Annotations struct {
 	EndpointsKubernetesIoLastChangeTriggerTime *string `json:"endpoints.kubernetes.io/last-change-trigger-time,omitempty"`
 	ControlPlaneAlphaKubernetesIoLeader        *string `json:"control-plane.alpha.kubernetes.io/leader,omitempty"`
 }
@@ -48,18 +46,21 @@ type EndpointLabels struct {
 	K8SApp                       *string `json:"k8s-app,omitempty"`
 	KubernetesIoClusterService   *string `json:"kubernetes.io/cluster-service,omitempty"`
 	KubernetesIoName             *string `json:"kubernetes.io/name,omitempty"`
+	AppKubernetesIoComponent     *string `json:"app.kubernetes.io/component,omitempty"`
+	AppKubernetesIoName          *string `json:"app.kubernetes.io/name,omitempty"`
+	AppKubernetesIoVersion       *string `json:"app.kubernetes.io/version,omitempty"`
 }
 
 type Subset struct {
-	Addresses []Address      `json:"addresses,omitempty"`
-	Ports     []EndpointPort `json:"ports,omitempty"`
+	Addresses         []Address      `json:"addresses,omitempty"`
+	Ports             []EndpointPort `json:"ports,omitempty"`
+	NotReadyAddresses []Address      `json:"notReadyAddresses,omitempty"`
 }
 
 type Address struct {
 	IP        *string    `json:"ip,omitempty"`
 	NodeName  *string    `json:"nodeName,omitempty"`
 	TargetRef *TargetRef `json:"targetRef,omitempty"`
-	Hostname  *string    `json:"hostname,omitempty"`
 }
 
 type TargetRef struct {
@@ -83,8 +84,9 @@ type APIV1EndpointsMetadata struct {
 
 // type Namespace string
 // const (
-// 	Default    Namespace = "default"
+// 	Default Namespace = "default"
 // 	KubeSystem Namespace = "kube-system"
+// 	KubernetesDashboard Namespace = "kubernetes-dashboard"
 // )
 
 type Kind string
