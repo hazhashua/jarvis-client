@@ -2,6 +2,7 @@ package nodeexporter
 
 import (
 	"fmt"
+	"metric_exporter/utils"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -53,6 +54,7 @@ type MachineExporter struct {
 	physicalNetDeviceNum int
 	processNum           int
 	physicalMetrics      PhysicalDesc
+	physicalMetricsData  *ProcessInfo
 	virtualMetrics       VirtualDesc
 }
 
@@ -125,7 +127,7 @@ func NewNodeExporter() *MachineExporter {
 	}
 	diskIoDeviceNum := DiskIoDeviceNum()
 
-	processNum := ProcessNumGet()
+	processNum, processInfos := ProcessInfoGet()
 	physicalMetrics.processInfoDesc = make([]*prometheus.Desc, processNum)
 	physicalMetrics.processInfoValType = make([]prometheus.ValueType, processNum)
 	for i := 0; i < processNum; i++ {
@@ -141,6 +143,7 @@ func NewNodeExporter() *MachineExporter {
 		physicalIoDiskNum:    diskIoDeviceNum,
 		processNum:           processNum,
 		physicalMetrics:      physicalMetrics,
+		physicalMetricsData:  processInfos,
 		physicalNetDeviceNum: netDeviceNum,
 		virtualMetrics:       virtualMetrics,
 	}
@@ -170,31 +173,32 @@ func (e *MachineExporter) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
+	e = NewNodeExporter()
 	nodeConfig := parseNodeConfig()
 	hostInfo := HostInfoGet()
 	fmt.Println(hostInfo.hostName)
 	cpuInfo := CpuUsageGet()
-	netInfo := NetInfoGet()
+	netInfo := utils.NetInfoGet()
 
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuCoresDesc, e.physicalMetrics.cpuCoresValType,
-		float64(cpuInfo.cores), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip)
+		float64(cpuInfo.cores), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuUsageDesc, e.physicalMetrics.cpuUsageValType,
-		cpuInfo.usage, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip)
+		cpuInfo.usage, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 
 	memory := MemUsageGet()
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.memTotalDesc, e.physicalMetrics.memTotalValType,
-		float64(memory.total), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip)
+		float64(memory.total), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.memUsageDesc, e.physicalMetrics.memTotalValType,
-		float64(memory.usedPercent), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip)
+		float64(memory.usedPercent), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 
 	disk := DiskUsageGet()
 	for i := 0; i < e.physicalDiskNum; i++ {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskTotalDesc[i], e.physicalMetrics.diskTotalValType[i],
-			float64(disk.total[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip, disk.deviceIds[i], disk.mountPoint[i])
+			float64(disk.total[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, disk.deviceIds[i], disk.mountPoint[i])
 
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskUsedDesc[i], e.physicalMetrics.memTotalValType,
-			float64(disk.used[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip, disk.deviceIds[i], disk.mountPoint[i])
+			float64(disk.used[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, disk.deviceIds[i], disk.mountPoint[i])
 	}
 	// devices := make([]string, 0)
 	// readBytess := make([]uint64, 0)
@@ -217,18 +221,18 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	i := 0
 	for key, value := range disk.readBytes {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskReadDesc[i], e.physicalMetrics.diskReadValType[i],
-			float64(value), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip, key)
+			float64(value), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, key)
 		i += 1
 	}
 	i = 0
 	for key, value := range disk.writeBytes {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskWriteDesc[i], e.physicalMetrics.diskWriteValType[i],
-			float64(value), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip, key)
+			float64(value), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, key)
 	}
 
 	deviceNames := make([]string, 0)
-	flowInfos := make([]FlowInfo, 0)
-	for deviceName, flowInfo := range netInfo.deviceIds {
+	flowInfos := make([]utils.FlowInfo, 0)
+	for deviceName, flowInfo := range netInfo.DeviceIds {
 		fmt.Println("deviceName: ", deviceName)
 		fmt.Println("flowInfo: ", flowInfo)
 		deviceNames = append(deviceNames, deviceName)
@@ -236,19 +240,20 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 	for idx, deviceName := range deviceNames {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.networkReceiveDesc[idx], e.physicalMetrics.networkReceiveValType[idx],
-			float64(flowInfos[idx].receiveBytes), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip, deviceName)
+			float64(flowInfos[idx].ReceiveBytes), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, deviceName)
 
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.networkSentDesc[idx], e.physicalMetrics.networkSentValType[idx],
-			float64(flowInfos[idx].sentBytes), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip, deviceName)
+			float64(flowInfos[idx].SentBytes), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, deviceName)
 	}
 
-	processInfos := ProcessnfoGet()
+	processInfos := e.physicalMetricsData
+
 	idx := 0
 	for key, value := range processInfos.processIoMap {
 
 		// {"cluster", "host", "ip", "id", "read_bytes", "write_bytes"}
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.processInfoDesc[idx], e.physicalMetrics.processInfoValType[idx],
-			1, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.ip, fmt.Sprintf("%d", key), fmt.Sprintf("%d", value.readBytes), fmt.Sprintf("%d", value.writeBytes))
+			1, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, fmt.Sprintf("%d", key), fmt.Sprintf("%d", value.readBytes), fmt.Sprintf("%d", value.writeBytes))
 		idx += 1
 	}
 
