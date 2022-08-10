@@ -6,6 +6,7 @@ import (
 	"metric_exporter/micro_service"
 	"metric_exporter/utils"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,6 +46,7 @@ type DatsourceAlive struct {
 func NewServiceAliveCollector() *serviceCollector {
 	var serviceAliveList []serviceAlive2Collector
 	datasource_count := utils.ValueQuery("")
+	fmt.Println("查询到的service_port表记录数: ", datasource_count)
 	for length := 0; length < datasource_count; length++ {
 		var service_alive_collector serviceAlive2Collector
 		service_alive_collector.aliveMetric = prometheus.NewDesc("alive_metric", "Show whether the ip:port is alive",
@@ -107,7 +109,17 @@ func (collector *serviceCollector) Collect(ch chan<- prometheus.Metric) {
 	da := GetAliveInfos()
 	// for _, alive := range da {
 	for index, alive := range collector.serviceAliveCollector {
-		ch <- prometheus.MustNewConstMetric(alive.aliveMetric, prometheus.GaugeValue, float64(da[index].MetricValue), *da[index].ClusterName, *da[index].ServiceName, *da[index].ChildService, *da[index].IP, fmt.Sprintf("%d", da[index].Port), *da[index].PortType)
+		if index >= len(da) {
+			//查询数据已经遍历完，退出
+			break
+		}
+		var portValue string
+		if da[index].Port.Valid == true {
+			portValue = fmt.Sprintf("%d", da[index].Port.Int64)
+		} else {
+			portValue = ""
+		}
+		ch <- prometheus.MustNewConstMetric(alive.aliveMetric, prometheus.GaugeValue, float64(da[index].MetricValue), *da[index].ClusterName, *da[index].ServiceName, *da[index].ChildService, *da[index].IP, portValue, *da[index].PortType)
 		// break
 	}
 
@@ -133,6 +145,16 @@ func GetAliveInfos() []DatsourceAlive {
 	sp := utils.ReSerialize()
 
 	dataSources := make([]DatsourceAlive, 0)
+
+	var localIp string
+	netInfo := utils.NetInfoGet()
+	for ethName, ip := range netInfo.EthInfo {
+		if strings.Contains(ethName, "eth") || strings.Contains(ethName, "en") {
+			fmt.Printf("网络设备: %s  ip地址: %s", ethName, ip)
+			localIp = ip
+		}
+	}
+
 	for _, servicePort := range sp {
 		// fmt.Println(string(*servicePort.IP) + string(servicePort.Port))
 		// fmt.Sprintf("%s:%d", *servicePort.IP, servicePort.Port)
@@ -146,6 +168,16 @@ func GetAliveInfos() []DatsourceAlive {
 		fmt.Println("***: ", *servicePort.IP, servicePort.Port)
 		if *servicePort.ServiceName == "k8s" {
 			// 如果是k8s服务，则使用进程探活
+			// 如果不是本地的进程探测数据，则跳过
+			if *servicePort.IP == localIp {
+				fmt.Println("ip是本地地址...")
+			} else {
+				fmt.Printf("待检测的ip地址: %s", *servicePort.IP)
+				fmt.Printf("本地ip地址: %s", localIp)
+				// 测试时, 不跳过
+				// continue
+			}
+
 			alive := IsProcessRunning(*servicePort.ChildService)
 			if alive == true {
 				datasourceAlive.MetricValue = float32(1)
@@ -153,7 +185,16 @@ func GetAliveInfos() []DatsourceAlive {
 				datasourceAlive.MetricValue = float32(0)
 			}
 		} else {
-			datasourceAlive.MetricValue = float32(CheckPorts(fmt.Sprintf("%s:%d", *servicePort.IP, servicePort.Port), "tcp"))
+
+			if servicePort.Port.Valid == false {
+				datasourceAlive.MetricValue = 0
+			} else {
+				if CheckPorts(fmt.Sprintf("%s:%d", *servicePort.IP, servicePort.Port.Int64), "tcp") {
+					datasourceAlive.MetricValue = float32(1)
+				} else {
+					datasourceAlive.MetricValue = float32(0)
+				}
+			}
 		}
 		fmt.Println("datsourceAlive: ", datasourceAlive)
 
@@ -167,8 +208,8 @@ func GetAliveInfos() []DatsourceAlive {
 }
 
 // 检测端口
-func CheckPorts(ip_port string, port_type string) int {
-	check := 0
+func CheckPorts(ip_port string, port_type string) bool {
+	check := false
 	now := time.Now().Format("2006-01-02 15:04:05")
 	// 检测端口
 	conn, err := net.DialTimeout(port_type, ip_port, 1*time.Second)
@@ -177,7 +218,7 @@ func CheckPorts(ip_port string, port_type string) int {
 		fmt.Println("["+now+"]", ip_port, "端口未开启(fail)!")
 	} else {
 		if conn != nil {
-			check = 1
+			check = true
 			fmt.Println("["+now+"]", ip_port, "端口已开启(success)!")
 			conn.Close()
 		} else {
