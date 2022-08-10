@@ -56,7 +56,7 @@ func ValueQuery(sqlstr string) int {
 
 	if &sqlstr == nil || sqlstr == "" {
 		// sqlstr = "SELECT * FROM test.datasource_alive da"
-		sqlstr = "SELECT count(distinct service_name, child_service, cluster_name, ip , port, port_type) FROM test.service_port sp"
+		sqlstr = "SELECT count(distinct service_name, child_service, cluster_name, ip , port_type) FROM test.service_port sp"
 	}
 	stmt, err2 := db.Prepare(sqlstr)
 	defer stmt.Close()
@@ -295,8 +295,7 @@ func Query(sqlstr string) []ServicePort {
 		fmt.Println(service_port.ID, *service_port.ServiceName, *service_port.ChildService, *service_port.ClusterName, *service_port.IP, service_port.Port, *service_port.PortType)
 	}
 	db.Close()
-
-	fmt.Println("len: ", len(service_port_slice))
+	fmt.Println("service_port table length: ", len(service_port_slice))
 	return service_port_slice
 }
 
