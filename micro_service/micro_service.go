@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -22,6 +24,32 @@ type EndpointInfo struct {
 	EndpointName string `json:"endpoint_name,omitempty"`
 	ClusterIP    string `json:"cluster_ip,omitempty"`
 	IP           string `json:"ip,omitempty"`
+}
+
+type NodeCapacity struct {
+	cpuCores    float32
+	diskStorage uint64
+	memory      uint64
+	pods        int64
+}
+
+type NodeAllocatable struct {
+	cpuCores    float32
+	diskStorage uint64
+	memory      uint64
+	pods        int64
+}
+
+type MyK8sNodeInfo struct {
+	Name              string           `json:"name"`
+	Ip                string           `json:"ip"`
+	CreationTimestamp string           `json:"creationTimestamp"`
+	NodeCapacityS     *NodeCapacity    `json:"nodeCapacity"`
+	NodeAllocatableS  *NodeAllocatable `json:"nodeAllocatable"`
+	MemoryPressure    bool             `json:"memoryPressure"`
+	DiskPressure      bool             `json:"diskPressure"`
+	PidPressure       bool             `json:"pidPressure"`
+	IsReady           bool             `json:"isReady"`
 }
 
 // cluster:
@@ -153,4 +181,119 @@ func GetEndpointInfo(url string) map[string]EndpointInfo {
 	}
 	fmt.Println("endpointInfoMap:      ", endpointInfoMap)
 	return endpointInfoMap
+}
+
+func GetNodeInfo(url string) *MyK8sNodeInfo {
+	/*
+		基于k8sapi 获取所有所有node的节点信息
+	*/
+	node_data := Get(url)
+	fmt.Println("node_data: ", node_data)
+	k8sNodeInfo, _ := UnmarshalK8sNodeInfo([]byte(node_data))
+	var myNodeInfo MyK8sNodeInfo
+	for _, data := range k8sNodeInfo.Items {
+		fmt.Println("*k8sNodeInfo: ", *data.Metadata.Name)
+		// 获得node的主机信息
+		myNodeInfo.Name = *data.Metadata.Name
+		myNodeInfo.CreationTimestamp = *data.Metadata.CreationTimestamp
+		if len(data.Status.Addresses) > 0 {
+			for _, address := range data.Status.Addresses {
+				if *address.Type == InternalIP {
+					myNodeInfo.Ip = *address.Address
+					break
+				}
+			}
+		}
+		var nodeCapacity NodeCapacity
+		if data.Status.Capacity != nil {
+			cpu := *data.Status.Capacity.CPU
+			if strings.Contains(cpu, "m") {
+				cpucores, _ := strconv.ParseFloat(cpu[:len(cpu)-1], 32)
+				nodeCapacity.cpuCores = float32(cpucores) / 1000
+			} else {
+				cpucores, _ := strconv.ParseFloat(cpu, 32)
+				nodeCapacity.cpuCores = float32(cpucores)
+			}
+
+			if strings.Contains(*data.Status.Capacity.EphemeralStorage, "Ki") {
+				storageK := (*data.Status.Capacity.EphemeralStorage)[:len(*data.Status.Capacity.EphemeralStorage)-2]
+				storageKv, _ := strconv.ParseUint(storageK, 10, 32)
+				nodeCapacity.diskStorage = storageKv * 1024
+			} else {
+				storagev, _ := strconv.ParseUint(*data.Status.Capacity.EphemeralStorage, 10, 32)
+				nodeCapacity.diskStorage = storagev
+			}
+
+			if strings.Contains(*data.Status.Capacity.Memory, "Ki") {
+				memoryK := (*data.Status.Capacity.Memory)[:len(*data.Status.Capacity.Memory)-2]
+				memoryKv, _ := strconv.ParseUint(memoryK, 10, 32)
+				nodeCapacity.memory = memoryKv * 1024
+			}
+			nodeCapacity.pods, _ = strconv.ParseInt(*data.Status.Capacity.Pods, 10, 32)
+		}
+		myNodeInfo.NodeCapacityS = &nodeCapacity
+
+		var allocatable NodeAllocatable
+		if data.Status.Allocatable != nil {
+			cpu := *data.Status.Allocatable.CPU
+			if strings.Contains(cpu, "m") {
+				cpucores, _ := strconv.ParseFloat(cpu[:len(cpu)-1], 32)
+				allocatable.cpuCores = float32(cpucores) / 1000
+			} else {
+				cpucores, _ := strconv.ParseFloat(cpu, 32)
+				allocatable.cpuCores = float32(cpucores)
+			}
+
+			if strings.Contains(*data.Status.Allocatable.EphemeralStorage, "Ki") {
+				storageK := (*data.Status.Allocatable.EphemeralStorage)[:len(*data.Status.Allocatable.EphemeralStorage)-2]
+				storageKv, _ := strconv.ParseUint(storageK, 10, 32)
+				allocatable.diskStorage = storageKv * 1024
+			} else {
+				storagev, _ := strconv.ParseUint(*data.Status.Allocatable.EphemeralStorage, 10, 32)
+				allocatable.diskStorage = storagev
+			}
+
+			if strings.Contains(*data.Status.Allocatable.Memory, "Ki") {
+				memoryK := (*data.Status.Allocatable.Memory)[:len(*data.Status.Allocatable.Memory)-2]
+				memoryKv, _ := strconv.ParseUint(memoryK, 10, 32)
+				allocatable.memory = memoryKv * 1024
+			}
+			allocatable.pods, _ = strconv.ParseInt(*data.Status.Allocatable.Pods, 10, 32)
+		}
+		myNodeInfo.NodeAllocatableS = &allocatable
+
+		if len(data.Status.Conditions) > 0 {
+			for _, item := range data.Status.Conditions {
+				switch *item.Type {
+				case MemoryPressure:
+					if *item.Status == False {
+						myNodeInfo.MemoryPressure = true
+					} else {
+						myNodeInfo.MemoryPressure = false
+					}
+				case DiskPressure:
+					if *item.Status == False {
+						myNodeInfo.DiskPressure = true
+					} else {
+						myNodeInfo.DiskPressure = false
+					}
+				case PIDPressure:
+					if *item.Status == False {
+						myNodeInfo.PidPressure = true
+					} else {
+						myNodeInfo.PidPressure = false
+					}
+				case Ready:
+					if *item.Status == True {
+						myNodeInfo.IsReady = true
+					} else {
+						myNodeInfo.IsReady = false
+					}
+				default:
+					break
+				}
+			}
+		}
+	}
+	return &myNodeInfo
 }
