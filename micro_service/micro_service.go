@@ -52,6 +52,26 @@ type MyK8sNodeInfo struct {
 	IsReady           bool             `json:"isReady"`
 }
 
+type MyContainerStatus struct {
+	ContainerName string `json:"containerName"`
+	IsReady       bool   `json:"isReady"`
+	IsStart       bool   `json:"isStart"`
+	RestartCount  int    `json:"restartCount"`
+}
+
+type MyK8sPodInfo struct {
+	Name              string               `json:"name"`
+	CreationTimestamp string               `json:"creationTimestamp"`
+	App               string               `json:"app"`
+	Containers        int                  `json:"containers"`
+	Status            string               `json:"status"`
+	IsInitialized     bool                 `json:"isInitialized"`
+	IsReady           bool                 `json:"isReady"`
+	IsContainersReady bool                 `json:"isContainersReady"`
+	IsPodScheduled    bool                 `json:"isPodScheduled"`
+	containersStatus  []*MyContainerStatus `json:""`
+}
+
 // cluster:
 //   name: 测试kubernetes集群
 //   master:
@@ -296,4 +316,88 @@ func GetNodeInfo(url string) *MyK8sNodeInfo {
 		}
 	}
 	return &myNodeInfo
+}
+
+func GetPodInfo(podUrl string) []*MyK8sPodInfo {
+	// 基于K8S api获取所有pod的信息
+	pod_data := Get(podUrl)
+	fmt.Println("pod data: ", pod_data)
+	k8sPodInfo, _ := UnmarshalPodInfo([]byte(pod_data))
+	myPodInfos := make([]*MyK8sPodInfo, 0)
+
+	// myPodInfo.Name
+	// myPodInfo.App
+	// myPodInfo.CreationTimestamp
+	// myPodInfo.Containers
+	// myPodInfo.Status
+	// myPodInfo.IsInitialized
+	// myPodInfo.IsReady
+	// myPodInfo.IsContainersReady
+	// myPodInfo.IsPodScheduled
+
+	// 解析api数据并写入MyK8sPodInfo对象中
+	for _, data := range k8sPodInfo.Items {
+		var myPodInfo MyK8sPodInfo
+		myPodInfo.Name = *data.Metadata.Name
+		myPodInfo.CreationTimestamp = *data.Metadata.CreationTimestamp
+		fmt.Println("", data.Metadata.Name)
+		fmt.Println("", data.Metadata.CreationTimestamp)
+		if data.Metadata.Labels != nil {
+			myPodInfo.App = *data.Metadata.Labels.App
+		}
+		if data.Spec != nil {
+			myPodInfo.Containers = len(data.Spec.Containers)
+		}
+		if data.Status != nil {
+			myPodInfo.Status = string(*data.Status.Phase)
+		}
+		if data.Status.Conditions != nil {
+			for _, condition := range data.Status.Conditions {
+				switch *condition.Type {
+				case "Initialized":
+					if *condition.Status == "True" {
+						myPodInfo.IsInitialized = true
+					} else {
+						myPodInfo.IsInitialized = false
+					}
+				case "Ready":
+					if *condition.Status == "True" {
+						myPodInfo.IsReady = true
+					} else {
+						myPodInfo.IsReady = false
+					}
+				case "ContainersReady":
+					if *condition.Status == "True" {
+						myPodInfo.IsContainersReady = true
+					} else {
+						myPodInfo.IsContainersReady = false
+					}
+				case "PodScheduled":
+					if *condition.Status == "True" {
+						myPodInfo.IsPodScheduled = true
+					} else {
+						myPodInfo.IsPodScheduled = false
+					}
+				default:
+					fmt.Println("unknown condition.type: ", *condition.Type)
+				}
+			}
+		}
+		if data.Status.ContainerStatuses != nil && len(data.Status.ContainerStatuses) > 0 {
+			// 抓取pod下各个container的数据
+			containerStatusList := make([]*MyContainerStatus, 0)
+			for _, containerStatus := range data.Status.ContainerStatuses {
+				var myContainerStatus MyContainerStatus
+				myContainerStatus.ContainerName = *containerStatus.Name
+				myContainerStatus.IsReady = *containerStatus.Ready
+				myContainerStatus.IsStart = *containerStatus.Started
+				myContainerStatus.RestartCount = int(*containerStatus.RestartCount)
+				containerStatusList = append(containerStatusList, &myContainerStatus)
+			}
+			myPodInfo.containersStatus = containerStatusList
+		}
+
+		myPodInfos = append(myPodInfos, &myPodInfo)
+	}
+	return myPodInfos
 }
