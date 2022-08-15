@@ -3,6 +3,7 @@ package micro_service
 import (
 	"fmt"
 	"metric_exporter/config"
+	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -22,6 +23,7 @@ type MicroServiceExporter struct {
 	// 	IsReady           bool             `json:"isReady"`
 	// }
 
+	k8sConfig K8sConfig
 	// 微服务资源及节点状态数据
 	// 包含多个node节点的资源及状态
 	nodeDescs     []K8sNodeDesc
@@ -187,6 +189,7 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 	}
 
 	return &MicroServiceExporter{
+		k8sConfig:        *k8s_config,
 		nodeDescs:        nodeDescs,
 		nodeInfoDescs:    nodeInfoDescs,
 		serviceInfoDescs: serviceinfoDescs,
@@ -238,26 +241,60 @@ func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 	for idx, nodeDesc := range e.nodeDescs {
 		ch <- prometheus.MustNewConstMetric(nodeDesc.MaxCpuDesc, nodeDesc.MaxCpuValType, float64(e.nodeDatas[idx].NodeCapacityS.cpuCores),
-			"", e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
 		ch <- prometheus.MustNewConstMetric(nodeDesc.MaxDiskStorageDesc, nodeDesc.MaxDiskStorageValType, float64(e.nodeDatas[idx].NodeCapacityS.diskStorage),
-			"", e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
 		ch <- prometheus.MustNewConstMetric(nodeDesc.MaxMemoryDesc, nodeDesc.MaxMemoryValType, float64(e.nodeDatas[idx].NodeCapacityS.memory),
-			"", e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
 		ch <- prometheus.MustNewConstMetric(nodeDesc.MaxPodsDesc, nodeDesc.MaxPodsValType, float64(e.nodeDatas[idx].NodeCapacityS.pods),
-			"", e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
 
 		ch <- prometheus.MustNewConstMetric(nodeDesc.AllocateCpuDesc, nodeDesc.AllocateCpuValType, float64(e.nodeDatas[idx].NodeAllocatableS.cpuCores),
-			"", e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
 		ch <- prometheus.MustNewConstMetric(nodeDesc.AllocateDiskStorageDesc, nodeDesc.AllocateDiskStorageValType, float64(e.nodeDatas[idx].NodeAllocatableS.diskStorage),
-			"", e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
 		ch <- prometheus.MustNewConstMetric(nodeDesc.AllocateMemoryDesc, nodeDesc.AllocateMemoryValType, float64(e.nodeDatas[idx].NodeAllocatableS.memory),
-			"", e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
 		ch <- prometheus.MustNewConstMetric(nodeDesc.AllocatePodsDesc, nodeDesc.AllocatePodsValType, float64(e.nodeDatas[idx].NodeAllocatableS.pods),
-			"", e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+
+		// 写k8s_node_ready指标数据
+		// "cluster", "host", "ip", "memory_pressure_ok", "disk_pressure_ok", "pid_pressure_ok"
+		isReady, _ := strconv.ParseFloat(BoolToString(e.nodeDatas[idx].IsReady), 32)
+		ch <- prometheus.MustNewConstMetric(e.nodeInfoDescs[idx].NodeInfoDesc, e.nodeInfoDescs[idx].NodeInfoValType, isReady,
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip, BoolToString(e.nodeDatas[idx].MemoryPressure),
+			BoolToString(e.nodeDatas[idx].DiskPressure), BoolToString(e.nodeDatas[idx].PidPressure))
 	}
 
-	// k8sNodeInfo := e.nodeDatas
-	// for idx, nodeInfo := range e.nodeInfoDescs {
-	// ch <- prometheus.MustNewConstMetric(nodeInfo.NodeInfoDesc, nodeInfo.NodeInfoValType, k8sNodeInfo[idx].)
-	// }
+	// 写k8s service相关的指标
+	for idx, service_info := range e.serviceInfoDescs {
+		keys := make([]string, 0, len(e.serviceInfoDatas))
+		for k := range e.serviceInfoDatas {
+			keys = append(keys, k)
+		}
+		// "cluster", "service_name", "is_nodeport"
+		ch <- prometheus.MustNewConstMetric(service_info.ServiceInfoDesc, service_info.ServiceInfoValType, 1,
+			e.k8sConfig.Cluster.Name, keys[idx], BoolToString(e.serviceInfoDatas[keys[idx]].IsNodePort))
+	}
+
+	// 写k8s pod相关的指标
+	// "cluster", "pod_name", "app", "phase", "run_host_ip", "restart_count"
+	for idx, pod_info := range e.podInfoDescs {
+		var restartCount int
+		for _, status := range e.podInfoDatas[idx].containersStatus {
+			status.RestartCount += status.RestartCount
+		}
+		ch <- prometheus.MustNewConstMetric(pod_info.PodInfoDesc, pod_info.PodInfoValType, 1,
+			e.k8sConfig.Cluster.Name, e.podInfoDatas[idx].Name, e.podInfoDatas[idx].App, e.podInfoDatas[idx].Status,
+			e.podInfoDatas[idx].App, fmt.Sprintf("%d", restartCount))
+
+	}
+}
+
+func BoolToString(boolV bool) string {
+	if boolV == true {
+		return "1"
+	} else {
+		return "0"
+	}
 }

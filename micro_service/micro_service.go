@@ -65,6 +65,7 @@ type MyK8sPodInfo struct {
 	App               string               `json:"app"`
 	Containers        int                  `json:"containers"`
 	Status            string               `json:"status"`
+	RunHostIP         string               `json:"hostip"`
 	IsInitialized     bool                 `json:"isInitialized"`
 	IsReady           bool                 `json:"isReady"`
 	IsContainersReady bool                 `json:"isContainersReady"`
@@ -203,15 +204,16 @@ func GetEndpointInfo(url string) map[string]EndpointInfo {
 	return endpointInfoMap
 }
 
-func GetNodeInfo(url string) *MyK8sNodeInfo {
+func GetNodeInfo(url string) []*MyK8sNodeInfo {
 	/*
 		基于k8sapi 获取所有所有node的节点信息
 	*/
 	node_data := Get(url)
 	fmt.Println("node_data: ", node_data)
 	k8sNodeInfo, _ := UnmarshalK8sNodeInfo([]byte(node_data))
-	var myNodeInfo MyK8sNodeInfo
+	myNodeInfos := make([]*MyK8sNodeInfo, 0)
 	for _, data := range k8sNodeInfo.Items {
+		var myNodeInfo MyK8sNodeInfo
 		fmt.Println("*k8sNodeInfo: ", *data.Metadata.Name)
 		// 获得node的主机信息
 		myNodeInfo.Name = *data.Metadata.Name
@@ -287,21 +289,21 @@ func GetNodeInfo(url string) *MyK8sNodeInfo {
 				switch *item.Type {
 				case MemoryPressure:
 					if *item.Status == False {
-						myNodeInfo.MemoryPressure = true
-					} else {
 						myNodeInfo.MemoryPressure = false
+					} else {
+						myNodeInfo.MemoryPressure = true
 					}
 				case DiskPressure:
 					if *item.Status == False {
-						myNodeInfo.DiskPressure = true
-					} else {
 						myNodeInfo.DiskPressure = false
+					} else {
+						myNodeInfo.DiskPressure = true
 					}
 				case PIDPressure:
 					if *item.Status == False {
-						myNodeInfo.PidPressure = true
-					} else {
 						myNodeInfo.PidPressure = false
+					} else {
+						myNodeInfo.PidPressure = true
 					}
 				case Ready:
 					if *item.Status == True {
@@ -314,8 +316,9 @@ func GetNodeInfo(url string) *MyK8sNodeInfo {
 				}
 			}
 		}
+		myNodeInfos = append(myNodeInfos, &myNodeInfo)
 	}
-	return &myNodeInfo
+	return myNodeInfos
 }
 
 func GetPodInfo(podUrl string) []*MyK8sPodInfo {
@@ -350,6 +353,7 @@ func GetPodInfo(podUrl string) []*MyK8sPodInfo {
 		}
 		if data.Status != nil {
 			myPodInfo.Status = string(*data.Status.Phase)
+			myPodInfo.RunHostIP = string(*data.Status.HostIP)
 		}
 		if data.Status.Conditions != nil {
 			for _, condition := range data.Status.Conditions {
