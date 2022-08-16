@@ -122,7 +122,7 @@ func Get(url string) string {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(body))
+	//fmt.Println(string(body))
 	return string(body)
 }
 
@@ -132,9 +132,9 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 	*/
 	//url 为apiservice service的路径地址，后面改成配置化
 	data := Get(url)
-	fmt.Println("&&&&&&&", data)
+	// fmt.Println("&&&&&&&", data)
 	aPIV1Services, _ := UnmarshalAPIV1Services([]byte(data))
-	fmt.Println(*aPIV1Services.APIVersion, *aPIV1Services.Kind)
+	//fmt.Println(*aPIV1Services.APIVersion, *aPIV1Services.Kind)
 	// 存储所有serviceinfo信息
 	var serviceInfoMap map[string]ServiceInfo
 	serviceInfoMap = make(map[string]ServiceInfo)
@@ -145,9 +145,9 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 		serviceInfo := ServiceInfo{ServiceName: service_name}
 		//获得所有service的地址和端口
 		for _, port := range (*item.Spec).Ports {
-			if port.Name != nil {
-				fmt.Println("port.name: ", *port.Name)
-			}
+			// if port.Name != nil {
+			// 	fmt.Println("port.name: ", *port.Name)
+			// }
 			if port.NodePort != nil {
 				serviceInfo.IsNodePort = true
 				serviceInfo.Port = int(*port.NodePort)
@@ -157,7 +157,7 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 			serviceInfoMap[service_name] = serviceInfo
 		}
 	}
-	fmt.Println("serviceinfoMap: ", serviceInfoMap)
+	//fmt.Println("serviceinfoMap: ", serviceInfoMap)
 	return serviceInfoMap
 }
 
@@ -166,14 +166,14 @@ func GetEndpointInfo(url string) map[string]EndpointInfo {
 	解析endpoint api内容
 	*/
 	endpoint_data := Get(url)
-	fmt.Println("endpoint_data: ", endpoint_data)
+	// fmt.Println("endpoint_data: ", endpoint_data)
 	aPIV1Endpoints, _ := UnmarshalAPIV1Endpoints([]byte(endpoint_data))
 	// fmt.Println(*aPIV1Endpoints.APIVersion, *aPIV1Endpoints.Kind, aPIV1Endpoints.Items, *aPIV1Endpoints.Metadata)
 	var endpointInfoMap map[string]EndpointInfo
 	endpointInfoMap = make(map[string]EndpointInfo)
 
 	for _, data := range aPIV1Endpoints.Items {
-		fmt.Println("*data.Metadata.Name: ", *data.Metadata.Name)
+		// fmt.Println("*data.Metadata.Name: ", *data.Metadata.Name)
 		// 如果数据中subsets长度大于0
 		if len(data.Subsets) > 0 {
 			var clusterIp string
@@ -200,7 +200,7 @@ func GetEndpointInfo(url string) map[string]EndpointInfo {
 			}
 		}
 	}
-	fmt.Println("endpointInfoMap:      ", endpointInfoMap)
+	// fmt.Println("endpointInfoMap:      ", endpointInfoMap)
 	return endpointInfoMap
 }
 
@@ -209,12 +209,12 @@ func GetNodeInfo(url string) []*MyK8sNodeInfo {
 		基于k8sapi 获取所有所有node的节点信息
 	*/
 	node_data := Get(url)
-	fmt.Println("node_data: ", node_data)
+	// fmt.Println("node_data: ", node_data)
 	k8sNodeInfo, _ := UnmarshalK8sNodeInfo([]byte(node_data))
 	myNodeInfos := make([]*MyK8sNodeInfo, 0)
 	for _, data := range k8sNodeInfo.Items {
 		var myNodeInfo MyK8sNodeInfo
-		fmt.Println("*k8sNodeInfo: ", *data.Metadata.Name)
+		// fmt.Println("*k8sNodeInfo: ", *data.Metadata.Name)
 		// 获得node的主机信息
 		myNodeInfo.Name = *data.Metadata.Name
 		myNodeInfo.CreationTimestamp = *data.Metadata.CreationTimestamp
@@ -324,7 +324,7 @@ func GetNodeInfo(url string) []*MyK8sNodeInfo {
 func GetPodInfo(podUrl string) []*MyK8sPodInfo {
 	// 基于K8S api获取所有pod的信息
 	pod_data := Get(podUrl)
-	fmt.Println("pod data: ", pod_data)
+	// fmt.Println("pod data: ", pod_data)
 	k8sPodInfo, _ := UnmarshalPodInfo([]byte(pod_data))
 	myPodInfos := make([]*MyK8sPodInfo, 0)
 
@@ -343,17 +343,24 @@ func GetPodInfo(podUrl string) []*MyK8sPodInfo {
 		var myPodInfo MyK8sPodInfo
 		myPodInfo.Name = *data.Metadata.Name
 		myPodInfo.CreationTimestamp = *data.Metadata.CreationTimestamp
-		fmt.Println("", data.Metadata.Name)
-		fmt.Println("", data.Metadata.CreationTimestamp)
+		// fmt.Println("", data.Metadata.Name)
+		// fmt.Println("", data.Metadata.CreationTimestamp)
 		if data.Metadata.Labels != nil {
-			myPodInfo.App = *data.Metadata.Labels.App
+			if data.Metadata.Labels.App != nil {
+				myPodInfo.App = *data.Metadata.Labels.App
+			}
 		}
 		if data.Spec != nil {
 			myPodInfo.Containers = len(data.Spec.Containers)
 		}
 		if data.Status != nil {
-			myPodInfo.Status = string(*data.Status.Phase)
-			myPodInfo.RunHostIP = string(*data.Status.HostIP)
+			if data.Status.Phase != nil {
+				myPodInfo.Status = string(*data.Status.Phase)
+			}
+			if data.Status.HostIP != nil {
+				// fmt.Println("hostIP: ", *data.Status.HostIP)
+				myPodInfo.RunHostIP = string(*data.Status.HostIP)
+			}
 		}
 		if data.Status.Conditions != nil {
 			for _, condition := range data.Status.Conditions {
@@ -400,8 +407,38 @@ func GetPodInfo(podUrl string) []*MyK8sPodInfo {
 			}
 			myPodInfo.containersStatus = containerStatusList
 		}
-
 		myPodInfos = append(myPodInfos, &myPodInfo)
 	}
 	return myPodInfos
+}
+
+type NodeResourceUsed struct {
+	Name   *string `json:"name"`
+	Cpu    *string `json:"cpu"`
+	Memory *string `json:"memory"`
+}
+
+func GetResourceUsed(nodeMetricsUrl string) map[string]*NodeResourceUsed {
+	node_resource_data := make(map[string]*NodeResourceUsed, 0)
+	node_metric_data := Get(nodeMetricsUrl)
+	if node_metrics, err := UnmarshalNodeMetrics([]byte(node_metric_data)); err == nil {
+		for _, node_metric := range node_metrics.Items {
+			if node_metric.Metadata != nil {
+				fmt.Println("name: ", node_metric.Metadata.Name)
+				node_resource_used := NodeResourceUsed{
+					Name:   node_metric.Metadata.Name,
+					Cpu:    node_metric.Usage.CPU,
+					Memory: node_metric.Usage.Memory,
+				}
+				node_resource_data[*node_metric.Metadata.Name] = &node_resource_used
+			}
+			fmt.Println("cpu usage:", node_metric.Usage.CPU)
+			fmt.Println("memory usage: ", node_metric.Usage.Memory)
+
+		}
+	} else {
+		fmt.Println("解析node metric资源使用数据失败")
+	}
+	return node_resource_data
+
 }
