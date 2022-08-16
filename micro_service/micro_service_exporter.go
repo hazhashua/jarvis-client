@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"metric_exporter/config"
 	"strconv"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -86,6 +87,11 @@ type K8sNodeDesc struct {
 	AllocatePodsDesc           *prometheus.Desc
 	AllocatePodsValType        prometheus.ValueType
 
+	CpuUsedDesc       *prometheus.Desc
+	CpuUsedValType    prometheus.ValueType
+	MemoryUsedDesc    *prometheus.Desc
+	MemoryUsedValType prometheus.ValueType
+
 	// MemoryPressureOk      *prometheus.Desc
 	// MemoryPressureValType prometheus.ValueType
 	// DiskPressureOk        *prometheus.Desc
@@ -104,14 +110,44 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 	master0 := k8s_config.Cluster.Master[0]
 
 	var k8sConfig config.K8sConfig = config.K8sConfig{
-		ServiceURL:  fmt.Sprintf("http://%s:%s/api/v1/services", master0, k8s_config.Cluster.ApiServerPort),  //"http://124.65.131.14:38080/api/v1/services",
-		EndpointURL: fmt.Sprintf("http://%s:%s/api/v1/endpoints", master0, k8s_config.Cluster.ApiServerPort), //"http://124.65.131.14:38080/api/v1/endpoints",
-		NodeURL:     fmt.Sprintf("http://%s:%s/api/v1/nodes", master0, k8s_config.Cluster.ApiServerPort),
-		PodURL:      fmt.Sprintf("http://%s:%s/api/v1/pods", master0, k8s_config.Cluster.ApiServerPort),
+		ServiceURL:      fmt.Sprintf("http://%s:%s/api/v1/services", master0, k8s_config.Cluster.ApiServerPort),  //"http://124.65.131.14:38080/api/v1/services",
+		EndpointURL:     fmt.Sprintf("http://%s:%s/api/v1/endpoints", master0, k8s_config.Cluster.ApiServerPort), //"http://124.65.131.14:38080/api/v1/endpoints",
+		NodeURL:         fmt.Sprintf("http://%s:%s/api/v1/nodes", master0, k8s_config.Cluster.ApiServerPort),
+		PodURL:          fmt.Sprintf("http://%s:%s/api/v1/pods", master0, k8s_config.Cluster.ApiServerPort),
+		NodeResourceURL: fmt.Sprintf("http://%s:%s/apis/metrics.k8s.io/v1beta1/nodes", master0, k8s_config.Cluster.ApiServerPort),
 	}
+
 	myk8sNodeInfos := GetNodeInfo(k8sConfig.NodeURL)
-	nodeDescs := make([]K8sNodeDesc, len(myk8sNodeInfos))
-	nodeInfoDescs := make([]K8sNodeInfoDesc, len(myk8sNodeInfos))
+	nodeDescs := make([]K8sNodeDesc, 0)
+	nodeInfoDescs := make([]K8sNodeInfoDesc, 0)
+	fmt.Println("len(myk8sNodeInfos): ", len(myk8sNodeInfos))
+
+	// 抓取node资源使用情况
+	nodeResourceUsedData := GetResourceUsed(k8sConfig.NodeResourceURL)
+	for _, nodeInfo := range myk8sNodeInfos {
+		// nodeInfo.Ip
+		if _, ok := nodeResourceUsedData[nodeInfo.Ip]; ok {
+			cpuUsed := nodeResourceUsedData[nodeInfo.Ip].Cpu
+			if strings.Contains(*cpuUsed, "n") {
+				if cpuUsedint, err := strconv.ParseUint((*cpuUsed)[:len(*cpuUsed)-1], 10, 64); err == nil {
+					nodeInfo.CpuUsedN = cpuUsedint
+				} else {
+					fmt.Println("获取cpu使用数据失败!")
+				}
+			}
+			memoryUsed := nodeResourceUsedData[nodeInfo.Ip].Memory
+			if strings.Contains(*memoryUsed, "Ki") {
+				if memoryUsedData, err := strconv.ParseUint((*memoryUsed)[:len(*memoryUsed)-2], 10, 64); err == nil {
+					nodeInfo.MemoryUsedKB = memoryUsedData
+				} else {
+					fmt.Println("获取内存使用数据失败!")
+				}
+			}
+		} else {
+			fmt.Println("没有抓取到这个ip主机的IP资源使用情况")
+		}
+	}
+
 	for i := 0; i < len(myk8sNodeInfos); i++ {
 		var k8sNodeDesc K8sNodeDesc
 
@@ -155,17 +191,29 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 			prometheus.Labels{})
 		k8sNodeDesc.AllocatePodsValType = prometheus.GaugeValue
 
+		k8sNodeDesc.CpuUsedDesc = prometheus.NewDesc("cpu_used_n", "主机cpu使用量",
+			[]string{"cluster", "host", "ip"},
+			prometheus.Labels{})
+		k8sNodeDesc.CpuUsedValType = prometheus.GaugeValue
+
+		k8sNodeDesc.MemoryUsedDesc = prometheus.NewDesc("memory_used_kb", "主机内存使用量",
+			[]string{"cluster", "host", "ip"},
+			prometheus.Labels{})
+		k8sNodeDesc.MemoryUsedValType = prometheus.GaugeValue
+
 		nodeDescs = append(nodeDescs, k8sNodeDesc)
 
 		var k8sNodeinfodesc K8sNodeInfoDesc
 		k8sNodeinfodesc.NodeInfoDesc = prometheus.NewDesc("k8s_node_ready", "展示k8s每一个节点资源负载情况及是否ready",
 			[]string{"cluster", "host", "ip", "memory_pressure_ok", "disk_pressure_ok", "pid_pressure_ok"},
 			prometheus.Labels{})
+		k8sNodeinfodesc.NodeInfoValType = prometheus.GaugeValue
 		nodeInfoDescs = append(nodeInfoDescs, k8sNodeinfodesc)
 	}
 
 	serviceinfo := GetServiceInfo(k8sConfig.ServiceURL)
-	serviceinfoDescs := make([]K8sServiceDesc, len(serviceinfo))
+	fmt.Println(" len(serviceinfo):", len(serviceinfo))
+	serviceinfoDescs := make([]K8sServiceDesc, 0)
 	for i := 0; i < len(serviceinfo); i++ {
 		var k8sServiceDesc K8sServiceDesc
 		k8sServiceDesc.ServiceInfoDesc = prometheus.NewDesc("service_info", "显示k8s集群中所有的服务信息",
@@ -178,7 +226,8 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 	// 微服务上应用的pod状态
 	// podInfoDescs []K8sPodDesc
 	myk8spodinfo := GetPodInfo(k8sConfig.PodURL)
-	podInfoDescs := make([]K8sPodDesc, len(myk8spodinfo))
+	podInfoDescs := make([]K8sPodDesc, 0)
+	fmt.Println("len(myk8spodinfo): ", len(myk8spodinfo))
 	for i := 0; i < len(myk8spodinfo); i++ {
 		var k8spodDesc K8sPodDesc
 		k8spodDesc.PodInfoDesc = prometheus.NewDesc("pod_info", "显示k8s集群节点的pod信息",
@@ -188,6 +237,14 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 		podInfoDescs = append(podInfoDescs, k8spodDesc)
 	}
 
+	fmt.Println("", *k8s_config)
+	fmt.Println("nodeDescs: ", nodeDescs)
+	fmt.Println("nodeInfoDescs: ", nodeInfoDescs)
+	fmt.Println("serviceinfoDescs: ", serviceinfoDescs)
+	fmt.Println("podInfoDescs: ", podInfoDescs)
+	fmt.Println("myk8sNodeInfos: ", myk8sNodeInfos)
+	fmt.Println("serviceinfo: ", serviceinfo)
+	fmt.Println("myk8spodinfo: ", myk8spodinfo)
 	return &MicroServiceExporter{
 		k8sConfig:        *k8s_config,
 		nodeDescs:        nodeDescs,
@@ -201,6 +258,9 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 
 }
 
+// Describe(chan<- *Desc)
+
+// func (Collector).Describe(chan<- *Desc)
 func (e *MicroServiceExporter) Describe(ch chan<- *prometheus.Desc) {
 	for _, nodeDesc := range e.nodeDescs {
 		ch <- nodeDesc.MaxCpuDesc
@@ -212,6 +272,9 @@ func (e *MicroServiceExporter) Describe(ch chan<- *prometheus.Desc) {
 		ch <- nodeDesc.AllocateDiskStorageDesc
 		ch <- nodeDesc.AllocateMemoryDesc
 		ch <- nodeDesc.AllocatePodsDesc
+
+		ch <- nodeDesc.CpuUsedDesc
+		ch <- nodeDesc.MemoryUsedDesc
 	}
 
 	for _, nodeInfoDesc := range e.nodeInfoDescs {
@@ -228,6 +291,7 @@ func (e *MicroServiceExporter) Describe(ch chan<- *prometheus.Desc) {
 
 }
 
+//
 func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	// 基于抓取node, service, pod数据，输出指标
 	k8sNodeInfo := e.nodeDatas
@@ -258,6 +322,11 @@ func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(nodeDesc.AllocatePodsDesc, nodeDesc.AllocatePodsValType, float64(e.nodeDatas[idx].NodeAllocatableS.pods),
 			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
 
+		ch <- prometheus.MustNewConstMetric(nodeDesc.CpuUsedDesc, nodeDesc.CpuUsedValType, float64(e.nodeDatas[idx].CpuUsedN),
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+		ch <- prometheus.MustNewConstMetric(nodeDesc.MemoryUsedDesc, nodeDesc.MemoryUsedValType, float64(e.nodeDatas[idx].MemoryUsedKB),
+			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
+
 		// 写k8s_node_ready指标数据
 		// "cluster", "host", "ip", "memory_pressure_ok", "disk_pressure_ok", "pid_pressure_ok"
 		isReady, _ := strconv.ParseFloat(BoolToString(e.nodeDatas[idx].IsReady), 32)
@@ -267,11 +336,12 @@ func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// 写k8s service相关的指标
+	keys := make([]string, 0, len(e.serviceInfoDatas))
+	for k := range e.serviceInfoDatas {
+		keys = append(keys, k)
+		fmt.Println("serviceinfo key: ", k)
+	}
 	for idx, service_info := range e.serviceInfoDescs {
-		keys := make([]string, 0, len(e.serviceInfoDatas))
-		for k := range e.serviceInfoDatas {
-			keys = append(keys, k)
-		}
 		// "cluster", "service_name", "is_nodeport"
 		ch <- prometheus.MustNewConstMetric(service_info.ServiceInfoDesc, service_info.ServiceInfoValType, 1,
 			e.k8sConfig.Cluster.Name, keys[idx], BoolToString(e.serviceInfoDatas[keys[idx]].IsNodePort))

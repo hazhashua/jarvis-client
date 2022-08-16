@@ -50,6 +50,8 @@ type MyK8sNodeInfo struct {
 	DiskPressure      bool             `json:"diskPressure"`
 	PidPressure       bool             `json:"pidPressure"`
 	IsReady           bool             `json:"isReady"`
+	CpuUsedN          uint64           `json:"cpuUsedn"`
+	MemoryUsedKB      uint64           `json:"memoryUsedKB"`
 }
 
 type MyContainerStatus struct {
@@ -210,6 +212,7 @@ func GetNodeInfo(url string) []*MyK8sNodeInfo {
 	*/
 	node_data := Get(url)
 	// fmt.Println("node_data: ", node_data)
+
 	k8sNodeInfo, _ := UnmarshalK8sNodeInfo([]byte(node_data))
 	myNodeInfos := make([]*MyK8sNodeInfo, 0)
 	for _, data := range k8sNodeInfo.Items {
