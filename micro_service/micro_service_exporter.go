@@ -356,7 +356,7 @@ func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 		}
 		ch <- prometheus.MustNewConstMetric(pod_info.PodInfoDesc, pod_info.PodInfoValType, 1,
 			e.k8sConfig.Cluster.Name, e.podInfoDatas[idx].Name, e.podInfoDatas[idx].App, e.podInfoDatas[idx].Status,
-			e.podInfoDatas[idx].App, fmt.Sprintf("%d", restartCount))
+			e.podInfoDatas[idx].RunHostIP, fmt.Sprintf("%d", restartCount))
 
 	}
 }
