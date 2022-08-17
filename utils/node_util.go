@@ -74,5 +74,4 @@ func NetInfoGet() *NetInfo {
 	netInfo.DeviceIds = deviceFlows
 	netInfo.EthInfo = interfaceInfo
 	return &netInfo
-
 }

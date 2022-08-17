@@ -162,11 +162,11 @@ func ExecuteSchemaQuery(db *sql.DB, sqlStr string, columns []string, types []str
 }
 
 type TableTable struct {
-	TableSchema string `json:"table_schema"`
-	TableName   string `json:"table_name"`
-	TableRows   int    `json:"table_rows"`
-	DataSize    int    `json:"data_size"`
-	IndexSize   int    `json:"index_size"`
+	TableSchema string  `json:"table_schema"`
+	TableName   string  `json:"table_name"`
+	TableRows   int     `json:"table_rows"`
+	DataSize    float32 `json:"data_size"`
+	IndexSize   float32 `json:"index_size"`
 }
 
 func ExecuteTableQuery(db *sql.DB, sqlStr string, columns []string, types []string) []TableTable {
@@ -393,11 +393,11 @@ func TableQuery(mysqlConnector MysqlConnect) []TableTable {
 
 	query := `SELECT 
 			TABLE_SCHEMA, TABLE_NAME, TABLE_ROWS, 
-			data_length as data_size, 
-			index_length as index_size 
+			data_length/1024 as data_size, 
+			index_length/1024 as index_size 
 			FROM information_schema.tables ORDER BY data_length DESC;`
 	columns := []string{"schema_name", "table_name", "table_rows", "data_size", "index_size"}
-	types := []string{"string", "string", "int", "int", "int"}
+	types := []string{"string", "string", "int", "float", "float"}
 
 	tt := ExecuteTableQuery(db, query, columns, types)
 	// db.Close()
