@@ -154,7 +154,7 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	tableTables := utils.TableQuery(mysqlConnector)
 	for idx, table := range tableTables {
 		fmt.Println(table.TableSchema, table.TableName, table.TableRows, table.DataSize, table.IndexSize)
-		ch <- prometheus.MustNewConstMetric(e.tableInfos[idx], prometheus.GaugeValue, 1, table.TableSchema, table.TableName, fmt.Sprintf("%d", table.TableRows), fmt.Sprintf("%f", table.DataSize), fmt.Sprintf("%f", table.IndexSize), mysqlConfig.Cluster.Name, mysqlConnector.Host)
+		ch <- prometheus.MustNewConstMetric(e.tableInfos[idx], prometheus.GaugeValue, 1, table.TableSchema, table.TableName, fmt.Sprintf("%d", table.TableRows), fmt.Sprintf("%.5f", table.DataSize), fmt.Sprintf("%.5f", table.IndexSize), mysqlConfig.Cluster.Name, mysqlConnector.Host)
 	}
 
 }
