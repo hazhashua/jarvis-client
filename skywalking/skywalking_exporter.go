@@ -42,7 +42,7 @@ type SkyWalkingExporter struct {
 // 读取skywalking的相关配置
 func ParseSkyWalkingConfig() *SkyWalkingConfig {
 	var skywalkingConfig SkyWalkingConfig
-	if bytes, err := ioutil.ReadFile("./skywalking/skywalking.yaml"); err == nil {
+	if bytes, err := ioutil.ReadFile("./skywalking/config.yaml"); err == nil {
 		yaml.Unmarshal(bytes, &skywalkingConfig)
 	} else {
 		fmt.Println("解析本地skywalking配置文件失败!")
@@ -116,6 +116,6 @@ func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
 		// "name", "type", "service_name", "start_time", "end_time", "message"
 		// se := SkyEvent(events[idx])
 		ch <- prometheus.MustNewConstMetric(eventInfo.EventInfoDesc, eventInfo.EventInfoValType, 1,
-			convertedObjs[idx].Name, convertedObjs[idx].Type, convertedObjs[idx].Service, fmt.Sprintf("%ul", convertedObjs[idx].StartTime), fmt.Sprintf("%ul,", convertedObjs[idx].EndTime), convertedObjs[idx].Message)
+			convertedObjs[idx].Name, convertedObjs[idx].Type, convertedObjs[idx].Service, fmt.Sprintf("%d", convertedObjs[idx].StartTime), fmt.Sprintf("%d,", convertedObjs[idx].EndTime), convertedObjs[idx].Message)
 	}
 }

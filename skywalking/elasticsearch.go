@@ -12,7 +12,8 @@ import (
 )
 
 var client *elastic.Client
-var host = "http://192.168.10.65:9200"
+var host string
+var hosts []string
 
 type Employee struct {
 	FirstName string   `json:"first_name"`
@@ -25,6 +26,14 @@ type Employee struct {
 //初始化
 func init() {
 	//errorlog := log.New(os.Stdout, "APP", log.LstdFlags)
+
+	skywalkingConfig := ParseSkyWalkingConfig()
+	for _, ip := range skywalkingConfig.Cluster.ElasticSearch.Ips {
+		hostUrl := fmt.Sprintf("http://%s:%d", ip, skywalkingConfig.Cluster.ElasticSearch.Port)
+		hosts = append(hosts, hostUrl)
+	}
+	host = hosts[0]
+
 	var err error
 	//这个地方有个小坑 不加上elastic.SetSniff(false) 会连接不上
 	client, err = elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(host))

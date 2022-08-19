@@ -10,6 +10,7 @@ import (
 	nodeexporter "metric_exporter/node_exporter"
 	"metric_exporter/redis"
 	"metric_exporter/service_alive"
+	"metric_exporter/skywalking"
 	"metric_exporter/spark"
 	"metric_exporter/utils"
 	"metric_exporter/zookeeper"
@@ -20,12 +21,13 @@ import (
 	"net/http"
 
 	// "github.com/hazhashua/alive_exporter/collector"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 )
 
-func comineServiceInfo() map[string]map[string]string {
+func comineServiceInfo() (map[string]map[string]string, []*micro_service.MyK8sNodeInfo) {
 	k8s_config := micro_service.Parse_k8s_config()
 	fmt.Println("k8s_config: ", k8s_config.Cluster.Name)
 	master0 := k8s_config.Cluster.Master[0]
@@ -33,6 +35,7 @@ func comineServiceInfo() map[string]map[string]string {
 	var k8sConfig config.K8sConfig = config.K8sConfig{
 		ServiceURL:  fmt.Sprintf("http://%s:%s/api/v1/services", master0, k8s_config.Cluster.ApiServerPort),  //"http://124.65.131.14:38080/api/v1/services",
 		EndpointURL: fmt.Sprintf("http://%s:%s/api/v1/endpoints", master0, k8s_config.Cluster.ApiServerPort), //"http://124.65.131.14:38080/api/v1/endpoints",
+		NodeURL:     fmt.Sprintf("http://%s:%s/api/v1/nodes", master0, k8s_config.Cluster.ApiServerPort),
 	}
 
 	serviceinfo := micro_service.GetServiceInfo(k8sConfig.ServiceURL)
@@ -58,7 +61,9 @@ func comineServiceInfo() map[string]map[string]string {
 		service_all_info[key] = data
 	}
 	fmt.Println("service_all_info: ", service_all_info)
-	return service_all_info
+	myK8SNodeInfo := micro_service.GetNodeInfo(k8sConfig.NodeURL)
+
+	return service_all_info, myK8SNodeInfo
 
 }
 
@@ -82,13 +87,24 @@ func (handler SparkHandler) ServeHTTP(writer http.ResponseWriter, r *http.Reques
 func main() {
 
 	// 抓取微服务的数据信息
-	// comineServiceInfo()
+	// microServiceExporter := micro_service.NewMicroServiceExporter()
+	// micro_r := prometheus.NewRegistry()
+	// micro_r.MustRegister(microServiceExporter)
+	// microHandler := promhttp.HandlerFor(micro_r, promhttp.HandlerOpts{})
+	// http.Handle("/micro_servce/metrics", microHandler)
 
 	// 查询数据库数据
 	// utils.Query("")
 
+	// 微服务上服务的状态
+	microServiceExporter := micro_service.NewMicroServiceExporter()
+	microServiceR := prometheus.NewRegistry()
+	microServiceR.MustRegister(microServiceExporter)
+	microServiceHandler := promhttp.HandlerFor(microServiceR, promhttp.HandlerOpts{})
+	http.Handle("/micro_service/metrics", microServiceHandler)
+
 	// 激活服务存活exporter
-	fmt.Println("*&&&&&&&&&&&&&&&&&&", utils.ValueQuery(""))
+	fmt.Println("&&&&&&&&&&&&&&&&&&", utils.ValueQuery(""))
 	serviceCollector := service_alive.NewServiceAliveCollector()
 	r := prometheus.NewRegistry()
 	r.MustRegister(serviceCollector)
@@ -141,12 +157,6 @@ func main() {
 
 	// http://bigdata-dev01:8088/jmx?qry=Hadoop:service=ResourceManager,name=QueueMetrics,q0=root,q1=default
 
-	// serviceCollector := micro_service.newServiceAliveCollector()
-	// service_r := prometheus.NewRegistry()
-	// r.MustRegister(serviceCollector)
-	// handler := promhttp.HandlerFor(service_r, promhttp.HandlerOpts{})
-	// http.Handle("/alive/metrics", handler)
-
 	// 激活hadoop exporter
 	hadoop_exporter := hadoop.NewHadoopCollector()
 	hadoop_r := prometheus.NewRegistry()
@@ -186,8 +196,26 @@ func main() {
 	node_handler := promhttp.HandlerFor(node_r, promhttp.HandlerOpts{})
 	http.Handle("/node/metrics", node_handler)
 
-	log.Info("Beginning to serve on port :49080")
-	log.Fatal(http.ListenAndServe(":49080", nil))
+	// 激活skywalking exporter
+	skywalking_exporter := skywalking.NewSkywalkingExporter()
+	skywalking_r := prometheus.NewRegistry()
+	skywalking_r.MustRegister(skywalking_exporter)
+	skywalking_handler := promhttp.HandlerFor(skywalking_r, promhttp.HandlerOpts{})
+	http.Handle("/skywalking/metrics", skywalking_handler)
+
+	// escape := url.QueryEscape("redis_keyspace_hits_total/(redis_keyspace_misses_total+redis_keyspace_hits_total)")
+	// urlstr := fmt.Sprintf("http://192.168.10.221:9090/api/v1/query?query=%s", escape)
+
+	// if r2, err := http.Get(urlstr); err == nil {
+	// 	var body []byte
+	// 	body, err = ioutil.ReadAll(r2.Body)
+	// 	fmt.Println("response: ", string(body))
+	// } else {
+	// 	fmt.Println("request error!")
+	// }
+
+	log.Info("Beginning to serve on port :38080")
+	log.Fatal(http.ListenAndServe(":38080", nil))
 
 	// time.Sleep(100)
 	// kafka_collector = kafka.NewKafkaCollector()
