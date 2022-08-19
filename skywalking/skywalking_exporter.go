@@ -30,7 +30,7 @@ type SkyWalkingConfig struct {
 		Name          string `json:"name"`
 		ElasticSearch struct {
 			Ips  []string `json:"ips"`
-			Port int      `json:port`
+			Port int      `json:"port"`
 		}
 	}
 }
