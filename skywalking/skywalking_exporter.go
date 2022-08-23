@@ -68,7 +68,7 @@ func NewSkywalkingExporter() *SkyWalkingExporter {
 		default:
 		}
 		eventInfo := prometheus.NewDesc("event_info", "描述事件的详细信息",
-			[]string{"name", "type", "service_name", "start_time", "end_time", "message"},
+			[]string{"name", "type", "service_name", "start_time", "end_time", "message", "start", "end", "time_bucket"},
 			prometheus.Labels{})
 		evnetInfoValType := prometheus.GaugeValue
 		event_info_list = append(event_info_list, EventInfo{
@@ -115,7 +115,10 @@ func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
 	for idx, eventInfo := range e.EventInfos {
 		// "name", "type", "service_name", "start_time", "end_time", "message"
 		// se := SkyEvent(events[idx])
+		start := time.Unix(int64(convertedObjs[idx].StartTime/1000), 0).Format("2006-01-02 15:04:05")
+		end := time.Unix(int64(convertedObjs[idx].EndTime/1000), 0).Format("2006-01-02 15:04:05")
+		time_bucket := time.Unix(int64(convertedObjs[idx].StartTime/1000), 0).Format("200601021504")
 		ch <- prometheus.MustNewConstMetric(eventInfo.EventInfoDesc, eventInfo.EventInfoValType, 1,
-			convertedObjs[idx].Name, convertedObjs[idx].Type, convertedObjs[idx].Service, fmt.Sprintf("%d", convertedObjs[idx].StartTime), fmt.Sprintf("%d,", convertedObjs[idx].EndTime), convertedObjs[idx].Message)
+			convertedObjs[idx].Name, convertedObjs[idx].Type, convertedObjs[idx].Service, fmt.Sprintf("%d", convertedObjs[idx].StartTime), fmt.Sprintf("%d,", convertedObjs[idx].EndTime), convertedObjs[idx].Message, start, end, time_bucket)
 	}
 }

@@ -4,9 +4,12 @@ package skywalking
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
+	"time"
 
 	"github.com/olivere/elastic/v7"
 )
@@ -139,6 +142,7 @@ func GetAll(index string, types string, typ interface{}) (results []interface{})
 	if err != nil {
 		panic(err)
 	}
+
 	// var typ skwEvent
 	printEvents(getRes, err, typ)
 
@@ -146,6 +150,103 @@ func GetAll(index string, types string, typ interface{}) (results []interface{})
 	typet := reflect.TypeOf(typ)
 	results = getRes.Each(typet)
 	return results
+}
+
+type MyCpmInfo struct {
+	MetricTable string `json:"metric_table"`
+	Value       int    `json:"value"`
+	ServiceId   string `json:"service_id"`
+	ServiceName string `json:"service_name"`
+	EntityId    string `json:"entity_id"`
+	TimeBucket  int    `json:"time_bucket"`
+	Entity      string `json:"entity"`
+}
+
+type CpmInfo struct {
+	MetricTable string `json:"metric_table"`
+	Total       int    `json:"total"`
+	ServiceId   string `json:"service_id"`
+	TimeBucket  int    `json:"time_bucket"`
+	EntityId    string `json:"entity_id"`
+	Value       int    `json:"value"`
+}
+
+// 抓取当天的service 和 endpoint cpm
+func GetServiceInfo() (cpmInfo []MyCpmInfo) {
+
+	year, m, day := time.Now().Date()
+	index := fmt.Sprintf("sw_metrics-cpm-%04d%02d%02d", year, m, day)
+	fmt.Println("index: ", index)
+
+	index = "sw_metrics-cpm-20220817"
+	fmt.Println("index: ", index)
+
+	cpms := make([]MyCpmInfo, 0)
+	var cpm CpmInfo
+
+	termQuery := elastic.NewTermQuery("metric_table", "service_instance_cpm")
+	// queryStr := elastic.NewQueryStringQuery("metric_table:service_instance_cpm")
+	if searchRs, err := client.Search(index).Query(termQuery).Size(10000).Do(context.Background()); err == nil {
+		fmt.Println("搜索到数据...", searchRs.Hits)
+
+		fmt.Println("hit数组长度为: ", searchRs.TotalHits())
+		if searchRs.TotalHits() <= 0 {
+			fmt.Println("hit数组长度<=0")
+		}
+		for _, rs := range searchRs.Each(reflect.TypeOf(cpm)) {
+			cpmin := rs.(CpmInfo)
+			fmt.Println("遍历搜索到的数据...", " serviceid: ", cpmin.ServiceId)
+			// 转义service_id和entity_id信息
+			r := regexp.MustCompile("(.*)(\\.\\d+[_-]?)(.*)")
+
+			bbs := r.FindSubmatch([]byte(cpmin.ServiceId))
+			fmt.Println("len(findsubmatch): ", len(bbs))
+			if len(bbs) == 2 {
+				fmt.Println(string(bbs[1]))
+			} else if len(bbs) == 3 {
+				base641, _ := base64.StdEncoding.DecodeString(string(bbs[1]))
+				fmt.Println("match 1: ", string(bbs[1]), string(base641))
+				base642, _ := base64.StdEncoding.DecodeString(string(bbs[2]))
+				fmt.Println("match 2: ", string(bbs[2]), string(base642))
+			} else if len(bbs) == 4 {
+				base641, _ := base64.StdEncoding.DecodeString(string(bbs[1]))
+				fmt.Println("match 1: ", string(bbs[1]), string(base641))
+				base642, _ := base64.StdEncoding.DecodeString(string(bbs[2]))
+				fmt.Println("match 2: ", string(bbs[2]), string(base642))
+				base643, _ := base64.StdEncoding.DecodeString(string(bbs[3]))
+				fmt.Println("match 3: ", string(bbs[3]), string(base643))
+			}
+
+			// for _, s := range r.FindAllString(cpmin.ServiceId, -1) {
+			// 	fmt.Println("匹配的字符串: ", s)
+			// }
+
+			cpms = append(cpms, MyCpmInfo{
+				MetricTable: cpmin.MetricTable,
+				Value:       cpmin.Value,
+				ServiceId:   cpmin.ServiceId,
+				ServiceName: cpmin.ServiceId,
+				EntityId:    cpmin.EntityId,
+				Entity:      "",
+				TimeBucket:  cpmin.TimeBucket,
+			})
+		}
+	}
+
+	return cpms
+
+	// getRes, err := client.Search().Size(10000).Index(index).Type(types).Do(context.Background())
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// // var typ skwEvent
+	// printEvents(getRes, err, typ)
+
+	// // var typ skwEvent
+	// typet := reflect.TypeOf(typ)
+	// results = getRes.Each(typet)
+	// return results
 }
 
 // 获取es中的一条数据

@@ -81,10 +81,11 @@ func NewHiveExporter() *HiveExporter {
 	}
 	hive_config := Parse_hive_config()
 	mysql_connection := utils.MysqlConnect{
-		Host:     hive_config.Cluster.Mysql.Host,
-		Port:     hive_config.Cluster.Mysql.Port,
-		Username: hive_config.Cluster.Mysql.User,
-		Password: hive_config.Cluster.Mysql.Password,
+		Host:      hive_config.Cluster.Mysql.Host,
+		Port:      hive_config.Cluster.Mysql.Port,
+		Username:  hive_config.Cluster.Mysql.User,
+		Password:  hive_config.Cluster.Mysql.Password,
+		DefaultDB: "hive",
 	}
 	db_tables := QueryDetailTbls(mysql_connection)
 	tableInfoDescriptions := make([]*prometheus.Desc, len(db_tables))
@@ -133,10 +134,11 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 
 	hive_config := Parse_hive_config()
 	mysql_connection := utils.MysqlConnect{
-		Host:     hive_config.Cluster.Mysql.Host,
-		Port:     hive_config.Cluster.Mysql.Port,
-		Username: hive_config.Cluster.Mysql.User,
-		Password: hive_config.Cluster.Mysql.Password,
+		Host:      hive_config.Cluster.Mysql.Host,
+		Port:      hive_config.Cluster.Mysql.Port,
+		Username:  hive_config.Cluster.Mysql.User,
+		Password:  hive_config.Cluster.Mysql.Password,
+		DefaultDB: "hive",
 	}
 	// QueryTbls(mysql_connection)
 	db_tables := QueryPartitionTbls(mysql_connection)
@@ -203,7 +205,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 		} else {
 			is_partitioned = "0"
 		}
-		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(1), *db_tables[idx].Name, *db_tables[idx].TblName, is_external, is_partitioned, strconv.Itoa(db_tables[idx].NumFiles), strconv.Itoa(db_tables[idx].TotalSize), hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(1), *db_tables[idx].Name, *db_tables[idx].TblName, is_external, is_partitioned, fmt.Sprintf("%d", db_tables[idx].NumFiles), strconv.Itoa(db_tables[idx].TotalSize), hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
 	}
 	ch <- exporter.clusterMode
 }

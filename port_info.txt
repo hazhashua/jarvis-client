@@ -1,0 +1,11 @@
+{"ID":2,"ServiceName":"hbase","ChildService":"hmaster","ClusterName":"融合平台-dev","IP":"192.168.10.220","Port":16010,"PortType":"http"}
+{"ID":1,"ServiceName":"hbase","ChildService":"hmaster","ClusterName":"融合平台-dev","IP":"192.168.10.220","Port":16000,"PortType":"rpc"}
+{"ID":4,"ServiceName":"hbase","ChildService":"regionserver","ClusterName":"融合平台-dev","IP":"192.168.10.220","Port":16030,"PortType":"http"}
+{"ID":3,"ServiceName":"hbase","ChildService":"regionserver","ClusterName":"融合平台-dev","IP":"192.168.10.220","Port":16020,"PortType":"rpc"}
+{"ID":6,"ServiceName":"hbase","ChildService":"regionserver","ClusterName":"融合平台-dev","IP":"192.168.10.221","Port":16030,"PortType":"http"}
+{"ID":5,"ServiceName":"hbase","ChildService":"regionserver","ClusterName":"融合平台-dev","IP":"192.168.10.221","Port":16020,"PortType":"rpc"}
+{"ID":8,"ServiceName":"hbase","ChildService":"regionserver","ClusterName":"融合平台-dev","IP":"192.168.10.222","Port":16030,"PortType":"http"}
+{"ID":7,"ServiceName":"hbase","ChildService":"regionserver","ClusterName":"融合平台-dev","IP":"192.168.10.222","Port":16020,"PortType":"rpc"}
+{"ID":9,"ServiceName":"hive","ChildService":"hiveserver2","ClusterName":"融合平台-dev","IP":"192.168.10.220","Port":10000,"PortType":"rpc"}
+{"ID":10,"ServiceName":"hive","ChildService":"hiveserver2","ClusterName":"融合平台-dev","IP":"192.168.10.221","Port":10000,"PortType":"rpc"}
+{"ID":11,"ServiceName":"hive","ChildService":"hiveserver2","ClusterName":"融合平台-dev","IP":"192.168.10.222","Port":10000,"PortType":"rpc"}

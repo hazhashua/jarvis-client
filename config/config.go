@@ -1,13 +1,21 @@
 package config
 
 type K8sConfig struct {
-	ServiceURL  string `yaml:"http,omitempty"`
-	EndpointURL string `yaml:"http,omitempty"`
+	ServiceURL      string `yaml:"serviceUrl,omitempty"`
+	EndpointURL     string `yaml:"endpointUrl,omitempty"`
+	NodeURL         string `yaml:"nodeUrl,omitempty"`
+	PodURL          string `yaml:"podUrl,omitempty"`
+	NodeResourceURL string `yaml:"nodeResourceUrl,omitempty"`
 }
 
 var k8sConfig K8sConfig = K8sConfig{
-	ServiceURL:  "http://124.65.131.14:38080/api/v1/services",
-	EndpointURL: "http://124.65.131.14:38080/api/v1/endpoints",
+	// ServiceURL:  "http://124.65.131.14:38080/api/v1/services",
+	// EndpointURL: "http://124.65.131.14:38080/api/v1/endpoints",
+	ServiceURL:      "http://192.168.10.20:8080/api/v1/services",
+	EndpointURL:     "http://192.168.10.20:8080/api/v1/endpoints",
+	NodeURL:         "http://192.168.10.20:8080/api/v1/nodes",
+	PodURL:          "http://192.168.10.20:8080/api/v1/pods",
+	NodeResourceURL: "http://192.168.10.20:8080/apis/metrics.k8s.io/v1beta1/nodes",
 }
 
 // import (

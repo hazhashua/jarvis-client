@@ -219,6 +219,10 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 	// 	[]string{"cluster", "host", "ip", "broker_id", "disk_path"},
 	// 	prometheus.Labels{})
 	for idx, disk_desc := range collector.kafkaMetrics.DiskUsage {
+		if idx >= len(disk_status) {
+			fmt.Println("数组索引，超过获取的kafka磁盘数......")
+			break
+		}
 		ch <- prometheus.MustNewConstMetric(disk_desc, prometheus.GaugeValue,
 			float64(disk_status[idx].Used/disk_status[idx].All),
 			kafka_config.Cluster.Name, fmt.Sprintf("host_%d", idx), fmt.Sprintf("ip_%d", idx), fmt.Sprintf("broker_id_%d", idx), disk_status[idx].Path)
@@ -245,6 +249,10 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 	for idx, partition_replication_desc := range collector.kafkaMetrics.TopicPartitionReplicationNum {
+		if idx >= len(topic_info) || idx >= len(partition_info) {
+			fmt.Println("数组越界，topic_info....")
+			break
+		}
 		ch <- prometheus.MustNewConstMetric(partition_replication_desc, collector.kafkaMetrics.TopicPartitionReplicationNumValType, float64(topic_partition_replication_info[idx]), kafka_config.Cluster.Name, topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
 	}
 
@@ -274,6 +282,10 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 	for idx, produce_offset_desc := range collector.kafkaMetrics.TopicProduceOffset {
+		if idx >= len(offsets_info) || idx >= len(topic_info) || idx >= len(partition_info) {
+			fmt.Println("数组越界，offset || topic_info || partition_info")
+			break
+		}
 		ch <- prometheus.MustNewConstMetric(produce_offset_desc, collector.kafkaMetrics.TopicProduceOffsetValType, float64(offsets_info[idx]), kafka_config.Cluster.Name, topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
 	}
 
@@ -305,10 +317,16 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 	replication_balance_rate_info := make([]float32, 0)
 	// collector.kafkaMetrics.ReplicationBalanceRate
 	for topic, replication_rate := range replication_distribution_balanced_rate_metric {
+
 		topic_info = append(topic_info, topic)
 		replication_balance_rate_info = append(replication_balance_rate_info, replication_rate)
 	}
 	for idx, replication_balance_rate_desc := range collector.kafkaMetrics.ReplicationBalanceRate {
+		if idx >= len(replication_balance_rate_info) || idx >= len(topic_info) {
+			fmt.Println("数组越界，offset || topic_info || replication_balance_rate_info")
+			break
+		}
+
 		ch <- prometheus.MustNewConstMetric(replication_balance_rate_desc, collector.kafkaMetrics.ReplicationBalanceRateValType, float64(replication_balance_rate_info[idx]), kafka_config.Cluster.Name, topic_info[idx])
 	}
 
@@ -321,6 +339,10 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for idx, partiton_balance_rate_desc := range collector.kafkaMetrics.PartitionBalanceRate {
+		if idx >= len(partition_balance_rate_info) || idx >= len(topic_info) {
+			fmt.Println("数组越界，offset || topic_info || partition_balance_rate_info")
+			break
+		}
 		ch <- prometheus.MustNewConstMetric(partiton_balance_rate_desc, collector.kafkaMetrics.PartitionBalanceRateValType, float64(partition_balance_rate_info[idx]), kafka_config.Cluster.Name, topic_info[idx])
 
 	}

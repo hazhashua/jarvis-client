@@ -91,7 +91,6 @@ func MemUsageGet() *Memory {
 		fmt.Println("vms.Buffers: ", vms.Buffers)
 		fmt.Println("vms.Free", vms.Free)
 		fmt.Println("vms.UsedPercent: ", vms.UsedPercent)
-
 	} else {
 		fmt.Println("获取物理内存使用率失败 ", err.Error())
 	}
@@ -142,7 +141,6 @@ func DiskIoDeviceNum() int {
 
 func DiskUsageGet() *Disk {
 	//获取各个磁盘的信息及使用率
-
 	deviceIds := make([]string, 0)
 	mountPoint := make([]string, 0)
 	total := make([]uint64, 0)
@@ -227,81 +225,11 @@ func HostInfoGet() *HostInfo {
 	}
 }
 
-// type FlowInfo struct {
-// 	sentBytes      uint64
-// 	receiveBytes   uint64
-// 	packageSent    uint64
-// 	packageReceive uint64
-// 	errin          uint64
-// 	errout         uint64
-// 	dropin         uint64
-// 	dropout        uint64
-// }
-
-// type NetInfo struct {
-// 	deviceIds map[string]FlowInfo
-// 	ethInfo   map[string]string
-// 	ip        string
-// }
-
 func NetDeviceNum() int {
 	ioStats, _ := net.IOCounters(true)
 	fmt.Println("iostats: ", ioStats)
 	return len(ioStats)
 }
-
-// // 获取网卡网络信息
-// func NetInfoGet() *NetInfo {
-// 	// 获取网卡信息及读写相关信息
-// 	// //网络连接相关信息
-// 	// if connectionStats, err := net.Connections("all"); err == nil {
-// 	// 	fmt.Println("获取网络的连接信息.....")
-// 	// 	for _, connectionStat := range connectionStats {
-// 	// 		// fmt.Println("connectionStat: ", connectionStat)
-// 	// 		fmt.Println("localAddr: ", connectionStat.Laddr.IP, "   destAddr: ", connectionStat.Raddr.IP)
-// 	// 	}
-// 	// }
-
-// 	netInfo := NetInfo{}
-// 	// var interfaceName, ip string
-// 	interfaceInfo := make(map[string]string, 0)
-// 	interfaces, err := net.Interfaces()
-// 	if err != nil {
-// 		return &netInfo
-// 	}
-// 	for _, interfaceStat := range interfaces {
-// 		for _, v := range interfaceStat.Addrs {
-// 			fmt.Println("interfaceStat.Name: ", interfaceStat.Name, " net.InterfaceAddr: ", v.String(), v.Addr)
-// 			ips := strings.Split(v.Addr, "/")
-// 			fmt.Println("interface名称: ", interfaceStat.Name)
-// 			fmt.Println("ip地址: ", ips[0])
-// 			if ips[0] != "127.0.0.1" && len(strings.Split(ips[0], ".")) == 4 {
-// 				interfaceInfo[interfaceStat.Name] = ips[0]
-// 				netInfo.ip = ips[0]
-// 			}
-// 		}
-// 	}
-
-// 	deviceFlows := make(map[string]FlowInfo, 0)
-// 	ioStats, _ := net.IOCounters(true)
-// 	for _, ioStat := range ioStats {
-// 		fmt.Println("ioStat: ", ioStat)
-// 		deviceFlows[ioStat.Name] = FlowInfo{
-// 			sentBytes:      ioStat.BytesSent,
-// 			receiveBytes:   ioStat.BytesRecv,
-// 			packageSent:    ioStat.PacketsSent,
-// 			packageReceive: ioStat.PacketsRecv,
-// 			errin:          ioStat.Errin,
-// 			errout:         ioStat.Errout,
-// 			dropin:         ioStat.Dropin,
-// 			dropout:        ioStat.Dropout,
-// 		}
-// 	}
-// 	netInfo.deviceIds = deviceFlows
-// 	netInfo.ethInfo = interfaceInfo
-// 	return &netInfo
-
-// }
 
 // func getIpFromAddr(addr net.Addr) net.IP {
 // 	var ip net.IP

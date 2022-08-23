@@ -203,6 +203,9 @@ func main() {
 	skywalking_handler := promhttp.HandlerFor(skywalking_r, promhttp.HandlerOpts{})
 	http.Handle("/skywalking/metrics", skywalking_handler)
 
+	fmt.Println("抓取skywalking service info 信息...")
+	skywalking.GetServiceInfo()
+
 	// escape := url.QueryEscape("redis_keyspace_hits_total/(redis_keyspace_misses_total+redis_keyspace_hits_total)")
 	// urlstr := fmt.Sprintf("http://192.168.10.221:9090/api/v1/query?query=%s", escape)
 

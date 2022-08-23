@@ -1,6 +1,0 @@
-cluster: 
-  name: bigdata-dev-cluster
-  elasticsearch:
-    ips: 
-      - 192.168.10.65
-    port: 9200

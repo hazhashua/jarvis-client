@@ -86,10 +86,11 @@ func Parse_hive_config() *HiveConfig {
 func GetDbs() []DBS {
 	hive_config := Parse_hive_config()
 	mysql_connection := utils.MysqlConnect{
-		Host:     hive_config.Cluster.Mysql.Host,
-		Port:     hive_config.Cluster.Mysql.Port,
-		Username: hive_config.Cluster.Mysql.User,
-		Password: hive_config.Cluster.Mysql.Password,
+		Host:      hive_config.Cluster.Mysql.Host,
+		Port:      hive_config.Cluster.Mysql.Port,
+		Username:  hive_config.Cluster.Mysql.User,
+		Password:  hive_config.Cluster.Mysql.Password,
+		DefaultDB: "hive",
 	}
 
 	// db := utils.GetConnection(mysql_connection)
@@ -213,8 +214,8 @@ func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTables {
 	db := utils.GetConnection(mysql_connection)
 	// 查询所有表及其是不是分区表
 	sqlstr := `select  name, tbl_name, tbl_type, tbl_id, 
-	IF(param_key is not null, SUBSTRING_INDEX(param_key,',', 1),'') key1,  IF(param_value is not null, SUBSTRING_INDEX(param_value, ',', 1), '') value1 , 
-	if(param_key is not null, SUBSTRING_INDEX(param_key,',', -1),'') key2, if( param_value is not null, SUBSTRING_INDEX(param_value, ',', -1), '') value2  
+	IF(param_key is not null, SUBSTRING_INDEX(param_key,',', 1),'') key1,  cast(IF(param_value is not null, SUBSTRING_INDEX(param_value, ',', 1), '') as decimal) value1 , 
+	if(param_key is not null, SUBSTRING_INDEX(param_key,',', -1),'') key2, cast(if( param_value is not null, SUBSTRING_INDEX(param_value, ',', -1), '') as decimal) value2  
 	FROM ( 
 		select dbs.name name , tbls.tbl_name tbl_name, tbls.tbl_type tbl_type, prts.tbl_id tbl_id, GROUP_CONCAT(tp.PARAM_KEY) param_key, GROUP_CONCAT(tp.param_value) param_value  
 		from tbls   
@@ -240,7 +241,7 @@ func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTables {
 		var v1, v2 int
 		err := res.Scan(&table.Name, &table.TblName, &table.TblType, &tbl_id, &k1, &v1, &k2, &v2)
 		if err != nil {
-			fmt.Println("读取table表详细数据错误！")
+			fmt.Println("读取table表详细数据错误, ", err.Error())
 		}
 		if tbl_id.Valid {
 			table.IsPartitioned = 1

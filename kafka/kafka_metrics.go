@@ -164,7 +164,12 @@ func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric
 		for _, partition := range partitions {
 			// fmt.Print("partition: ", partition, "\t")
 			replication_ids, _ = client.Replicas(topic, partition)
-			brokerObj, _ := client.Leader(topic, partition)
+			var brokerObj *sarama.Broker
+			var err error
+			if brokerObj, err = client.Leader(topic, partition); err != nil {
+				fmt.Println("client.Leader  err: ", err.Error())
+				continue
+			}
 			fmt.Println("id: ", brokerObj.ID(), " addr: ", brokerObj.Addr())
 			topic_partition_brokers[topic] = append(topic_partition_brokers[topic], fmt.Sprintf("%d", brokerObj.ID()))
 			fmt.Println("副本的ids: ", replication_ids, "\t")
