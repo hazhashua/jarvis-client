@@ -172,21 +172,31 @@ type CpmInfo struct {
 }
 
 // 抓取当天的service 和 endpoint cpm
-func GetServiceInfo() (cpmInfo []MyCpmInfo) {
+func GetCpmInfo(metricTable string) (cpmInfo []MyCpmInfo) {
+	if metricTable != "service_instance_cpm" && metricTable != "endpoint_cpm" {
+		fmt.Println("参数错误...")
+		return
+	}
 
-	year, m, day := time.Now().Date()
+	// current := time.Now()
+	beforeOneM := time.Now().Add(time.Duration(-1000000000 * 60 * 485))
+	year, m, day := beforeOneM.Date()
 	index := fmt.Sprintf("sw_metrics-cpm-%04d%02d%02d", year, m, day)
 	fmt.Println("index: ", index)
 
-	index = "sw_metrics-cpm-20220817"
-	fmt.Println("index: ", index)
+	// index = "sw_metrics-cpm-20220817"
+	// fmt.Println("index: ", index)
 
 	cpms := make([]MyCpmInfo, 0)
 	var cpm CpmInfo
-
-	termQuery := elastic.NewTermQuery("metric_table", "service_instance_cpm")
+	//"service_instance_cpm"
+	termQuery := elastic.NewTermQuery("metric_table", metricTable)
+	timeint := year*10000*10000 + int(m)*10000*100 + day*10000 + beforeOneM.Hour()*100 + beforeOneM.Minute()
+	fmt.Println("timeint: ", timeint)
+	rangeQuery := elastic.NewRangeQuery("time_bucket").Gte(timeint)
 	// queryStr := elastic.NewQueryStringQuery("metric_table:service_instance_cpm")
-	if searchRs, err := client.Search(index).Query(termQuery).Size(10000).Do(context.Background()); err == nil {
+	// client.Search(index).Query(termQuery).Query()
+	if searchRs, err := client.Search(index).Query(termQuery).Query(rangeQuery).Size(10000).Do(context.Background()); err == nil {
 		fmt.Println("搜索到数据...", searchRs.Hits)
 
 		fmt.Println("hit数组长度为: ", searchRs.TotalHits())
@@ -197,37 +207,25 @@ func GetServiceInfo() (cpmInfo []MyCpmInfo) {
 			cpmin := rs.(CpmInfo)
 			fmt.Println("遍历搜索到的数据...", " serviceid: ", cpmin.ServiceId)
 			// 转义service_id和entity_id信息
-			r := regexp.MustCompile("(.*)(\\.\\d+[_-]?)(.*)")
-
-			bbs := r.FindSubmatch([]byte(cpmin.ServiceId))
-			fmt.Println("len(findsubmatch): ", len(bbs))
-			if len(bbs) == 2 {
-				fmt.Println(string(bbs[1]))
-			} else if len(bbs) == 3 {
-				base641, _ := base64.StdEncoding.DecodeString(string(bbs[1]))
-				fmt.Println("match 1: ", string(bbs[1]), string(base641))
-				base642, _ := base64.StdEncoding.DecodeString(string(bbs[2]))
-				fmt.Println("match 2: ", string(bbs[2]), string(base642))
-			} else if len(bbs) == 4 {
-				base641, _ := base64.StdEncoding.DecodeString(string(bbs[1]))
-				fmt.Println("match 1: ", string(bbs[1]), string(base641))
-				base642, _ := base64.StdEncoding.DecodeString(string(bbs[2]))
-				fmt.Println("match 2: ", string(bbs[2]), string(base642))
-				base643, _ := base64.StdEncoding.DecodeString(string(bbs[3]))
-				fmt.Println("match 3: ", string(bbs[3]), string(base643))
+			s := analysisItem(cpmin.ServiceId)
+			if len(s) == 2 || len(s) == 1 {
+				fmt.Println("解析后的service_id数据: ", s[0])
 			}
-
-			// for _, s := range r.FindAllString(cpmin.ServiceId, -1) {
-			// 	fmt.Println("匹配的字符串: ", s)
-			// }
+			se := analysisItem(cpmin.EntityId)
+			if len(se) == 1 {
+				fmt.Println("解析后的service_id数据: ", se[0])
+			} else if len(se) == 2 {
+				fmt.Println("解析后的service_id数据: ", se[0])
+				fmt.Println("解析后的实例或endpoint数据: ", se[1])
+			}
 
 			cpms = append(cpms, MyCpmInfo{
 				MetricTable: cpmin.MetricTable,
 				Value:       cpmin.Value,
 				ServiceId:   cpmin.ServiceId,
-				ServiceName: cpmin.ServiceId,
+				ServiceName: se[0],
 				EntityId:    cpmin.EntityId,
-				Entity:      "",
+				Entity:      se[1],
 				TimeBucket:  cpmin.TimeBucket,
 			})
 		}
@@ -247,6 +245,30 @@ func GetServiceInfo() (cpmInfo []MyCpmInfo) {
 	// typet := reflect.TypeOf(typ)
 	// results = getRes.Each(typet)
 	// return results
+}
+
+// 根据base64密文解析成明文数据
+func analysisItem(item string) []string {
+	r := regexp.MustCompile("(.*)(\\.\\d+[_-]?)(.*)")
+
+	bbs := r.FindSubmatch([]byte(item))
+	fmt.Println("len(findsubmatch): ", len(bbs))
+	if len(bbs) == 2 || len(bbs) == 3 {
+		base641, _ := base64.StdEncoding.DecodeString(string(bbs[1]))
+		return []string{string(base641)}
+		// base642, _ := base64.StdEncoding.DecodeString(string(bbs[2]))
+		// fmt.Println("match 2: ", string(bbs[2]), string(base642))
+	} else if len(bbs) == 4 {
+		base641, _ := base64.StdEncoding.DecodeString(string(bbs[1]))
+		fmt.Println("match 1: ", string(bbs[1]), string(base641))
+		// base642, _ := base64.StdEncoding.DecodeString(string(bbs[2]))
+		// fmt.Println("match 2: ", string(bbs[2]), string(base642))
+		base643, _ := base64.StdEncoding.DecodeString(string(bbs[3]))
+		fmt.Println("match 3: ", string(bbs[3]), string(base643))
+		return []string{string(base641), string(base643)}
+	}
+
+	return []string{}
 }
 
 // 获取es中的一条数据
