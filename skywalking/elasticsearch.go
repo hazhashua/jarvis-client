@@ -194,9 +194,11 @@ func GetCpmInfo(metricTable string) (cpmInfo []MyCpmInfo) {
 	timeint := year*10000*10000 + int(m)*10000*100 + day*10000 + beforeOneM.Hour()*100 + beforeOneM.Minute()
 	fmt.Println("timeint: ", timeint)
 	rangeQuery := elastic.NewRangeQuery("time_bucket").Gte(timeint)
+
+	boolQuery := elastic.NewBoolQuery().Must(termQuery, rangeQuery)
+
 	// queryStr := elastic.NewQueryStringQuery("metric_table:service_instance_cpm")
-	// client.Search(index).Query(termQuery).Query()
-	if searchRs, err := client.Search(index).Query(termQuery).Query(rangeQuery).Size(10000).Do(context.Background()); err == nil {
+	if searchRs, err := client.Search(index).Query(boolQuery).Size(10000).Do(context.Background()); err == nil {
 		fmt.Println("搜索到数据...", searchRs.Hits)
 
 		fmt.Println("hit数组长度为: ", searchRs.TotalHits())
