@@ -3,6 +3,7 @@ package skywalking
 import (
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -12,6 +13,11 @@ import (
 type EventInfo struct {
 	EventInfoDesc    *prometheus.Desc
 	EventInfoValType prometheus.ValueType
+}
+
+type ServiceCpm struct {
+	ServiceCpmDesc    *prometheus.Desc
+	ServiceCpmValType prometheus.ValueType
 }
 
 // type SkyWalkingInfo struct{
@@ -36,7 +42,10 @@ type SkyWalkingConfig struct {
 }
 
 type SkyWalkingExporter struct {
-	EventInfos []EventInfo
+	EventInfos    []EventInfo
+	ServiceCpms   []ServiceCpm
+	SkyEventDatas []SkwEvent
+	CpmDatas      []MyCpmInfo
 }
 
 // 读取skywalking的相关配置
@@ -52,10 +61,11 @@ func ParseSkyWalkingConfig() *SkyWalkingConfig {
 
 // 创建skywalking exporter对象
 func NewSkywalkingExporter() *SkyWalkingExporter {
-	event_info_list := make([]EventInfo, 0)
+	eventInfos := make([]EventInfo, 0)
 	// skywalkingConfig := ParseSkyWalkingConfig()
 	year, month, day := time.Now().Date()
 	eventIndex := fmt.Sprintf("sw_events-%04d%02d%02d", year, month, day)
+	skyEventDatas := make([]SkwEvent, 0)
 	var typ SkwEvent
 	events := GetAll(eventIndex, "_doc", typ)
 	for _, event := range events {
@@ -64,6 +74,7 @@ func NewSkywalkingExporter() *SkyWalkingExporter {
 			fmt.Println("event.(type): ", ret)
 		case SkwEvent:
 			typ := SkwEvent(ret)
+			skyEventDatas = append(skyEventDatas, typ)
 			fmt.Printf("event: %v \n", typ)
 		default:
 		}
@@ -71,13 +82,31 @@ func NewSkywalkingExporter() *SkyWalkingExporter {
 			[]string{"name", "type", "service_name", "start_time", "end_time", "message", "start", "end", "time_bucket"},
 			prometheus.Labels{})
 		evnetInfoValType := prometheus.GaugeValue
-		event_info_list = append(event_info_list, EventInfo{
+		eventInfos = append(eventInfos, EventInfo{
 			EventInfoDesc:    eventInfo,
 			EventInfoValType: evnetInfoValType,
 		})
 	}
+
+	serviceCPMs := make([]ServiceCpm, 0)
+	cpmInfoDatas := GetCpmInfo("service_instance_cpm")
+	for i := 0; i < len(cpmInfoDatas); i++ {
+		cpminfo := prometheus.NewDesc("service_cpm", "服务的cpm",
+			[]string{"service_id", "service_name", "entity_id", "entity", "time_bucket", "cluster", "ip", "export_time_bucket"},
+			prometheus.Labels{})
+		cpminfoValType := prometheus.GaugeValue
+		serviceCPMs = append(serviceCPMs, ServiceCpm{
+			ServiceCpmDesc:    cpminfo,
+			ServiceCpmValType: cpminfoValType,
+		})
+
+	}
+
 	return &SkyWalkingExporter{
-		EventInfos: event_info_list,
+		EventInfos:    eventInfos,
+		ServiceCpms:   serviceCPMs,
+		SkyEventDatas: skyEventDatas,
+		CpmDatas:      cpmInfoDatas,
 	}
 }
 
@@ -89,36 +118,42 @@ func (e *SkyWalkingExporter) Describe(ch chan<- *prometheus.Desc) {
 
 // 收集skywalking事件方法
 func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
+	e = NewSkywalkingExporter()
 
-	println("e address: %p", e, "**************************************")
-	// 抓取当天的event索引数据
-	year, month, day := time.Now().Date()
-	eventIndex := fmt.Sprintf("sw_events-%04d%02d%02d", year, month, day)
-	var typ SkwEvent
-	events := GetAll(eventIndex, "_doc", typ)
-	convertedObjs := make([]SkwEvent, 0)
-	for _, event := range events {
-		switch ret := event.(type) {
-		case string:
-			fmt.Println("event.(type): ", ret)
-		case SkwEvent:
-			typ := SkwEvent(ret)
-			fmt.Printf("event: %v \n", typ)
-			fmt.Println("typ.Service: ", typ.Service)
-			fmt.Println("typ.Name: ", typ.Name)
-			fmt.Println("typ.Message: ", typ.Message)
-			convertedObjs = append(convertedObjs, typ)
-		default:
+	sort.Slice(e.CpmDatas, func(i, j int) bool {
+		if e.CpmDatas[i].TimeBucket > e.CpmDatas[j].TimeBucket {
+			return true
+		} else {
+			return false
 		}
+	})
+
+	for _, serviceData := range e.CpmDatas {
+		fmt.Println("......", serviceData.ServiceId, "*********", serviceData.EntityId, "*******", serviceData.TimeBucket)
 	}
 
+	skywalkingConfig := ParseSkyWalkingConfig()
+	println("e address: %p", e, "**************************************")
+	// 获取event数据
+	eventInfoDatas := e.SkyEventDatas
 	for idx, eventInfo := range e.EventInfos {
 		// "name", "type", "service_name", "start_time", "end_time", "message"
 		// se := SkyEvent(events[idx])
-		start := time.Unix(int64(convertedObjs[idx].StartTime/1000), 0).Format("2006-01-02 15:04:05")
-		end := time.Unix(int64(convertedObjs[idx].EndTime/1000), 0).Format("2006-01-02 15:04:05")
-		time_bucket := time.Unix(int64(convertedObjs[idx].StartTime/1000), 0).Format("200601021504")
+		start := time.Unix(int64(eventInfoDatas[idx].StartTime/1000), 0).Format("2006-01-02 15:04:05")
+		end := time.Unix(int64(eventInfoDatas[idx].EndTime/1000), 0).Format("2006-01-02 15:04:05")
+		time_bucket := time.Unix(int64(eventInfoDatas[idx].StartTime/1000), 0).Format("200601021504")
 		ch <- prometheus.MustNewConstMetric(eventInfo.EventInfoDesc, eventInfo.EventInfoValType, 1,
-			convertedObjs[idx].Name, convertedObjs[idx].Type, convertedObjs[idx].Service, fmt.Sprintf("%d", convertedObjs[idx].StartTime), fmt.Sprintf("%d,", convertedObjs[idx].EndTime), convertedObjs[idx].Message, start, end, time_bucket)
+			eventInfoDatas[idx].Name, eventInfoDatas[idx].Type, eventInfoDatas[idx].Service, fmt.Sprintf("%d", eventInfoDatas[idx].StartTime), fmt.Sprintf("%d,", eventInfoDatas[idx].EndTime), eventInfoDatas[idx].Message, start, end, time_bucket)
+	}
+
+	now := time.Now()
+	nowTimeBucket := fmt.Sprintf("%04d%02d%02d%02d%02d%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
+	serviceDatas := e.CpmDatas
+	for idx, cpmInfo := range e.ServiceCpms {
+		// "service_id", "service_name", "entity_id", "entity", "time_bucket", "cluster", "ip"
+		ch <- prometheus.MustNewConstMetric(cpmInfo.ServiceCpmDesc, cpmInfo.ServiceCpmValType,
+			float64(serviceDatas[idx].Value), serviceDatas[idx].ServiceId, serviceDatas[idx].ServiceName,
+			serviceDatas[idx].EntityId, serviceDatas[idx].Entity, fmt.Sprintf("%d", serviceDatas[idx].TimeBucket),
+			skywalkingConfig.Cluster.Name, "", nowTimeBucket)
 	}
 }
