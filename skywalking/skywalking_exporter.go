@@ -92,7 +92,7 @@ func NewSkywalkingExporter() *SkyWalkingExporter {
 	cpmInfoDatas := GetCpmInfo("service_instance_cpm")
 	for i := 0; i < len(cpmInfoDatas); i++ {
 		cpminfo := prometheus.NewDesc("service_cpm", "服务的cpm",
-			[]string{"service_id", "service_name", "entity_id", "entity", "time_bucket", "cluster", "ip", "export_time_bucket"},
+			[]string{"service_name", "entity", "time_bucket", "cluster", "ip", "export_time_bucket"},
 			prometheus.Labels{})
 		cpminfoValType := prometheus.GaugeValue
 		serviceCPMs = append(serviceCPMs, ServiceCpm{
@@ -152,8 +152,8 @@ func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
 	for idx, cpmInfo := range e.ServiceCpms {
 		// "service_id", "service_name", "entity_id", "entity", "time_bucket", "cluster", "ip"
 		ch <- prometheus.MustNewConstMetric(cpmInfo.ServiceCpmDesc, cpmInfo.ServiceCpmValType,
-			float64(serviceDatas[idx].Value), serviceDatas[idx].ServiceId, serviceDatas[idx].ServiceName,
-			serviceDatas[idx].EntityId, serviceDatas[idx].Entity, fmt.Sprintf("%d", serviceDatas[idx].TimeBucket),
+			float64(serviceDatas[idx].Value), serviceDatas[idx].ServiceName,
+			serviceDatas[idx].Entity, fmt.Sprintf("%d", serviceDatas[idx].TimeBucket),
 			skywalkingConfig.Cluster.Name, "", nowTimeBucket)
 	}
 }
