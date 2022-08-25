@@ -100,7 +100,7 @@ func RedisExporter() {
 		// redisAddr    = flag.String("redis.addr", getEnv("REDIS_ADDR", fmt.Sprintf("redis://%s:6379", ip)), "Address of the Redis instance to scrape")
 		// redisIp      = flag.String("redis.ip", getEnv("REDIS_IP", ip), "IP of the Redis instance to scrape")
 		// redisHost    = flag.String("redis.host", getEnv("REDIS_HOST", host), "Hostname of the Redis instance to scrape")
-		// redisCluster = flag.String("redis.cluster", getEnv("CLUSTER", cluster), "Cluser name of the Redis instance to scrape")
+		// redisCluster = flag.String("redis.cluster", getEnv("CLUSTER", cluster), "Cluster name of the Redis instance to scrape")
 		// redisUser          = flag.String("redis.user", getEnv("REDIS_USER", ""), "User name to use for authentication (Redis ACL for Redis 6.0 and newer)")
 		redisPwd           = flag.String("redis.password", getEnv("REDIS_PASSWORD", ""), "Password of the Redis instance to scrape")
 		redisPwdFile       = flag.String("redis.password-file", getEnv("REDIS_PASSWORD_FILE", ""), "Password file of the Redis instance to scrape")
