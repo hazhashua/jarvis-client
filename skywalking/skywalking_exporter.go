@@ -63,7 +63,9 @@ func ParseSkyWalkingConfig() *SkyWalkingConfig {
 func NewSkywalkingExporter() *SkyWalkingExporter {
 	eventInfos := make([]EventInfo, 0)
 	// skywalkingConfig := ParseSkyWalkingConfig()
-	year, month, day := time.Now().Date()
+
+	beforeOneM := time.Now().Add(time.Duration(-1000000000 * 60 * 480))
+	year, month, day := beforeOneM.Date()
 	eventIndex := fmt.Sprintf("sw_events-%04d%02d%02d", year, month, day)
 	skyEventDatas := make([]SkwEvent, 0)
 	var typ SkwEvent
