@@ -59,7 +59,7 @@ func NewMysqlExporter() *MysqlExporter {
 
 		currentConnections:  prometheus.NewDesc("current_connections", "show the current connections of the mysql instance", []string{"cluster", "ip"}, prometheus.Labels{}),
 		executeQuerys:       prometheus.NewDesc("query_total", "show the total query by this mysql instance", []string{"cluster", "ip"}, prometheus.Labels{}),
-		executeTransactions: prometheus.NewDesc("transaction_total", "show the total transaction by this mysql instance", []string{"cluser", "ip"}, prometheus.Labels{}),
+		executeTransactions: prometheus.NewDesc("transaction_total", "show the total transaction by this mysql instance", []string{"cluster", "ip"}, prometheus.Labels{}),
 
 		querySlowTotal: prometheus.NewDesc("query_slow_total", "show the total slow query by thie mysql instance", []string{"cluster", "ip"}, prometheus.Labels{}),
 
@@ -119,7 +119,7 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// executeQuerys:       prometheus.NewDesc("query_total", "show the total query by this mysql instance", []string{"cluster", "ip"}, prometheus.Labels{}),
-	// executeTransactions: prometheus.NewDesc("transaction_total", "show the total transaction by this mysql instance", []string{"cluser", "ip"}, prometheus.Labels{}),
+	// executeTransactions: prometheus.NewDesc("transaction_total", "show the total transaction by this mysql instance", []string{"cluster", "ip"}, prometheus.Labels{}),
 	// querySlowTotal: prometheus.NewDesc("query_slow_total", "show the total slow query by thie mysql instance", []string{"cluster", "ip"}, prometheus.Labels{}),
 
 	// ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.BrokerNum, collector.kafkaMetrics.BrokerNumValueType, float64(total_brokers), kafka_config.Cluster.Name)
