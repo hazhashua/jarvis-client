@@ -3,6 +3,7 @@ package hadoop
 import (
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
@@ -114,30 +115,9 @@ type HadoopCollector struct {
 	hadoopMetrics HadoopMetric
 }
 
-type HadoopConfigure struct {
-	Cluster struct {
-		name                    string   `yaml:"name"`
-		Services                []string `yaml:"services"`
-		ServiceNum              int      `yaml:"servicenum"`
-		Namenodes               []string `yaml:"namenodes"`
-		NamenodeHosts           []string `yaml:"namenodehosts"`
-		NamenodeHttpPort        int      `yaml:"namenodehttpport"`
-		NamenodeRpcPort         int      `yaml:"namenoderpcport"`
-		Datanodes               []string `yaml:"datanodes"`
-		DatanodeHosts           []string `yaml:"datanodehosts"`
-		DatanodeHttpPort        int      `yaml:"datanodehttpport"`
-		DatanodeRpcPort         int      `yaml:"datanoderpcport"`
-		ResourceManagers        []string `yaml:"resourcemanagers"`
-		ResourceManagerHosts    []string `yaml:"resourcemanagerhosts"`
-		ResourceManagerUrl      string   `yaml:"resourcemanagerurl"`
-		ResourcemanagerHost     string   `yaml:"resourcemanagerhost"`
-		ResourcemanagerHttpPort int      `yaml:"resourcemanagerhttpport"`
-	}
-}
-
-func Parse_hadoop_config() *HadoopConfigure {
+func Parse_hadoop_config() *config.HadoopConfigure {
 	bytes, _ := ioutil.ReadFile("./hadoop/config.yaml")
-	hadoopConfig := new(HadoopConfigure)
+	hadoopConfig := new(config.HadoopConfigure)
 	err := yaml.Unmarshal(bytes, hadoopConfig)
 	if err != nil {
 		fmt.Println("Unmarshal failed: ", err)
@@ -509,13 +489,13 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total := GetAliveInfo(yarn_urls, namenode_urls)
 	fmt.Println(num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
 
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.BlockSize, collector.hadoopMetrics.BlockSizeValType, 128, hadoop_config.Cluster.name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.ReplicationNum, collector.hadoopMetrics.ReplicationNumValType, 3, hadoop_config.Cluster.name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.BlockSize, collector.hadoopMetrics.BlockSizeValType, 128, hadoop_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.ReplicationNum, collector.hadoopMetrics.ReplicationNumValType, 3, hadoop_config.Cluster.Name)
 
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumLiveDataNodes, collector.hadoopMetrics.NumLiveDataNodesValType, float64(*num_live_datanodes), hadoop_config.Cluster.name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumDeadDataNodes, collector.hadoopMetrics.NumDeadDataNodesValType, float64(*num_dead_datanodes), hadoop_config.Cluster.name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumLiveNameNodes, collector.hadoopMetrics.NumDeadNameNodesValType, float64(*num_active_nms), hadoop_config.Cluster.name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumDeadNameNodes, collector.hadoopMetrics.NumDeadNameNodesValType, float64(*num_lost_nms), hadoop_config.Cluster.name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumLiveDataNodes, collector.hadoopMetrics.NumLiveDataNodesValType, float64(*num_live_datanodes), hadoop_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumDeadDataNodes, collector.hadoopMetrics.NumDeadDataNodesValType, float64(*num_dead_datanodes), hadoop_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumLiveNameNodes, collector.hadoopMetrics.NumDeadNameNodesValType, float64(*num_active_nms), hadoop_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumDeadNameNodes, collector.hadoopMetrics.NumDeadNameNodesValType, float64(*num_lost_nms), hadoop_config.Cluster.Name)
 
 	cluster_list := make([]string, 0)
 	host_list := make([]string, 0)
@@ -529,7 +509,7 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	ip_list = append(ip_list, hadoop_config.Cluster.ResourceManagers[0])
 	port_list = append(port_list, fmt.Sprintf("%d", hadoop_config.Cluster.ResourcemanagerHttpPort))
 	service_name = append(service_name, "ResourceManager")
-	cluster_list = append(cluster_list, hadoop_config.Cluster.name)
+	cluster_list = append(cluster_list, hadoop_config.Cluster.Name)
 
 	for idx, namenode := range hadoop_config.Cluster.Namenodes {
 		urls = append(urls, fmt.Sprintf("http://%s:%d/jmx?qry=Hadoop:service=NameNode,name=JvmMetrics", namenode, hadoop_config.Cluster.NamenodeHttpPort))
@@ -537,7 +517,7 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 		ip_list = append(ip_list, namenode)
 		port_list = append(port_list, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeHttpPort))
 		service_name = append(service_name, "NameNode")
-		cluster_list = append(cluster_list, hadoop_config.Cluster.name)
+		cluster_list = append(cluster_list, hadoop_config.Cluster.Name)
 	}
 	for idx, datanode := range hadoop_config.Cluster.Datanodes {
 		urls = append(urls, fmt.Sprintf("http://%s:%d/jmx?qry=Hadoop:service=DataNode,name=JvmMetrics", datanode, hadoop_config.Cluster.DatanodeHttpPort))
@@ -545,7 +525,7 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 		ip_list = append(ip_list, datanode)
 		port_list = append(port_list, fmt.Sprintf("%d", hadoop_config.Cluster.DatanodeHttpPort))
 		service_name = append(service_name, "DataNode")
-		cluster_list = append(cluster_list, hadoop_config.Cluster.name)
+		cluster_list = append(cluster_list, hadoop_config.Cluster.Name)
 	}
 	mem_non_heap_usedm_list := make([]float64, 0)
 	mem_non_heap_committedm_list := make([]float64, 0)
@@ -582,15 +562,15 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	apps_submitted, apps_running, apps_pending, apps_killed, apps_failed, apps_completed, running_0, running_60, running_300, _ := GetAppInfo(yarn_url)
 
 	// 基于队列的个数给空间赋值
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsSubmitted[0], collector.hadoopMetrics.AppsSubmittedValType, float64(*apps_submitted), hadoop_config.Cluster.name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsRunning[0], collector.hadoopMetrics.AppsRunningValType, float64(*apps_running), hadoop_config.Cluster.name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsCompleted[0], collector.hadoopMetrics.AppsCompletedValType, float64(*apps_completed), hadoop_config.Cluster.name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsPending[0], collector.hadoopMetrics.AppsPendinValType, float64(*apps_pending), hadoop_config.Cluster.name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsKilled[0], collector.hadoopMetrics.AppsKilledValType, float64(*apps_killed), hadoop_config.Cluster.name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsFailed[0], collector.hadoopMetrics.AppsFailedValType, float64(*apps_failed), hadoop_config.Cluster.name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running0[0], collector.hadoopMetrics.Running0ValType, float64(*running_0), hadoop_config.Cluster.name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running60[0], collector.hadoopMetrics.Running60ValType, float64(*running_60), hadoop_config.Cluster.name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running300[0], collector.hadoopMetrics.Running300ValType, float64(*running_300), hadoop_config.Cluster.name, queue_name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsSubmitted[0], collector.hadoopMetrics.AppsSubmittedValType, float64(*apps_submitted), hadoop_config.Cluster.Name, queue_name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsRunning[0], collector.hadoopMetrics.AppsRunningValType, float64(*apps_running), hadoop_config.Cluster.Name, queue_name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsCompleted[0], collector.hadoopMetrics.AppsCompletedValType, float64(*apps_completed), hadoop_config.Cluster.Name, queue_name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsPending[0], collector.hadoopMetrics.AppsPendinValType, float64(*apps_pending), hadoop_config.Cluster.Name, queue_name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsKilled[0], collector.hadoopMetrics.AppsKilledValType, float64(*apps_killed), hadoop_config.Cluster.Name, queue_name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsFailed[0], collector.hadoopMetrics.AppsFailedValType, float64(*apps_failed), hadoop_config.Cluster.Name, queue_name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running0[0], collector.hadoopMetrics.Running0ValType, float64(*running_0), hadoop_config.Cluster.Name, queue_name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running60[0], collector.hadoopMetrics.Running60ValType, float64(*running_60), hadoop_config.Cluster.Name, queue_name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running300[0], collector.hadoopMetrics.Running300ValType, float64(*running_300), hadoop_config.Cluster.Name, queue_name)
 
 	namenode_url := fmt.Sprintf("http://%s:%d/jmx", hadoop_config.Cluster.Namenodes[0], hadoop_config.Cluster.NamenodeHttpPort)
 	capacity_total_gb, capacity_remaining_gb, capacity_used_gb, blocks_total, corrupt_blocks, pending_deletion_blocks, pending_replication_blocks, files_total, tag_ha_state := GetDFSInfo(namenode_url)
@@ -605,11 +585,11 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	fmt.Println("files_total: ", files_total)
 	fmt.Println("tag_ha_state: ", tag_ha_state)
 
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityTotalGB, collector.hadoopMetrics.CapacityTotalGBValType, float64(*capacity_total_gb), hadoop_config.Cluster.name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityUsedGB, collector.hadoopMetrics.CapacityUsedGBValType, float64(*capacity_used_gb), hadoop_config.Cluster.name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityRemainingGB, collector.hadoopMetrics.CapacityRemainingGBValType, float64(*capacity_remaining_gb), hadoop_config.Cluster.name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.BlocksTotal, collector.hadoopMetrics.BlocksTotalValType, float64(*blocks_total), hadoop_config.Cluster.name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.FilesTotal, collector.hadoopMetrics.FilesTotalValType, float64(*files_total), hadoop_config.Cluster.name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityTotalGB, collector.hadoopMetrics.CapacityTotalGBValType, float64(*capacity_total_gb), hadoop_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityUsedGB, collector.hadoopMetrics.CapacityUsedGBValType, float64(*capacity_used_gb), hadoop_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityRemainingGB, collector.hadoopMetrics.CapacityRemainingGBValType, float64(*capacity_remaining_gb), hadoop_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.BlocksTotal, collector.hadoopMetrics.BlocksTotalValType, float64(*blocks_total), hadoop_config.Cluster.Name)
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.FilesTotal, collector.hadoopMetrics.FilesTotalValType, float64(*files_total), hadoop_config.Cluster.Name)
 
 	// "cluster", "host", "ip", "port", "service_name"
 	for idx, namenode := range hadoop_config.Cluster.Namenodes {
@@ -617,22 +597,22 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 		fileinfo_ops, createfile_ops, getlisting_ops, deletefile_ops := GetNameNodeOps(namenode_url)
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.FileInfoOps[idx],
 			collector.hadoopMetrics.FileInfoOpsValType, float64(*fileinfo_ops),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CreateFileOps[idx],
 			collector.hadoopMetrics.CreateFileOpsValType, float64(*createfile_ops),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.GetlistingOps[idx],
 			collector.hadoopMetrics.GetlistingOpsValType, float64(*getlisting_ops),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.DeleteFileOps[idx],
 			collector.hadoopMetrics.DeleteFileOpsValType, float64(*deletefile_ops),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		call_queue_length, rpc_slow_calls, num_open_connections, num_dropped_connections, rpc_authentication_successes, rpc_authentication_failures, sent_bytes, received_bytes, call_queuetime_avgtime, tag_hostname, tag_port := GetNameNodeRPCInfo(namenode_url)
@@ -645,32 +625,32 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 		// RpcAuthorizationSuccesses        []*prometheus.Desc
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.RpcQueueTimeAvgTime[idx],
 			collector.hadoopMetrics.RpcQueueTimeAvgTimeValType, float64(*call_queuetime_avgtime),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumOpenConnections[idx],
 			collector.hadoopMetrics.NumOpenConnectionsValType, float64(*num_open_connections),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.RpcSlowCalls[idx],
 			collector.hadoopMetrics.RpcSlowCallsValType, float64(*rpc_slow_calls),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CallQueueLength[idx],
 			collector.hadoopMetrics.CallQueueLengthValType, float64(*call_queue_length),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.RpcAuthorizationFailures[idx],
 			collector.hadoopMetrics.RpcAuthorizationFailuresValType, float64(*rpc_authentication_failures),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.RpcAuthorizationSuccesses[idx],
 			collector.hadoopMetrics.RpcAuthorizationSuccessesValType, float64(*rpc_authentication_successes),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.NamenodeHosts[idx],
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 	}
 	// datanode相关的指标
@@ -689,27 +669,27 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 		//"cluster", "host", "ip", "service_name"
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.BytesWritten[idx],
 			collector.hadoopMetrics.BytesWrittenValType, float64(*bytes_written),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.BytesRead[idx],
 			collector.hadoopMetrics.BytesReadValType, float64(*bytes_read),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.RemoteBytesWritten[idx],
 			collector.hadoopMetrics.RemoteBytesWrittenValType, float64(*remote_bytes_written),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.RemoteBytesRead[idx],
 			collector.hadoopMetrics.RemoteBytesReadValType, float64(*remote_bytes_read),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.HeartbeatsNum[idx],
 			collector.hadoopMetrics.HeartbeatsNumValType, float64(*heartbeats_numops),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
 
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.HeartbeatsAvgTime[idx],
 			collector.hadoopMetrics.HeartbeatsAvgTimeValType, float64(*heartbeats_avgtime),
-			hadoop_config.Cluster.name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
+			hadoop_config.Cluster.Name, hadoop_config.Cluster.DatanodeHosts[idx], datanode, "DataNode")
 	}
 
 }
