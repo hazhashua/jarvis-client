@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"metric_exporter/config"
 	"metric_exporter/hadoop"
 	"metric_exporter/hbase"
@@ -15,13 +16,8 @@ import (
 	"metric_exporter/spark"
 	"metric_exporter/utils"
 	"metric_exporter/zookeeper"
-	"os"
-
-	// "alive_exporter/utils"
-	"fmt"
 	"net/http"
-
-	// "github.com/hazhashua/alive_exporter/collector"
+	"os"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -68,23 +64,6 @@ func comineServiceInfo() (map[string]map[string]string, []*micro_service.MyK8sNo
 
 }
 
-type SparkHandler struct {
-	metrics []string
-}
-
-func (handler SparkHandler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
-	handler.metrics = spark.GetMetrics()
-	switch r.URL.Path {
-	case "/spark/metrics":
-		for _, value := range handler.metrics {
-			fmt.Fprintf(writer, "%s", value)
-		}
-	default:
-		writer.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(writer, "no such page: %s\n", r.URL)
-	}
-}
-
 func main() {
 
 	// 抓取微服务的数据信息
@@ -123,7 +102,7 @@ func main() {
 	// 数组传入所有的master和standby地址
 	// 查询spark的metric信息，默认为查询测试集群
 	print_metrics := spark.GetMetrics()
-	sparkHandler := SparkHandler{metrics: print_metrics}
+	sparkHandler := spark.SparkHandler{Metrics: print_metrics}
 	http.Handle("/spark/metrics", sparkHandler)
 	fmt.Println("命令行的参数有", len(os.Args))
 

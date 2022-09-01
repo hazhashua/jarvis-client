@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"metric_exporter/config"
 	"metric_exporter/utils"
+	"net/http"
 	"os"
 
 	// "os"
@@ -28,6 +29,23 @@ import (
 *          *.sink.prometheusServlet.class=org.apache.spark.metrics.sink.PrometheusServlet
 *          *.sink.prometheusServlet.path=/metrics/prometheus
  */
+
+type SparkHandler struct {
+	Metrics []string
+}
+
+func (handler SparkHandler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
+	handler.Metrics = GetMetrics()
+	switch r.URL.Path {
+	case "/spark/metrics":
+		for _, value := range handler.Metrics {
+			fmt.Fprintf(writer, "%s", value)
+		}
+	default:
+		writer.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(writer, "no such page: %s\n", r.URL)
+	}
+}
 
 // spark 分为http的接口获取数据的方式
 // :8080/metrics/master/prometheus master汇总的相关信息地址
