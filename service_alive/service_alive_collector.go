@@ -45,7 +45,10 @@ type DatsourceAlive struct {
 //initializes every descriptor and returns a pointer to the collector
 func NewServiceAliveCollector() *serviceCollector {
 	var serviceAliveList []serviceAlive2Collector
-	datasource_count := utils.ValueQuery("")
+	// datasource_count := utils.ValueQuery("")
+	db := utils.DbOpen(nil)
+	datasource_count := utils.PgCountQuery(db, "")
+
 	fmt.Println("查询到的service_port表记录数: ", datasource_count)
 	for length := 0; length < datasource_count; length++ {
 		var service_alive_collector serviceAlive2Collector
@@ -105,8 +108,8 @@ func (collector *serviceCollector) Describe(ch chan<- *prometheus.Desc) {
 func (collector *serviceCollector) Collect(ch chan<- prometheus.Metric) {
 	//Implement logic here to determine proper metric value to return to prometheus
 	//for each descriptor or call other functions that do so.
-
 	da := GetAliveInfos()
+	fmt.Println("da: ", da)
 	// for _, alive := range da {
 	for index, alive := range collector.serviceAliveCollector {
 		if index >= len(da) {
@@ -154,10 +157,7 @@ func GetAliveInfos() []DatsourceAlive {
 			localIp = ip
 		}
 	}
-
 	for _, servicePort := range sp {
-		// fmt.Println(string(*servicePort.IP) + string(servicePort.Port))
-		// fmt.Sprintf("%s:%d", *servicePort.IP, servicePort.Port)
 		var datasourceAlive DatsourceAlive
 		datasourceAlive.ServiceName = servicePort.ServiceName
 		datasourceAlive.ChildService = servicePort.ChildService

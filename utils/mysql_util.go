@@ -310,7 +310,9 @@ func Serilize() bool {
 	//对结构体数据进行序列化操作
 	// var serilize_data []byte
 	serilize_data := make([]byte, 0)
-	service_ports := Query("")
+	// service_ports := Query("")
+	db := DbOpen(nil)
+	service_ports := PgServiceQuery(db, "")
 	for _, service_port := range service_ports {
 		service_port_seriaize, _ := json.Marshal(service_port)
 		fmt.Println("&&&&&&&", string(service_port_seriaize))

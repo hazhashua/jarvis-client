@@ -55,17 +55,51 @@ func DbOpen(dbConfig *dbConfig) (db *gorm.DB) {
 	}
 }
 
+// ID           int
+// ServiceName  *string
+// ChildService *string
+// ClusterName  *string
+// IP           *string
+// Port         sql.NullInt64
+// PortType     *string
+
 // 基于sql查询数据库信息
-func PgQuery(sql string) (servicePort []ServicePort) {
+func PgServiceQuery(db *gorm.DB, sql string) (servicePort []ServicePort) {
 	sps := make([]ServicePort, 0)
 	if sql == "" {
-		sql = ` SELECT * 
+		sql = ` SELECT dgc.id as id, gn.name as service_name, dgc.service_name as child_service, 
+					case 
+						when dgc.remarks='' then '大数据融合平台'
+					else
+						dgc.remarks
+					end as cluster_name,
+					dgc.ip as ip, 
+					case 
+						when dgc.port!='' then cast(dgc.port as int)
+						else -1
+					end as port, 
+					dgc.protocol_type as port_type
 					FROM public.data_gather_configure dgc 
 					JOIN public.gather_name gn 
 					ON dgc.service_type=gn.id `
 		db.Raw(sql).Scan(&sps)
 	}
 	return sps
+}
+
+// 查询基础服务存活数据的个数
+func PgCountQuery(db *gorm.DB, sql string) int {
+	if sql == "" {
+		sql = ` SELECT COUNT(*) 
+		FROM 
+		(
+			SELECT DISTINCT service_name, ip, port, service_type 
+			FROM  data_gather_configure
+		) tmp`
+	}
+	var countValue int
+	db.Raw(sql).Scan(&countValue)
+	return countValue
 }
 
 // pg数据库中插入数据
