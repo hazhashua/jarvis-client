@@ -61,34 +61,92 @@ func (cf configStruct) loadAll() {
 }
 
 // 加载特定的配置文件
-func (cf configStruct) load(model string) {
+func (cf configStruct) load(model string) (iface interface{}) {
 	// 加载特定的配置文件
-	var configd interface{}
 	if bytes, err := ioutil.ReadFile(fmt.Sprintf("./%s", model)); err == nil {
 		switch model {
 		case "hadoop":
-			configd = config.HadoopConfigure{}
+			configs := config.HadoopConfigure{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "hbase":
-			configd = config.HbaseConfigure{}
+			configs := config.HbaseConfigure{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "spark":
-			// configd := config.
+			configs := config.SparkConfig{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "hive":
+			configs := config.HiveConfig{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "kafka":
+			configs := config.KafkConfigure{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "micro_service":
+			configs := config.K8sYamlConfig{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "mysql":
+			configs := config.MysqlConfig{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "node_exporter":
+			configs := config.NodeConfig{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "redis":
+			configs := config.RedisConfig{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "service_alive":
+			fmt.Println("")
 		case "skywalking":
+			configs := config.SkyWalkingConfig{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		case "zookeeper":
-
+			configs := config.ZookeepeConfig{}
+			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
+				// 解析配置
+				cf.configData[model] = configs
+				return configs
+			}
 		default:
 			fmt.Println("unknown datasource...")
 		}
-		if err2 := yaml.Unmarshal(bytes, &configd); err2 == nil {
-			// 解析配置
-
-		}
-
 	}
+	return nil
 }
