@@ -4,6 +4,7 @@ import (
 	// utils "alive_exporter/utils"
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 	"net/http"
 	"strconv"
 	"strings"
@@ -91,22 +92,13 @@ type MyK8sPodInfo struct {
 //     - 192.168.10.63
 //     - 192.168.10.111
 
-type K8sConfig struct {
-	Cluster struct {
-		Name          string   `yaml:"name"`
-		Master        []string `yaml:"master"`
-		Nodes         []string `yaml:"nodes"`
-		ApiServerPort string   `yaml:"apiserverport"`
-	}
-}
-
-func Parse_k8s_config() *K8sConfig {
+func Parse_k8s_config() *config.K8sYamlConfig {
 	bytes, err := ioutil.ReadFile("./micro_service/config.yaml")
 	if err != nil {
 		fmt.Println("读文件出错！")
 		return nil
 	}
-	k8sConfig := new(K8sConfig)
+	k8sConfig := new(config.K8sYamlConfig)
 	err2 := yaml.Unmarshal(bytes, &k8sConfig)
 	if err2 != nil {
 		fmt.Println("Unmarshal失败！")

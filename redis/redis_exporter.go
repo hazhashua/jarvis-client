@@ -2,6 +2,7 @@ package redis
 
 import (
 	"fmt"
+	"metric_exporter/config"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -27,7 +28,7 @@ type Exporter struct {
 	// 保存当前处理的redis实例的索引
 	current_redis_idx int
 	redisAddr         string
-	redis_config      RedisConfig
+	redis_config      config.RedisConfig
 	// redisIp      string
 	// redisHost    string
 	redisCluster string
@@ -85,7 +86,7 @@ type Options struct {
 }
 
 // NewRedisExporter returns a new exporter of Redis metrics.
-func NewRedisExporter(redis_config RedisConfig, opts Options) (*Exporter, error) {
+func NewRedisExporter(redis_config config.RedisConfig, opts Options) (*Exporter, error) {
 	log.Debugf("NewRedisExporter options: %#v", opts)
 
 	ip := redis_config.Cluster.Ips[0]

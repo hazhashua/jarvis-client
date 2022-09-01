@@ -3,21 +3,13 @@ package kafka
 import (
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 	"runtime"
 	"syscall"
 
 	"github.com/Shopify/sarama"
 	"gopkg.in/yaml.v2"
 )
-
-type KafkConfigure struct {
-	Cluster struct {
-		Name  string   `yaml:"name"`
-		Hosts []string `yaml:"hosts"`
-		Port  int      `yaml:"port"`
-		Env   string   `yaml:"env"`
-	}
-}
 
 type DiskStatus struct {
 	Path string `json:"path"`
@@ -33,10 +25,10 @@ func runFuncName() string {
 	return f.Name()
 }
 
-func Parse_kafka_config() *KafkConfigure {
+func Parse_kafka_config() *config.KafkConfigure {
 	fmt.Println("in function: ", runFuncName())
 	bytes, _ := ioutil.ReadFile("./kafka/config.yaml")
-	kafkaConfig := new(KafkConfigure)
+	kafkaConfig := new(config.KafkConfigure)
 	err := yaml.Unmarshal(bytes, kafkaConfig)
 	if err != nil {
 		fmt.Println("Unmarshal failed: ", err)

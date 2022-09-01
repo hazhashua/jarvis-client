@@ -2,6 +2,7 @@ package hive
 
 import (
 	"fmt"
+	"metric_exporter/config"
 	"metric_exporter/utils"
 	"strconv"
 
@@ -11,7 +12,7 @@ import (
 type HiveExporter struct {
 	// 保存当前处理的redis实例的索引
 	// redisAddr         string
-	hiveConfig  HiveConfig
+	hiveConfig  config.HiveConfig
 	hiveCluster string
 
 	// 存储hive集群模式

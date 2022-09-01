@@ -3,31 +3,16 @@ package zookeeper
 import (
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 	"time"
 
 	"github.com/samuel/go-zookeeper/zk"
 	"gopkg.in/yaml.v2"
 )
 
-// cluster:
-//   name: test环境zookeeper
-//   hosts:
-//     - 192.168.10.220
-//     - 192.168.10.221
-//     - 192.168.10.222
-//   clientport: 2181
-
-type ZookeepeConfig struct {
-	Cluster struct {
-		Name       string   `yaml:"name"`
-		Hosts      []string `yaml:"hosts"`
-		ClientPort string   `yaml:"clientport"`
-	}
-}
-
 // 获取到zookeeper的连接
 func conn() *zk.Conn {
-	var zookeeper_config ZookeepeConfig
+	var zookeeper_config config.ZookeepeConfig
 	bytes, err2 := ioutil.ReadFile("./zookeeper/config.yaml")
 	if err2 == nil {
 		fmt.Println("err2: ", err2.Error())

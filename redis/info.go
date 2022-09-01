@@ -3,6 +3,7 @@ package redis
 import (
 	"errors"
 	"fmt"
+	"metric_exporter/config"
 	"regexp"
 	"strconv"
 	"strings"
@@ -37,7 +38,7 @@ func extractPercentileVal(s string) (percentile float64, val float64, err error)
 	return
 }
 
-func (e *Exporter) extractInfoMetrics(ch chan<- prometheus.Metric, info string, dbCount int, redis_config RedisConfig) {
+func (e *Exporter) extractInfoMetrics(ch chan<- prometheus.Metric, info string, dbCount int, redis_config config.RedisConfig) {
 	keyValues := map[string]string{}
 	handledDBs := map[string]bool{}
 	cmdCount := map[string]uint64{}
@@ -288,7 +289,7 @@ func parseConnectedSlaveString(slaveName string, keyValues string) (offset float
 	return
 }
 
-func (e *Exporter) handleMetricsReplication(ch chan<- prometheus.Metric, masterHost string, masterPort string, fieldKey string, fieldValue string, redis_config RedisConfig) bool {
+func (e *Exporter) handleMetricsReplication(ch chan<- prometheus.Metric, masterHost string, masterPort string, fieldKey string, fieldValue string, redis_config config.RedisConfig) bool {
 	// only slaves have this field
 	if fieldKey == "master_link_status" {
 		if fieldValue == "up" {
@@ -337,7 +338,7 @@ func (e *Exporter) handleMetricsReplication(ch chan<- prometheus.Metric, masterH
 	return false
 }
 
-func (e *Exporter) handleMetricsServer(ch chan<- prometheus.Metric, fieldKey string, fieldValue string, redis_config RedisConfig) {
+func (e *Exporter) handleMetricsServer(ch chan<- prometheus.Metric, fieldKey string, fieldValue string, redis_config config.RedisConfig) {
 	if fieldKey == "uptime_in_seconds" {
 		if uptime, err := strconv.ParseFloat(fieldValue, 64); err == nil {
 			e.registerConstMetricGauge(ch, "start_time_seconds", float64(time.Now().Unix())-uptime,
@@ -493,7 +494,7 @@ func parseMetricsErrorStats(fieldKey string, fieldValue string) (errorType strin
 	return
 }
 
-func (e *Exporter) handleMetricsCommandStats(ch chan<- prometheus.Metric, fieldKey string, fieldValue string, redis_config RedisConfig) (cmd string, calls float64, usecTotal float64) {
+func (e *Exporter) handleMetricsCommandStats(ch chan<- prometheus.Metric, fieldKey string, fieldValue string, redis_config config.RedisConfig) (cmd string, calls float64, usecTotal float64) {
 	cmd, calls, rejectedCalls, failedCalls, usecTotal, extendedStats, err := parseMetricsCommandStats(fieldKey, fieldValue)
 	if err == nil {
 		e.registerConstMetric(ch, "commands_total", calls, prometheus.CounterValue,
@@ -536,7 +537,7 @@ func (e *Exporter) handleMetricsLatencyStats(fieldKey string, fieldValue string,
 	}
 }
 
-func (e *Exporter) handleMetricsErrorStats(ch chan<- prometheus.Metric, fieldKey string, fieldValue string, redis_config RedisConfig) {
+func (e *Exporter) handleMetricsErrorStats(ch chan<- prometheus.Metric, fieldKey string, fieldValue string, redis_config config.RedisConfig) {
 	if errorPrefix, count, err := parseMetricsErrorStats(fieldKey, fieldValue); err == nil {
 		e.registerConstMetric(ch, "errors_total", count, prometheus.CounterValue, redis_config.Cluster.Name,
 			redis_config.Cluster.ScrapeHost,

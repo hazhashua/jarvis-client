@@ -3,6 +3,7 @@ package skywalking
 import (
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 	"sort"
 	"time"
 
@@ -31,16 +32,6 @@ type ServiceCpm struct {
 //       - 192.168.10.65
 //     port: 9200
 
-type SkyWalkingConfig struct {
-	Cluster struct {
-		Name          string `json:"name"`
-		ElasticSearch struct {
-			Ips  []string `json:"ips"`
-			Port int      `json:"port"`
-		}
-	}
-}
-
 type SkyWalkingExporter struct {
 	EventInfos    []EventInfo
 	ServiceCpms   []ServiceCpm
@@ -49,8 +40,8 @@ type SkyWalkingExporter struct {
 }
 
 // 读取skywalking的相关配置
-func ParseSkyWalkingConfig() *SkyWalkingConfig {
-	var skywalkingConfig SkyWalkingConfig
+func ParseSkyWalkingConfig() *config.SkyWalkingConfig {
+	var skywalkingConfig config.SkyWalkingConfig
 	if bytes, err := ioutil.ReadFile("./skywalking/config.yaml"); err == nil {
 		yaml.Unmarshal(bytes, &skywalkingConfig)
 	} else {
@@ -63,10 +54,11 @@ func ParseSkyWalkingConfig() *SkyWalkingConfig {
 func NewSkywalkingExporter() *SkyWalkingExporter {
 	eventInfos := make([]EventInfo, 0)
 	// skywalkingConfig := ParseSkyWalkingConfig()
-
-	beforeOneM := time.Now().Add(time.Duration(-1000000000 * 60 * 480))
+	now := time.Now()
+	beforeOneM := now.Add(time.Duration(-1000000000 * 60 * 480))
 	year, month, day := beforeOneM.Date()
 	eventIndex := fmt.Sprintf("sw_events-%04d%02d%02d", year, month, day)
+	fmt.Printf("skywalking 采集当前时间: %04d-%02d-%02d %02d:%02d:%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
 	skyEventDatas := make([]SkwEvent, 0)
 	var typ SkwEvent
 	events := GetAll(eventIndex, "_doc", typ)

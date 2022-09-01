@@ -3,6 +3,7 @@ package spark
 import (
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 	"metric_exporter/utils"
 	"os"
 
@@ -33,7 +34,7 @@ import (
 func GetMetrics() []string {
 	// url_array := []string{"http://192.168.10.220", "http://192.168.10.221", "http://192.168.10.222"}
 	arrs := make([]string, 0)
-	var yamlConfig *YamlConfig
+	var yamlConfig *config.SparkConfig
 	var err error
 	if yamlConfig, err = LoadSparkConf(); err != nil {
 		fmt.Println("load spark configure failed!")
@@ -189,31 +190,8 @@ func GetMetrics() []string {
 	return print_metrics
 }
 
-type YamlConfig struct {
-	// cluster `yaml:"cluster"`
-	// masterConf MasterConf `yaml:"masterHttp"`
-	// applicationConf HttpConf   `yaml:"application_http"`
-	Cluster    string `yaml:"cluster"`
-	Masterhttp struct {
-		Ips  []string `yaml:"ips"`
-		Port int      `yaml:"port"`
-		Path string   `yaml:"path"`
-	}
-	Workerhttp struct {
-		Ips  []string `yaml:"ips"`
-		Port int      `yaml:"port"`
-		Path string   `yaml:"path"`
-	}
-	Applicationhttp struct {
-		Ips          []string `yaml:"ips"`
-		Ports        []int    `yaml:"ports"`
-		MainPath     string   `yaml:"mainpath"`
-		ExecutorPath string   `yaml:"executorpath"`
-	}
-}
-
-func LoadSparkConf() (*YamlConfig, error) {
-	config := new(YamlConfig)
+func LoadSparkConf() (*config.SparkConfig, error) {
+	config := new(config.SparkConfig)
 	// var yamlConfig YamlConfig
 	dir, _ := os.Getwd()
 	confPath := dir + "/spark/config.yaml"

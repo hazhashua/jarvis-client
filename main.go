@@ -3,6 +3,7 @@ package main
 import (
 	"metric_exporter/config"
 	"metric_exporter/hadoop"
+	"metric_exporter/hbase"
 	"metric_exporter/hive"
 	"metric_exporter/kafka"
 	"metric_exporter/micro_service"
@@ -112,7 +113,7 @@ func main() {
 	http.Handle("/alive/metrics", handler)
 
 	// 激活hbase exporter
-	hbaseCollector := newHbaseCollector()
+	hbaseCollector := hbase.NewHbaseCollector()
 	hbaseR := prometheus.NewRegistry()
 	hbaseR.MustRegister(hbaseCollector)
 	hbaseHandler := promhttp.HandlerFor(hbaseR, promhttp.HandlerOpts{})
@@ -217,6 +218,8 @@ func main() {
 	// } else {
 	// 	fmt.Println("request error!")
 	// }
+
+	utils.Migirate()
 
 	log.Info("Beginning to serve on port :38080")
 	log.Fatal(http.ListenAndServe(":38080", nil))

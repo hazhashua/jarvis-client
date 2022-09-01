@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 	"os"
 	"runtime"
 	"strconv"
@@ -41,18 +42,6 @@ var (
 //   scrapehost: redis-dev-1
 //   scrapeip: 192.168.10.107
 
-type RedisConfig struct {
-	Cluster struct {
-		Name       string   `yaml:"name"`
-		Ips        []string `yaml:"ips"`
-		Hosts      []string `yaml:"hosts"`
-		Ippwds     []string `yaml:"ippwds"`
-		ScrapeHost string   `yaml:"scrapehost"`
-		ScrapeIp   string   `yaml:"scrapeip"`
-		RedisPort  int      `yaml:"redisport"`
-	}
-}
-
 func getEnv(key string, defaultVal string) string {
 	if envVal, ok := os.LookupEnv(key); ok {
 		return envVal
@@ -80,8 +69,8 @@ func getEnvInt64(key string, defaultVal int64) int64 {
 	return defaultVal
 }
 
-func Parse_redis_config() *RedisConfig {
-	redis_config := new(RedisConfig)
+func Parse_redis_config() *config.RedisConfig {
+	redis_config := new(config.RedisConfig)
 	if bytes, err := ioutil.ReadFile("./redis/config.yaml"); err == nil {
 		err2 := yaml.Unmarshal(bytes, &redis_config)
 		if err2 != nil {

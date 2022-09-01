@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 	"metric_exporter/utils"
 
 	"gopkg.in/yaml.v2"
@@ -23,21 +24,6 @@ import (
 //       password: pwd@123
 //   scrapehost: bigdata-dev01
 //   scrapeip: 192.168.10.220
-type HiveConfig struct {
-	Cluster struct {
-		Name    string   `yaml:"name"`
-		Hosts   []string `yaml:"hosts"`
-		Rpcport string   `yaml:"rpcport"`
-		Mysql   struct {
-			Host     string `yaml:"host"`
-			Port     int    `yaml:"port"`
-			User     string `yaml:"user"`
-			Password string `yaml:"password"`
-		}
-		ScrapeHost string `yaml:"scrapehost"`
-		ScrapeIp   string `yaml:"scrapeip"`
-	}
-}
 
 type DBS struct {
 	DbId         int            `json:"DB_ID"`
@@ -61,9 +47,9 @@ type DBTables struct {
 	TotalSize     int           `json:"TOTALSIZE"`
 }
 
-func Parse_hive_config() *HiveConfig {
+func Parse_hive_config() *config.HiveConfig {
 	// var bytes []byte
-	hive_config := new(HiveConfig)
+	hive_config := new(config.HiveConfig)
 	if bytes, err := ioutil.ReadFile("./hive/config.yaml"); err != nil {
 		fmt.Println("读配置文件 hive/config.yaml出错！")
 		return nil

@@ -24,7 +24,7 @@ type MicroServiceExporter struct {
 	// 	IsReady           bool             `json:"isReady"`
 	// }
 
-	k8sConfig K8sConfig
+	k8sConfig config.K8sYamlConfig
 	// 微服务资源及节点状态数据
 	// 包含多个node节点的资源及状态
 	nodeDescs     []K8sNodeDesc

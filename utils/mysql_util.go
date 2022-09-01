@@ -276,7 +276,7 @@ func Query(sqlstr string) []ServicePort {
 	// 执行sql查询
 	if &sqlstr == nil || sqlstr == "" {
 		// sqlstr = "SELECT * FROM test.datasource_alive da"
-		sqlstr = "SELECT * FROM test.service_port sp"
+		sqlstr = "SELECT * FROM test.service_port sp order by service_name asc"
 	}
 	stmt, err2 := db.Prepare(sqlstr)
 	defer stmt.Close()

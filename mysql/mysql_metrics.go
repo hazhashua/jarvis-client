@@ -3,6 +3,7 @@ package mysql
 import (
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 
 	"gopkg.in/yaml.v2"
 )
@@ -15,19 +16,9 @@ import (
 //   roles:
 //     - master
 
-// 存储mysql配置文件信息
-type MysqlConfig struct {
-	Cluster struct {
-		Name string   `yaml:"name"`
-		Ips  []string `yaml:"ips"`
-		Port int      `yaml:"port"`
-		Role []string `yaml:"role"`
-	}
-}
-
-func Parse_mysql_config() *MysqlConfig {
+func Parse_mysql_config() *config.MysqlConfig {
 	if bytes, err := ioutil.ReadFile("./mysql/config.yaml"); err == nil {
-		var mysql_config MysqlConfig
+		var mysql_config config.MysqlConfig
 		yaml.Unmarshal(bytes, &mysql_config)
 		return &mysql_config
 

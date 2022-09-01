@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	// "strings"
+	"metric_exporter/config"
 	"time"
 
 	"github.com/shirou/gopsutil/cpu"
@@ -16,16 +17,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type NodeConfig struct {
-	// cluster:
-	// 	name: bigdata-dev-cluster
-	Cluster struct {
-		Name string `name:"name"`
-	}
-}
-
-func parseNodeConfig() *NodeConfig {
-	var nodeConfig NodeConfig
+func parseNodeConfig() *config.NodeConfig {
+	var nodeConfig config.NodeConfig
 	if bytes, err := ioutil.ReadFile("./node_exporter/config.yaml"); err == nil {
 		err2 := yaml.Unmarshal(bytes, &nodeConfig)
 		if err2 != nil {

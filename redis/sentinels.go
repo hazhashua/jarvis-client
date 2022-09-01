@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"metric_exporter/config"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (e *Exporter) handleMetricsSentinel(ch chan<- prometheus.Metric, fieldKey string, fieldValue string, redis_config RedisConfig) bool {
+func (e *Exporter) handleMetricsSentinel(ch chan<- prometheus.Metric, fieldKey string, fieldValue string, redis_config config.RedisConfig) bool {
 
 	switch fieldKey {
 
