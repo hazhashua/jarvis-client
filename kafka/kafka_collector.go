@@ -60,7 +60,7 @@ func NewKafkaCollector() *kafkaCollector {
 	// 	prometheus.Labels{})
 	client, config := GetClient()
 	defer client.Close()
-	total_brokers, _ := getBrokerNums(client)
+	total_brokers, _, _ := getBrokerInfo(client)
 	kafka_metrics.DiskUsage = make([]*prometheus.Desc, 0)
 	for i := 0; i < total_brokers; i++ {
 		kafka_metrics.DiskUsage = append(kafka_metrics.DiskUsage, prometheus.NewDesc("disk_usage", "show disk usage of the kafka cluster",
@@ -89,7 +89,7 @@ func NewKafkaCollector() *kafkaCollector {
 		prometheus.Labels{})
 	kafka_metrics.ConsumerGroupNumType = prometheus.GaugeValue
 
-	topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate := getTopicInfo(client, &config)
+	topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate, _ := getTopicInfo(client, &config)
 	fmt.Println(topic_num_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate)
 
 	total_partitions := 0
@@ -212,7 +212,7 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 	collector = NewKafkaCollector()
 	// 获取kafka的metric数据
 	//    disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate_metric := GetKafkaMetrics()
-	disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, consumer_group_topic_partition_offsets, topic_partition_balance_rate_metric := GetKafkaMetrics()
+	disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, consumer_group_topic_partition_offsets, topic_partition_balance_rate_metric, _ := GetKafkaMetrics()
 
 	fmt.Println("topic_partition_brokers: ", topic_partition_brokers)
 	//prometheus.NewDesc("disk_usage", "Show disk usage of kafka log disk",
@@ -224,8 +224,8 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 			break
 		}
 		ch <- prometheus.MustNewConstMetric(disk_desc, prometheus.GaugeValue,
-			float64(disk_status[idx].Used/disk_status[idx].All),
-			kafka_config.Cluster.Name, fmt.Sprintf("host_%d", idx), fmt.Sprintf("ip_%d", idx), fmt.Sprintf("broker_id_%d", idx), disk_status[idx].Path)
+			float64(float32(disk_status[idx].Used)/float32(disk_status[idx].All)),
+			kafka_config.Cluster.Name, disk_status[idx].Host, "", fmt.Sprintf("%d", disk_status[idx].BrokerID), disk_status[idx].Path)
 	}
 	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.BrokerNum, collector.kafkaMetrics.BrokerNumValueType, float64(total_brokers), kafka_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.BrokerAliveNum, collector.kafkaMetrics.BrokerAliveNumValType, float64(alive_brokers), kafka_config.Cluster.Name)

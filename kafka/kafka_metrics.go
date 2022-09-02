@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"metric_exporter/config"
 	"runtime"
+	"strings"
 	"syscall"
 
 	"github.com/Shopify/sarama"
@@ -12,10 +13,12 @@ import (
 )
 
 type DiskStatus struct {
-	Path string `json:"path"`
-	All  uint64 `json:"all"`
-	Used uint64 `json:"used"`
-	Free uint64 `json:"free"`
+	BrokerID int32  `json:"brokerid"`
+	Host     string `json:"host"`
+	Path     string `json:"path"`
+	All      uint64 `json:"all"`
+	Used     uint64 `json:"used"`
+	Free     uint64 `json:"free"`
 }
 
 func runFuncName() string {
@@ -40,19 +43,32 @@ func Parse_kafka_config() *config.KafkConfigure {
 	return kafkaConfig
 }
 
-func getBrokerNums(client sarama.Client) (total int, alive int) {
+// 存储kafka broker的节点信息
+type KafkaBrokerInfo struct {
+	Addr     string
+	BrokerId int
+}
+
+func getBrokerInfo(client sarama.Client) (total int, alive int, broker_infos []KafkaBrokerInfo) {
 	// 获取活的总的broker个数
 	alive_brokers := client.Brokers()
+	kafkaBrokers := make([]KafkaBrokerInfo, 0)
+	for _, broker := range alive_brokers {
+		kafkaBrokers = append(kafkaBrokers, KafkaBrokerInfo{
+			Addr:     broker.Addr(),
+			BrokerId: int(broker.ID()),
+		})
+	}
 	fmt.Println("活的broker个数: ", len(alive_brokers))
 
 	//总的broker个数，读取配置文件
 	kafkaConfig := Parse_kafka_config()
 	broker_total := len(kafkaConfig.Cluster.Hosts)
 	fmt.Println("总的broker个数: ", broker_total)
-	return broker_total, len(alive_brokers)
+	return broker_total, len(alive_brokers), kafkaBrokers
 }
 
-func getDiskUsage(client sarama.Client, config *sarama.Config) []*DiskStatus {
+func getDiskUsage(client sarama.Client, config *sarama.Config, replication_infos []ReplicationInfo) []*DiskStatus {
 	// 获取磁盘使用率
 	// get broker logDir
 	brokers := client.Brokers()
@@ -66,6 +82,7 @@ func getDiskUsage(client sarama.Client, config *sarama.Config) []*DiskStatus {
 		}
 		conneted, _ := broker.Connected()
 		if conneted {
+			fmt.Println("broker: ", broker.Addr(), " 已经连接上")
 			var request = new(sarama.DescribeLogDirsRequest)
 			dldr, err2 := broker.DescribeLogDirs(request)
 
@@ -73,6 +90,15 @@ func getDiskUsage(client sarama.Client, config *sarama.Config) []*DiskStatus {
 				fmt.Println("error: ", err2.Error())
 			} else {
 				fmt.Println("logDir: ", dldr.LogDirs[0].Path)
+			}
+			disk_bytes := 0
+			for _, logdata := range dldr.LogDirs {
+				for _, topicData := range logdata.Topics {
+					for _, partitionData := range topicData.Partitions {
+						disk_bytes += int(partitionData.Size)
+						fmt.Println("broker_info: ", "topic: ", topicData.Topic, "partitionID: ", partitionData.PartitionID, "----broker: ", broker.Addr(), partitionData.OffsetLag, partitionData.Size)
+					}
+				}
 			}
 			fmt.Printf("%s\n", broker.Addr())
 
@@ -83,10 +109,17 @@ func getDiskUsage(client sarama.Client, config *sarama.Config) []*DiskStatus {
 				return nil
 			}
 			var disk DiskStatus
-			disk.Path = broker.Addr()
+			host_str := strings.Split(broker.Addr(), ":")
+			if len(host_str) != 0 {
+				disk.Host = host_str[0]
+			}
+			disk.BrokerID = broker.ID()
+			disk.Path = dldr.LogDirs[0].Path
 			disk.All = fs.Blocks * uint64(fs.Bsize)
-			disk.Free = fs.Bfree * uint64(fs.Bsize)
-			disk.Used = disk.All - disk.Free
+			// disk.Free = fs.Bfree * uint64(fs.Bsize)
+			// disk.Used = disk.All - disk.Free
+			disk.Used = uint64(disk_bytes)
+			disk.Free = disk.All - disk.Used
 			fmt.Println("diskUsage: ", disk)
 			disk_status = append(disk_status, &disk)
 		}
@@ -114,16 +147,25 @@ func listStringDistinct(listx []string) (num int) {
 	return len(mapObj)
 }
 
+// 存储副本的主题及其它信息
+type ReplicationInfo struct {
+	Topic               string
+	Partition           int32
+	ReplicationId       int32
+	ReplicationBrokerId int
+	Ip                  string
+}
+
 func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric int, topic_partition_metric map[string]int, topic_partition_brokers map[string][]string,
 	topic_partition_offsets_metric map[string]map[int]int64, topic_partition_replication_metric map[string]map[int32]int, replication_distribution_balanced_rate_metric map[string]float32,
-	consumer_group_num_metric int, topic_partition_consumer_group_offsets map[string]map[string]int64, topic_partition_balance_rate map[string]float32) {
+	consumer_group_num_metric int, topic_partition_consumer_group_offsets map[string]map[string]int64, topic_partition_balance_rate map[string]float32, replication_infos []ReplicationInfo) {
 	// 获取topic的相关信息
 	// metric:  topic个数   		partition个数
 	// 			replication个数     topic partition下的偏移量
 	topics, err := client.Topics()
 	if err != nil {
 		fmt.Printf("try get topics err %s\n", err.Error())
-		return 0, nil, nil, nil, nil, nil, 0, nil, nil
+		return 0, nil, nil, nil, nil, nil, 0, nil, nil, nil
 	}
 
 	topic_num_metric = len(topics)
@@ -136,13 +178,14 @@ func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric
 	// 当前topic的偏移量
 	topic_partition_offsets_metric = make(map[string]map[int]int64, 0)
 
-	all, _ := getBrokerNums(client)
+	all, _, _ := getBrokerInfo(client)
 	// 副本的列表
 	var replication_ids []int32
 	// 存放topic下的副本个数
 	replication_distribution_balanced_rate_metric = make(map[string]float32)
 	topic_partition_brokers = make(map[string][]string, 0)
 	topic_partition_balance_rate = make(map[string]float32)
+	replication_infos = make([]ReplicationInfo, 0)
 	for _, topic := range topics {
 		fmt.Println("topic: ", topic)
 		partitions, _ := client.Partitions(topic)
@@ -153,10 +196,19 @@ func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric
 		topic_partition_replication_metric[topic] = make(map[int32]int)
 		topic_partition_offsets_metric[topic] = make(map[int]int64, 0)
 		topic_partition_brokers[topic] = make([]string, 0)
+		var brokerObj *sarama.Broker
 		for _, partition := range partitions {
 			// fmt.Print("partition: ", partition, "\t")
 			replication_ids, _ = client.Replicas(topic, partition)
-			var brokerObj *sarama.Broker
+
+			for _, replicationID := range replication_ids {
+				replication_infos = append(replication_infos, ReplicationInfo{
+					Topic:               topic,
+					Partition:           partition,
+					ReplicationBrokerId: int(replicationID),
+				})
+			}
+
 			var err error
 			if brokerObj, err = client.Leader(topic, partition); err != nil {
 				fmt.Println("client.Leader  err: ", err.Error())
@@ -203,7 +255,8 @@ func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric
 	if err3 != nil {
 		fmt.Println("err3: ", err3.Error())
 	} else {
-		for group, _ := range m {
+		for group, v := range m {
+			fmt.Println("key: ", group, "value: ", v)
 			topic_partition_consumer_group_offsets[group] = make(map[string]int64)
 			consumer_groups = append(consumer_groups, group)
 			ofr, err5 := cluster_admin.ListConsumerGroupOffsets(group, topic_partitions)
@@ -261,7 +314,7 @@ func GetClient() (sarama.Client, sarama.Config) {
 func GetKafkaMetrics() (diskStatus []*DiskStatus, total_brokers int, alive_brokers int, topic_num_metric int, topic_partition_metric map[string]int,
 	topic_partition_brokers map[string][]string, topic_partition_offsets_metric map[string]map[int]int64,
 	topic_partition_replication_metric map[string]map[int32]int, replication_distribution_balanced_rate_metric map[string]float32,
-	consumer_group_num_metric int, topic_partition_consumer_group_offsets map[string]map[string]int64, topic_partition_balance_rate_metric map[string]float32) {
+	consumer_group_num_metric int, topic_partition_consumer_group_offsets map[string]map[string]int64, topic_partition_balance_rate_metric map[string]float32, replication_infos []ReplicationInfo) {
 
 	// 获取kafka的所有指标
 	// kafka_config := Parse_kafka_config()
@@ -280,11 +333,11 @@ func GetKafkaMetrics() (diskStatus []*DiskStatus, total_brokers int, alive_broke
 	client, config := GetClient()
 	defer client.Close()
 
-	total_brokers, alive_brokers = getBrokerNums(client)
+	total_brokers, alive_brokers, _ = getBrokerInfo(client)
 	fmt.Println("total: ", total_brokers, "alive: ", alive_brokers)
-	topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate_metric = getTopicInfo(client, &config)
+	topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate_metric, replication_infos = getTopicInfo(client, &config)
 
-	diskStatus = getDiskUsage(client, &config)
+	diskStatus = getDiskUsage(client, &config, replication_infos)
 	return
 }
 
