@@ -57,7 +57,7 @@ type regionData struct {
 }
 
 type hbaseData struct {
-	masterData  hmasterData
+	masterData  *hmasterData
 	regionDatas []regionData
 }
 
@@ -147,18 +147,24 @@ func HttpRequest(is_master bool, jmx_http_url *jmxHttpUrl, uri string, region_no
 	fmt.Println(*jmx_http_url.masterBackupUrls)
 	fmt.Println(jmx_http_url.regionserversUrls)
 	// fmt.Println((*jmx_http_url.masterUrl) + uri)
+	var httpErr error
 	var response *http.Response
 	if is_master {
 		fmt.Println("master url: ", (*jmx_http_url.masterUrl)+uri)
-		response, _ = http.Get((*jmx_http_url.masterUrl) + uri)
+		response, httpErr = http.Get((*jmx_http_url.masterUrl) + uri)
 	} else {
 		fmt.Println("regionserver url: ", (*jmx_http_url.regionserversUrls)[region_no-1]+uri)
-		response, _ = http.Get((*jmx_http_url.regionserversUrls)[region_no-1] + uri)
+		response, httpErr = http.Get((*jmx_http_url.regionserversUrls)[region_no-1] + uri)
 	}
 	defer response.Body.Close()
+	if httpErr != nil {
+		fmt.Println("http GET error! ")
+		return []byte{}
+	}
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		// handle error
+		fmt.Println("")
 		panic(err)
 	}
 	//fmt.Println("------response:", string(body))
@@ -172,6 +178,13 @@ func QueryMetric() *hbaseData {
 	fmt.Println("query_url: ", query_url)
 
 	active_no, jmx_http_url := initUrl()
+	if active_no == -1 {
+		// 没有找到active master, 返回
+		return &hbaseData{
+			masterData:  nil,
+			regionDatas: []regionData{},
+		}
+	}
 	// fmt.Println(*jmx_http_url.masterUrl)
 	// fmt.Println(*jmx_http_url.masterBackupUrls)
 	// fmt.Println(jmx_http_url.regionserversUrls)
@@ -187,37 +200,39 @@ func QueryMetric() *hbaseData {
 	hmaster_data.ip = &ip
 
 	body := HttpRequest(true, jmx_http_url, query_url, 0)
-	mm, _ := UnmarshalMasterMain(body)
-	hmaster_data.numRegionServers = *mm.Beans[0].NumRegionServers
-	hmaster_data.numDeadRegionServers = *mm.Beans[0].NumDeadRegionServers
-	fmt.Println(*mm.Beans[0].NumRegionServers)
-	fmt.Println(*mm.Beans[0].NumDeadRegionServers)
+	if mm, unmarshalErr := UnmarshalMasterMain(body); unmarshalErr == nil {
+		hmaster_data.numRegionServers = *mm.Beans[0].NumRegionServers
+		hmaster_data.numDeadRegionServers = *mm.Beans[0].NumDeadRegionServers
+		fmt.Println(*mm.Beans[0].NumRegionServers)
+		fmt.Println(*mm.Beans[0].NumDeadRegionServers)
+	}
 
 	query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=AssignmentManager")
 	body = HttpRequest(true, jmx_http_url, query_url, 0)
-	assignment_manager, _ := UnmarshalAssignmentManager(body)
-	hmaster_data.ritCount = *assignment_manager.Beans[0].RitCount
-	hmaster_data.ritCountOverThreshold = *assignment_manager.Beans[0].RitCountOverThreshold
-	fmt.Println(*assignment_manager.Beans[0].RitCount)
-	fmt.Println(*assignment_manager.Beans[0].RitCountOverThreshold)
+	if assignment_manager, unmarshalErr := UnmarshalAssignmentManager(body); unmarshalErr == nil {
+		hmaster_data.ritCount = *assignment_manager.Beans[0].RitCount
+		hmaster_data.ritCountOverThreshold = *assignment_manager.Beans[0].RitCountOverThreshold
+		fmt.Println(*assignment_manager.Beans[0].RitCount)
+		fmt.Println(*assignment_manager.Beans[0].RitCountOverThreshold)
+	}
 
 	//Hadoop:service=HBase,name=Master,sub=IPC
 	query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=IPC")
 	body = HttpRequest(true, jmx_http_url, query_url, 0)
-	master_ipc, _ := UnmarshalMasterIPC(body)
+	if master_ipc, unmarshalErr := UnmarshalMasterIPC(body); unmarshalErr == nil {
+		hmaster_data.masterNumActiveHandler = *master_ipc.Beans[0].NumActiveHandler
+		hmaster_data.masterReceivedBytes = *master_ipc.Beans[0].ReceivedBytes
+		hmaster_data.masterSentBytes = *master_ipc.Beans[0].SentBytes
+		hmaster_data.masterNumOpenConnections = *master_ipc.Beans[0].NumOpenConnections
 
-	hmaster_data.masterNumActiveHandler = *master_ipc.Beans[0].NumActiveHandler
-	hmaster_data.masterReceivedBytes = *master_ipc.Beans[0].ReceivedBytes
-	hmaster_data.masterSentBytes = *master_ipc.Beans[0].SentBytes
-	hmaster_data.masterNumOpenConnections = *master_ipc.Beans[0].NumOpenConnections
-
-	fmt.Println(*master_ipc.Beans[0].NumActiveHandler)
-	// 接收的数据量
-	fmt.Println(*master_ipc.Beans[0].ReceivedBytes)
-	// 发送的数据量
-	fmt.Println(*master_ipc.Beans[0].SentBytes)
-	// 打开的ipc连接数
-	fmt.Println(*master_ipc.Beans[0].NumOpenConnections)
+		fmt.Println(*master_ipc.Beans[0].NumActiveHandler)
+		// 接收的数据量
+		fmt.Println(*master_ipc.Beans[0].ReceivedBytes)
+		// 发送的数据量
+		fmt.Println(*master_ipc.Beans[0].SentBytes)
+		// 打开的ipc连接数
+		fmt.Println(*master_ipc.Beans[0].NumOpenConnections)
+	}
 
 	fmt.Println(jmx_http_url.regionserversUrls)
 	region_num := len(*jmx_http_url.regionserversUrls)
@@ -231,95 +246,99 @@ func QueryMetric() *hbaseData {
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IPC")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		fmt.Println("body: ", body)
-		region_ipc, _ := UnmarshalRegionserverIPC(body)
-		region_data.numActiveHandler = *region_ipc.Beans[0].NumActiveHandler
-		region_data.receivedBytes = *region_ipc.Beans[0].ReceivedBytes
-		region_data.sentBytes = *region_ipc.Beans[0].SentBytes
-		region_data.numOpenConnections = *region_ipc.Beans[0].NumOpenConnections
-		region_data.authenticationFailures = *region_ipc.Beans[0].AuthenticationFailures
-		region_data.authenticationSuccesses = *region_ipc.Beans[0].AuthenticationSuccesses
+		if region_ipc, unmarshalErr := UnmarshalRegionserverIPC(body); unmarshalErr == nil {
+			region_data.numActiveHandler = *region_ipc.Beans[0].NumActiveHandler
+			region_data.receivedBytes = *region_ipc.Beans[0].ReceivedBytes
+			region_data.sentBytes = *region_ipc.Beans[0].SentBytes
+			region_data.numOpenConnections = *region_ipc.Beans[0].NumOpenConnections
+			region_data.authenticationFailures = *region_ipc.Beans[0].AuthenticationFailures
+			region_data.authenticationSuccesses = *region_ipc.Beans[0].AuthenticationSuccesses
 
-		fmt.Println(*region_ipc.Beans[0].NumActiveHandler)
-		// 接收的数据量
-		fmt.Println(*region_ipc.Beans[0].ReceivedBytes)
-		// 发送的数据量
-		fmt.Println(*region_ipc.Beans[0].SentBytes)
-		// 打开的ipc连接数
-		fmt.Println(*region_ipc.Beans[0].NumOpenConnections)
-		// rpc认证失败次数
-		fmt.Println(*region_ipc.Beans[0].AuthenticationFailures)
-		// rpc认证成功次数
-		fmt.Println(*region_ipc.Beans[0].AuthenticationSuccesses)
+			fmt.Println(*region_ipc.Beans[0].NumActiveHandler)
+			// 接收的数据量
+			fmt.Println(*region_ipc.Beans[0].ReceivedBytes)
+			// 发送的数据量
+			fmt.Println(*region_ipc.Beans[0].SentBytes)
+			// 打开的ipc连接数
+			fmt.Println(*region_ipc.Beans[0].NumOpenConnections)
+			// rpc认证失败次数
+			fmt.Println(*region_ipc.Beans[0].AuthenticationFailures)
+			// rpc认证成功次数
+			fmt.Println(*region_ipc.Beans[0].AuthenticationSuccesses)
+		}
 
 		//Hadoop:service=HBase,name=RegionServer,sub=Server
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=Server")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
-		region_server, _ := UnmarshalRegionserverServer(body)
-		if len(region_server.Beans) != 0 {
-			// jmx没有抓取到数据
-			region_data.blockCacheCountHitPercent = *region_server.Beans[0].BlockCacheCountHitPercent
-			region_data.blockCacheExpressHitPercent = *region_server.Beans[0].BlockCacheExpressHitPercent
-			region_data.readRequestCount = *region_server.Beans[0].ReadRequestCount
-			region_data.writeRequestCount = *region_server.Beans[0].WriteRequestCount
-			region_data.regionCount = *region_server.Beans[0].RegionCount
-			region_data.storeFileCount = *region_server.Beans[0].StoreFileCount
-			region_data.slowGetCount = *region_server.Beans[0].SlowGetCount
-			region_data.slowPutCount = *region_server.Beans[0].SlowPutCount
-			region_data.slowDeleteCount = *region_server.Beans[0].SlowDeleteCount
-			region_data.slowAppendCount = *region_server.Beans[0].SlowAppendCount
-			region_data.slowIncrementCount = *region_server.Beans[0].SlowIncrementCount
+		if region_server, unmarshalErr := UnmarshalRegionserverServer(body); unmarshalErr == nil {
 
-			// server的读请求数
-			fmt.Println(*region_server.Beans[0].ReadRequestCount)
-			// server的写请求数
-			fmt.Println(*region_server.Beans[0].WriteRequestCount)
-			// regionserver的region个数
-			fmt.Println(*region_server.Beans[0].RegionCount)
-			// regionserver的store file个数
-			fmt.Println(*region_server.Beans[0].StoreFileCount)
-			// regionserver的slow get count
-			fmt.Println(*region_server.Beans[0].SlowGetCount)
-			// regionserver的slow put count
-			fmt.Println(*region_server.Beans[0].SlowPutCount)
-			// regionserver的slow delete count
-			fmt.Println(*region_server.Beans[0].SlowDeleteCount)
-			// regionserver的slow delete count
-			fmt.Println(*region_server.Beans[0].SlowAppendCount)
-			// regionserver的slow delete count
-			fmt.Println(*region_server.Beans[0].SlowIncrementCount)
+			if len(region_server.Beans) != 0 {
+				// jmx没有抓取到数据
+				region_data.blockCacheCountHitPercent = *region_server.Beans[0].BlockCacheCountHitPercent
+				region_data.blockCacheExpressHitPercent = *region_server.Beans[0].BlockCacheExpressHitPercent
+				region_data.readRequestCount = *region_server.Beans[0].ReadRequestCount
+				region_data.writeRequestCount = *region_server.Beans[0].WriteRequestCount
+				region_data.regionCount = *region_server.Beans[0].RegionCount
+				region_data.storeFileCount = *region_server.Beans[0].StoreFileCount
+				region_data.slowGetCount = *region_server.Beans[0].SlowGetCount
+				region_data.slowPutCount = *region_server.Beans[0].SlowPutCount
+				region_data.slowDeleteCount = *region_server.Beans[0].SlowDeleteCount
+				region_data.slowAppendCount = *region_server.Beans[0].SlowAppendCount
+				region_data.slowIncrementCount = *region_server.Beans[0].SlowIncrementCount
 
-		} else {
-			fmt.Println("jmx中没有抓取到数据......")
-			region_data.blockCacheCountHitPercent = -1
-			region_data.blockCacheExpressHitPercent = -1
-			region_data.readRequestCount = -1
-			region_data.writeRequestCount = -1
-			region_data.regionCount = -1
-			region_data.storeFileCount = -1
-			region_data.slowGetCount = -1
-			region_data.slowPutCount = -1
-			region_data.slowDeleteCount = -1
-			region_data.slowAppendCount = -1
-			region_data.slowIncrementCount = -1
+				// server的读请求数
+				fmt.Println(*region_server.Beans[0].ReadRequestCount)
+				// server的写请求数
+				fmt.Println(*region_server.Beans[0].WriteRequestCount)
+				// regionserver的region个数
+				fmt.Println(*region_server.Beans[0].RegionCount)
+				// regionserver的store file个数
+				fmt.Println(*region_server.Beans[0].StoreFileCount)
+				// regionserver的slow get count
+				fmt.Println(*region_server.Beans[0].SlowGetCount)
+				// regionserver的slow put count
+				fmt.Println(*region_server.Beans[0].SlowPutCount)
+				// regionserver的slow delete count
+				fmt.Println(*region_server.Beans[0].SlowDeleteCount)
+				// regionserver的slow delete count
+				fmt.Println(*region_server.Beans[0].SlowAppendCount)
+				// regionserver的slow delete count
+				fmt.Println(*region_server.Beans[0].SlowIncrementCount)
 
+			} else {
+				fmt.Println("jmx中没有抓取到数据......")
+				region_data.blockCacheCountHitPercent = -1
+				region_data.blockCacheExpressHitPercent = -1
+				region_data.readRequestCount = -1
+				region_data.writeRequestCount = -1
+				region_data.regionCount = -1
+				region_data.storeFileCount = -1
+				region_data.slowGetCount = -1
+				region_data.slowPutCount = -1
+				region_data.slowDeleteCount = -1
+				region_data.slowAppendCount = -1
+				region_data.slowIncrementCount = -1
+
+			}
 		}
 
 		//	Hadoop:service=HBase,name=RegionServer,sub=IO
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IO")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
-		region_io, _ := UnmarshalRegionserverIO(body)
-		region_data.fsReadTimeMax = *region_io.Beans[0].FSReadTimeMax
-		region_data.fsWriteTimeMax = *region_io.Beans[0].FSWriteTimeMax
-		// 文件系统最大读时间
-		fmt.Println(*region_io.Beans[0].FSReadTimeMax)
-		// 文件系统最大写时间
-		fmt.Println(*region_io.Beans[0].FSWriteTimeMax)
+		if region_io, unmarshalErr := UnmarshalRegionserverIO(body); unmarshalErr == nil {
+			region_data.fsReadTimeMax = *region_io.Beans[0].FSReadTimeMax
+			region_data.fsWriteTimeMax = *region_io.Beans[0].FSWriteTimeMax
+			// 文件系统最大读时间
+			fmt.Println(*region_io.Beans[0].FSReadTimeMax)
+			// 文件系统最大写时间
+			fmt.Println(*region_io.Beans[0].FSWriteTimeMax)
+		}
+
 		// cluster, host, ip := "cluster1", fmt.Sprintf("dev%02d", region_no), "192.168.10.220"
 		cluster = hbase_config.Cluster.ClusterName
 		host = hbase_config.Cluster.Names[region_no-1]
 		ip = hbase_config.Cluster.Hosts[region_no-1]
 		fmt.Println("@@@@@@@@@@@@@@@@@", cluster, host, ip)
-
 		region_data.cluster = cluster
 		region_data.host = host
 		region_data.ip = ip
@@ -332,7 +351,7 @@ func QueryMetric() *hbaseData {
 
 	}
 	return &hbaseData{
-		masterData:  hmaster_data,
+		masterData:  &hmaster_data,
 		regionDatas: region_datas,
 	}
 
@@ -600,6 +619,10 @@ func (collector *hbaseCollector) Describe(ch chan<- *prometheus.Desc) {
 func (collector *hbaseCollector) Collect(ch chan<- prometheus.Metric) {
 
 	hbase_data := QueryMetric()
+	if hbase_data.masterData == nil || len(hbase_data.regionDatas) == 0 {
+		// 集群异常，数据为空，直接返回
+		return
+	}
 
 	// for _, alive := range da {
 	for index, region_info := range collector.regionMetrics {
