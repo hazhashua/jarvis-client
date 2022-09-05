@@ -231,7 +231,7 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 	for i := 0; i < len(myk8spodinfo); i++ {
 		var k8spodDesc K8sPodDesc
 		k8spodDesc.PodInfoDesc = prometheus.NewDesc("pod_info", "显示k8s集群节点的pod信息",
-			[]string{"cluster", "pod_name", "app", "phase", "run_host_ip", "restart_count"},
+			[]string{"cluster", "pod_name", "app", "phase", "run_host_ip", "restart_count", "state"},
 			prometheus.Labels{})
 		k8spodDesc.PodInfoValType = prometheus.GaugeValue
 		podInfoDescs = append(podInfoDescs, k8spodDesc)
@@ -352,15 +352,31 @@ func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	// "cluster", "pod_name", "app", "phase", "run_host_ip", "restart_count"
 	for idx, pod_info := range e.podInfoDescs {
 		var restartCount int
+		containerStatuses := make([]string, 0)
 		for _, status := range e.podInfoDatas[idx].containersStatus {
 			restartCount += status.RestartCount
+			containerStatuses = append(containerStatuses, status.State)
 		}
+		contaionerStatus := GetRealStatus(containerStatuses)
 		fmt.Printf("%s restartcount:%d", e.podInfoDatas[idx].Name, restartCount)
 		ch <- prometheus.MustNewConstMetric(pod_info.PodInfoDesc, pod_info.PodInfoValType, 1,
 			e.k8sConfig.Cluster.Name, e.podInfoDatas[idx].Name, e.podInfoDatas[idx].App, e.podInfoDatas[idx].Status,
-			e.podInfoDatas[idx].RunHostIP, fmt.Sprintf("%d", restartCount))
+			e.podInfoDatas[idx].RunHostIP, fmt.Sprintf("%d", restartCount), contaionerStatus)
 
 	}
+}
+
+func GetRealStatus(statuses []string) string {
+	rStatus := ""
+	for _, status := range statuses {
+		if status == "Terminated" || status == "Waiting" {
+			rStatus = status
+			break
+		} else {
+			rStatus = status
+		}
+	}
+	return rStatus
 }
 
 func BoolToString(boolV bool) string {

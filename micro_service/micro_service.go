@@ -60,6 +60,7 @@ type MyContainerStatus struct {
 	IsReady       bool   `json:"isReady"`
 	IsStart       bool   `json:"isStart"`
 	RestartCount  int    `json:"restartCount"`
+	State         string `json:"state"`
 }
 
 type MyK8sPodInfo struct {
@@ -398,6 +399,13 @@ func GetPodInfo(podUrl string) []*MyK8sPodInfo {
 				myContainerStatus.IsReady = *containerStatus.Ready
 				myContainerStatus.IsStart = *containerStatus.Started
 				myContainerStatus.RestartCount = int(*containerStatus.RestartCount)
+				if containerStatus.State.Waiting != nil {
+					myContainerStatus.State = "Waiting"
+				} else if containerStatus.State.Running != nil {
+					myContainerStatus.State = "Running"
+				} else if containerStatus.State.Terminated != nil {
+					myContainerStatus.State = "Terminated"
+				}
 				fmt.Printf("container: %s restart_count: %d\n", *containerStatus.Name, int(*containerStatus.RestartCount))
 				containerStatusList = append(containerStatusList, &myContainerStatus)
 			}
