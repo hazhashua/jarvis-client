@@ -398,6 +398,7 @@ func GetPodInfo(podUrl string) []*MyK8sPodInfo {
 				myContainerStatus.IsReady = *containerStatus.Ready
 				myContainerStatus.IsStart = *containerStatus.Started
 				myContainerStatus.RestartCount = int(*containerStatus.RestartCount)
+				fmt.Printf("container: %s restart_count: %d\n", *containerStatus.Name, int(*containerStatus.RestartCount))
 				containerStatusList = append(containerStatusList, &myContainerStatus)
 			}
 			myPodInfo.containersStatus = containerStatusList

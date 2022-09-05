@@ -120,7 +120,7 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 	myk8sNodeInfos := GetNodeInfo(k8sConfig.NodeURL)
 	nodeDescs := make([]K8sNodeDesc, 0)
 	nodeInfoDescs := make([]K8sNodeInfoDesc, 0)
-	fmt.Println("len(myk8sNodeInfos): ", len(myk8sNodeInfos))
+	// fmt.Println("len(myk8sNodeInfos): ", len(myk8sNodeInfos))
 
 	// 抓取node资源使用情况
 	nodeResourceUsedData := GetResourceUsed(k8sConfig.NodeResourceURL)
@@ -212,7 +212,7 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 	}
 
 	serviceinfo := GetServiceInfo(k8sConfig.ServiceURL)
-	fmt.Println(" len(serviceinfo):", len(serviceinfo))
+	//fmt.Println(" len(serviceinfo):", len(serviceinfo))
 	serviceinfoDescs := make([]K8sServiceDesc, 0)
 	for i := 0; i < len(serviceinfo); i++ {
 		var k8sServiceDesc K8sServiceDesc
@@ -227,7 +227,7 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 	// podInfoDescs []K8sPodDesc
 	myk8spodinfo := GetPodInfo(k8sConfig.PodURL)
 	podInfoDescs := make([]K8sPodDesc, 0)
-	fmt.Println("len(myk8spodinfo): ", len(myk8spodinfo))
+	// fmt.Println("len(myk8spodinfo): ", len(myk8spodinfo))
 	for i := 0; i < len(myk8spodinfo); i++ {
 		var k8spodDesc K8sPodDesc
 		k8spodDesc.PodInfoDesc = prometheus.NewDesc("pod_info", "显示k8s集群节点的pod信息",
@@ -294,6 +294,7 @@ func (e *MicroServiceExporter) Describe(ch chan<- *prometheus.Desc) {
 //
 func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	// 基于抓取node, service, pod数据，输出指标
+	e = NewMicroServiceExporter()
 	k8sNodeInfo := e.nodeDatas
 	for _, node_info := range k8sNodeInfo {
 		fmt.Println(node_info.Name)
@@ -339,7 +340,7 @@ func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	keys := make([]string, 0, len(e.serviceInfoDatas))
 	for k := range e.serviceInfoDatas {
 		keys = append(keys, k)
-		fmt.Println("serviceinfo key: ", k)
+		// fmt.Println("serviceinfo key: ", k)
 	}
 	for idx, service_info := range e.serviceInfoDescs {
 		// "cluster", "service_name", "is_nodeport"
@@ -352,8 +353,9 @@ func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	for idx, pod_info := range e.podInfoDescs {
 		var restartCount int
 		for _, status := range e.podInfoDatas[idx].containersStatus {
-			status.RestartCount += status.RestartCount
+			restartCount += status.RestartCount
 		}
+		fmt.Printf("%s restartcount:%d", e.podInfoDatas[idx].Name, restartCount)
 		ch <- prometheus.MustNewConstMetric(pod_info.PodInfoDesc, pod_info.PodInfoValType, 1,
 			e.k8sConfig.Cluster.Name, e.podInfoDatas[idx].Name, e.podInfoDatas[idx].App, e.podInfoDatas[idx].Status,
 			e.podInfoDatas[idx].RunHostIP, fmt.Sprintf("%d", restartCount))
