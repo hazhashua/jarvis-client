@@ -29,6 +29,9 @@ type HiveExporter struct {
 	// 存储所有表的基础信息
 	tableInfoDescriptions []*prometheus.Desc
 
+	dbDatas    []DB
+	tableDatas []DBTable
+
 	// metricMapCounters map[string]string
 	// metricMapGauges   map[string]string
 }
@@ -61,7 +64,8 @@ func NewHiveExporter() *HiveExporter {
 		metricDescriptions[metric] = prometheus.NewDesc(prometheus.BuildFQName("", "", metric), desc.txt, desc.lbls, nil)
 	}
 	fmt.Println("in NewHiveExporter......")
-	db_num := len(GetDbs())
+	dbs := GetDbs()
+	db_num := len(dbs)
 	dbInfoDescriptions := make([]*prometheus.Desc, db_num)
 
 	// DbId         int     `json:"DB_ID"`
@@ -106,6 +110,8 @@ func NewHiveExporter() *HiveExporter {
 		metricDescriptions:    metricDescriptions,
 		dbInfoDescriptions:    dbInfoDescriptions,
 		tableInfoDescriptions: tableInfoDescriptions,
+		dbDatas:               dbs,
+		tableDatas:            db_tables,
 	}
 }
 
@@ -133,6 +139,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 	// hive 指标采集
 	// db_num := len(dbs)
 
+	exporter = NewHiveExporter()
 	hive_config := Parse_hive_config()
 	mysql_connection := utils.MysqlConnect{
 		Host:      hive_config.Cluster.Mysql.Host,
@@ -180,7 +187,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 
 	// 写数据库的详细指标数据
 	fmt.Println("in Collect......")
-	dbs := GetDbs()
+	dbs := exporter.dbDatas
 	// []string{"db_desc", "db_location_uri", "name", "owner_name", "cluster", "exporter_host", "exporter_ip"},
 	for idx, desc := range exporter.dbInfoDescriptions {
 		fmt.Printf("*dbs[%d]: %s,  %s, %s, %s", idx, dbs[idx].Desc.String, *dbs[idx].DbLocaionUri, *dbs[idx].Name, *dbs[idx].OwnerName)
@@ -192,7 +199,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// 写表的详细指标数据
-	db_tables = QueryDetailTbls(mysql_connection)
+	db_tables = exporter.tableDatas
 	// []string{"db_name", "table_name", "is_external", "is_partitioned", "cluster", "exporter_host", "exporter_ip"},
 
 	for idx, desc := range exporter.tableInfoDescriptions {

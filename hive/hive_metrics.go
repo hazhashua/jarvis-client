@@ -25,7 +25,7 @@ import (
 //   scrapehost: bigdata-dev01
 //   scrapeip: 192.168.10.220
 
-type DBS struct {
+type DB struct {
 	DbId         int            `json:"DB_ID"`
 	Desc         sql.NullString `json:"DESC"`
 	DbLocaionUri *string        `json:"DB_LOCATIONURI"`
@@ -35,7 +35,7 @@ type DBS struct {
 	CtlgName     *string        `json:"CTLG_NAME"`
 }
 
-type DBTables struct {
+type DBTable struct {
 	Name          *string       `json:"NAME"`
 	TblId         sql.NullInt16 `json:"TBLID"`
 	DbId          *string       `json:"DBID"`
@@ -69,7 +69,7 @@ func Parse_hive_config() *config.HiveConfig {
 // hive_error_ops	Hive 操作数量: 出错的操作数量
 
 // 获取库个数
-func GetDbs() []DBS {
+func GetDbs() []DB {
 	hive_config := Parse_hive_config()
 	mysql_connection := utils.MysqlConnect{
 		Host:      hive_config.Cluster.Mysql.Host,
@@ -89,9 +89,9 @@ func GetDbs() []DBS {
 	defer stmt.Close()
 	res, _ := stmt.Query()
 	defer res.Close()
-	dbs := make([]DBS, 0)
+	dbs := make([]DB, 0)
 	for res.Next() {
-		var db DBS
+		var db DB
 		db.DbLocaionUri = new(string)
 		db.Name = new(string)
 		db.OwnerName = new(string)
@@ -150,7 +150,7 @@ func QueryTbls(mysql_connection utils.MysqlConnect) []DbTables {
 }
 
 // 查询分区表的信息
-func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTables {
+func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTable {
 	db := utils.GetConnection(mysql_connection)
 	// 查询所有表及其是不是分区表
 	sqlstr := "SELECT dbs.name, tbls.tbl_name, prts.tbl_id, tbls.tbl_type FROM tbls LEFT OUTER JOIN partitions prts ON tbls.tbl_id=prts.tbl_id LEFT OUTER JOIN dbs ON tbls.db_id=dbs.db_id ORDER BY dbs.name DESC"
@@ -158,12 +158,12 @@ func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTables {
 	defer stmt.Close()
 	res, _ := stmt.Query()
 	defer res.Close()
-	tables := make([]DBTables, 0)
+	tables := make([]DBTable, 0)
 	for res.Next() {
 		// var name string
 		// var tbl_name string
 		// var tbl_id int
-		table := new(DBTables)
+		table := new(DBTable)
 		table.Name = new(string)
 		table.DbId = new(string)
 		table.Owner = new(string)
@@ -196,7 +196,7 @@ func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTables {
 // }
 
 // 查询表详细信息
-func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTables {
+func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTable {
 	db := utils.GetConnection(mysql_connection)
 	// 查询所有表及其是不是分区表
 	sqlstr := `select  name, tbl_name, tbl_type, tbl_id, 
@@ -219,10 +219,10 @@ func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTables {
 	defer stmt.Close()
 	res, _ := stmt.Query()
 	defer res.Close()
-	var db_tables []DBTables
+	var db_tables []DBTable
 	for res.Next() {
 		var tbl_id sql.NullInt64
-		var table DBTables
+		var table DBTable
 		var k1, k2 string
 		var v1, v2 int
 		err := res.Scan(&table.Name, &table.TblName, &table.TblType, &tbl_id, &k1, &v1, &k2, &v2)
