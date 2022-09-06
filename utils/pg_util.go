@@ -37,7 +37,25 @@ type gatherName struct {
 	Name string
 }
 
-var db *gorm.DB
+var Db *gorm.DB
+
+func init() {
+	config := dbConfig{
+		Ip:       "192.168.10.68",
+		Port:     5432,
+		User:     "postgres",
+		Password: "pwd@123",
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Ip, config.User, config.Password, config.Port)
+	var err error
+	if Db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}); err == nil {
+		fmt.Println("*************************connect to db success")
+		Logger.Println("*************************connect to db success")
+	} else {
+		fmt.Println("*************************connet to db error!")
+		Logger.Println("*************************connect to db error")
+	}
+}
 
 // 创建数据库对象
 func DbOpen(dbConfig *dbConfig) (db *gorm.DB) {

@@ -311,18 +311,17 @@ func Serilize() bool {
 	// var serilize_data []byte
 	serilize_data := make([]byte, 0)
 	// service_ports := Query("")
-	db := DbOpen(nil)
+	db := Db
 	service_ports := PgServiceQuery(db, "")
 	for _, service_port := range service_ports {
 		service_port_seriaize, _ := json.Marshal(service_port)
-		fmt.Println("&&&&&&&", string(service_port_seriaize))
+		// fmt.Println("&&&&&&&", string(service_port_seriaize))
 		for _, ele := range service_port_seriaize {
 			serilize_data = append(serilize_data, ele)
 		}
 		serilize_data = append(serilize_data, '\n')
 	}
 	// fmt.Println("************", string(serilize_data), "************")
-
 	err2 := ioutil.WriteFile("./port_info.txt", serilize_data[:len(serilize_data)-1], 0666) //写入文件(字节数组)
 	painc_err(err2)
 	return true
