@@ -6,6 +6,7 @@ import (
 
 	// "strings"
 	"metric_exporter/config"
+	"metric_exporter/utils"
 	"time"
 
 	"github.com/shirou/gopsutil/cpu"
@@ -262,14 +263,21 @@ func ProcessInfoGet() (int, *ProcessInfo) {
 	if processes, err = process.Processes(); err == nil {
 		for _, process := range processes {
 			fmt.Println("process.Pid: ", process.Pid)
-			ioCounterStat, _ := process.IOCounters()
-			fmt.Println("进程读字节数: ", ioCounterStat.ReadBytes)
-			fmt.Println("进程写字节数: ", ioCounterStat.WriteBytes)
-			IoMap[process.Pid] = ProcessIO{
-				processId:  process.Pid,
-				readBytes:  ioCounterStat.ReadBytes,
-				writeBytes: ioCounterStat.WriteBytes,
+			utils.Logger.Printf("process.Pid: %d\n", process.Pid)
+			if ioCounterStat, err := process.IOCounters(); err != nil {
+				utils.Logger.Printf("process.IOCounters() error:%s\n", err.Error())
+			} else {
+				fmt.Println("进程读字节数: ", ioCounterStat.ReadBytes)
+				fmt.Println("进程写字节数: ", ioCounterStat.WriteBytes)
+				utils.Logger.Printf("进程读字节数: %d\n", ioCounterStat.ReadBytes)
+				utils.Logger.Printf("进程写字节数: %d\n", ioCounterStat.WriteBytes)
+				IoMap[process.Pid] = ProcessIO{
+					processId:  process.Pid,
+					readBytes:  ioCounterStat.ReadBytes,
+					writeBytes: ioCounterStat.WriteBytes,
+				}
 			}
+
 		}
 	}
 	processInfo.processIoMap = IoMap
