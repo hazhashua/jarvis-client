@@ -134,7 +134,11 @@ func Parse_hadoop_config() *config.HadoopConfigure {
 //initializes every descriptor and returns a pointer to the collector
 func NewHadoopCollector() *HadoopCollector {
 	var hadoop_metrics HadoopMetric
-	hadoop_config := Parse_hadoop_config()
+
+	// 使用全局配置文件
+	hadoop_config := (utils.ConfigStruct.ConfigData["hadoop"]).(config.HadoopConfigure)
+	// hadoop_config := Parse_hadoop_config()
+
 	// for i := 0; i < hadoop_config.Cluster.ServiceNum; i++ {
 	// 	hadoop_metrics.ServiceStatus = append(hadoop_metrics.ServiceStatus, prometheus.NewDesc("service_status", "show service status of hadoop cluster",
 	// 		[]string{"cluster", "host", "ip", "port", "service_name"},
@@ -476,7 +480,9 @@ func (collector *HadoopCollector) Describe(ch chan<- *prometheus.Desc) {
 func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// collector = NewHadoopCollector()
-	hadoop_config := Parse_hadoop_config()
+	// hadoop_config := Parse_hadoop_config()
+	hadoop_config, _ := (utils.ConfigStruct.ConfigData["hadoop"]).(config.HadoopConfigure)
+	fmt.Println("hadoop_config: ", hadoop_config)
 	yarn_urls := make([]string, 0)
 	namenode_urls := make([]string, 0)
 	for _, yarn_ip := range hadoop_config.Cluster.ResourceManagers {
