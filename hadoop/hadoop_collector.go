@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"metric_exporter/config"
+	"metric_exporter/utils"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
@@ -122,8 +123,10 @@ func Parse_hadoop_config() *config.HadoopConfigure {
 	if err != nil {
 		fmt.Println("Unmarshal failed: ", err)
 	}
-	fmt.Println("hadoopConfig.Cluster.ServiceNum: ", hadoopConfig.Cluster.ServiceNum)
-	fmt.Println("hadoopConfig.Cluster.Services: ", hadoopConfig.Cluster.Services)
+	utils.Logger.Printf("hadoopConfig.Cluster.ServiceNum: %d\n", hadoopConfig.Cluster.ServiceNum)
+	utils.Logger.Printf("hadoopConfig.Cluster.Services:   %s\n", hadoopConfig.Cluster.Services)
+	// fmt.Println("hadoopConfig.Cluster.ServiceNum: ", hadoopConfig.Cluster.ServiceNum)
+	// fmt.Println("hadoopConfig.Cluster.Services: ", hadoopConfig.Cluster.Services)
 	return hadoopConfig
 }
 
@@ -473,7 +476,6 @@ func (collector *HadoopCollector) Describe(ch chan<- *prometheus.Desc) {
 func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// collector = NewHadoopCollector()
-
 	hadoop_config := Parse_hadoop_config()
 	yarn_urls := make([]string, 0)
 	namenode_urls := make([]string, 0)
@@ -488,10 +490,10 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
 	num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total := GetAliveInfo(yarn_urls, namenode_urls)
 	fmt.Println(num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
+	utils.Logger.Printf("num_active_nms:%d  num_lost_nms:%d  num_shutdown_nms:%d  num_unhealthy_nms:%d  num_live_datanodes:%d  num_dead_datanodes:%d  num_decom_livedatanodes:%d  num_decom_missioningdatanodes:%d  num_decommissioning_datanodes:%d  blocks_total:%d  files_total:%d \n", num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
 
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.BlockSize, collector.hadoopMetrics.BlockSizeValType, 128, hadoop_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.ReplicationNum, collector.hadoopMetrics.ReplicationNumValType, 3, hadoop_config.Cluster.Name)
-
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumLiveDataNodes, collector.hadoopMetrics.NumLiveDataNodesValType, float64(*num_live_datanodes), hadoop_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumDeadDataNodes, collector.hadoopMetrics.NumDeadDataNodesValType, float64(*num_dead_datanodes), hadoop_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.NumLiveNameNodes, collector.hadoopMetrics.NumDeadNameNodesValType, float64(*num_active_nms), hadoop_config.Cluster.Name)
@@ -532,6 +534,7 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	mem_heap_usedm_list := make([]float64, 0)
 	mem_heap_committedm_list := make([]float64, 0)
 	fmt.Println("hadoop urls: ", urls)
+	utils.Logger.Printf("num_active_nms:%d  num_lost_nms:%d  num_shutdown_nms:%d  num_unhealthy_nms:%d  num_live_datanodes:%d  num_dead_datanodes:%d  num_decom_livedatanodes:%d  num_decom_missioningdatanodes:%d  num_decommissioning_datanodes:%d  blocks_total:%d  files_total:%d \n", num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
 	// resourcemanager的jvm信息
 	for _, url := range urls {
 		mem_non_heap_usedm, mem_non_heap_committedm, mem_heap_usedm, mem_heap_committedm := GetJvmMetricsInfo(url)
@@ -584,6 +587,10 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	fmt.Println("pending_replication_blocks: ", pending_replication_blocks)
 	fmt.Println("files_total: ", files_total)
 	fmt.Println("tag_ha_state: ", tag_ha_state)
+	utils.Logger.Printf("capacity_total_gb:%d, capacity_remaining_gb:%d, capacity_used_gb:%d, blocks_total:%d, corrupt_blocks:%d, pending_deletion_blocks:%d, pending_replication_blocks:%d files_total:%d  tag_ha_state:%d\n",
+		capacity_total_gb, capacity_remaining_gb, capacity_used_gb,
+		blocks_total, corrupt_blocks, pending_deletion_blocks, pending_replication_blocks,
+		files_total, tag_ha_state)
 
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityTotalGB, collector.hadoopMetrics.CapacityTotalGBValType, float64(*capacity_total_gb), hadoop_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityUsedGB, collector.hadoopMetrics.CapacityUsedGBValType, float64(*capacity_used_gb), hadoop_config.Cluster.Name)

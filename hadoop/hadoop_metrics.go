@@ -38,7 +38,8 @@ func GetAppInfo(yarnUrl string) (apps_submitted *int64, apps_running *int64, app
 	fmt.Println("body_byte: ", app_info)
 	rma, err := UnmarshalResourceManagerApp(app_info)
 	if err != nil {
-		fmt.Println("parse data error!", err.Error())
+		// fmt.Println("parse data error!", err.Error())
+		utils.Logger.Printf("parse data error!   %s\n", err.Error())
 	}
 	apps_submitted = rma.Beans[0].AppsSubmitted
 	apps_running = rma.Beans[0].AppsRunning
@@ -50,28 +51,40 @@ func GetAppInfo(yarnUrl string) (apps_submitted *int64, apps_running *int64, app
 	running_60 = rma.Beans[0].Running60
 	running_300 = rma.Beans[0].Running300
 	running_1440 = rma.Beans[0].Running1440
-	fmt.Println("rma.Beans[0].AppsSubmitted: ", rma.Beans[0].AppsSubmitted)
-	fmt.Println("rma.Beans[0].AppsRunning: ", rma.Beans[0].AppsRunning)
-	fmt.Println("rma.Beans[0].AppsPending: ", rma.Beans[0].AppsPending)
-	fmt.Println("rma.Beans[0].AppsKilled: ", rma.Beans[0].AppsKilled)
-	fmt.Println("rma.Beans[0].AppsFailed: ", rma.Beans[0].AppsFailed)
-	fmt.Println("rma.Beans[0].AppsCompleted: ", rma.Beans[0].AppsCompleted)
-	fmt.Println("rma.Beans[0].running_0: ", rma.Beans[0].Running0)
-	fmt.Println("rma.Beans[0].running_60: ", rma.Beans[0].Running60)
-	fmt.Println("rma.Beans[0].running_300: ", rma.Beans[0].Running300)
-	fmt.Println("rma.Beans[0].running_1440: ", rma.Beans[0].Running1440)
+	// fmt.Println("rma.Beans[0].AppsSubmitted: ", rma.Beans[0].AppsSubmitted)
+	// fmt.Println("rma.Beans[0].AppsRunning: ", rma.Beans[0].AppsRunning)
+	// fmt.Println("rma.Beans[0].AppsPending: ", rma.Beans[0].AppsPending)
+	// fmt.Println("rma.Beans[0].AppsKilled: ", rma.Beans[0].AppsKilled)
+	// fmt.Println("rma.Beans[0].AppsFailed: ", rma.Beans[0].AppsFailed)
+	// fmt.Println("rma.Beans[0].AppsCompleted: ", rma.Beans[0].AppsCompleted)
+	// fmt.Println("rma.Beans[0].running_0: ", rma.Beans[0].Running0)
+	// fmt.Println("rma.Beans[0].running_60: ", rma.Beans[0].Running60)
+	// fmt.Println("rma.Beans[0].running_300: ", rma.Beans[0].Running300)
+	// fmt.Println("rma.Beans[0].running_1440: ", rma.Beans[0].Running1440)
+	utils.Logger.Printf("rma.Beans[0].AppsSubmitted: %d\n", *rma.Beans[0].AppsSubmitted)
+	utils.Logger.Printf("rma.Beans[0].AppsRunning: %d\n", *rma.Beans[0].AppsRunning)
+	utils.Logger.Printf("rma.Beans[0].AppsPending: %d\n", *rma.Beans[0].AppsPending)
+	utils.Logger.Printf("rma.Beans[0].AppsKilled: %d\n", *rma.Beans[0].AppsKilled)
+	utils.Logger.Printf("rma.Beans[0].AppsFailed: %d\n", *rma.Beans[0].AppsFailed)
+	utils.Logger.Printf("rma.Beans[0].AppsCompleted: %d\n", *rma.Beans[0].AppsCompleted)
+	utils.Logger.Printf("rma.Beans[0].running_0: %d\n", *rma.Beans[0].Running0)
+	utils.Logger.Printf("rma.Beans[0].running_60: %d\n", *rma.Beans[0].Running60)
+	utils.Logger.Printf("rma.Beans[0].running_300: %d\n", *rma.Beans[0].Running300)
+	utils.Logger.Printf("rma.Beans[0].running_1440: %d\n", *rma.Beans[0].Running1440)
 	return
 }
 
 func GetJvmMetricsInfo(http_url string) (mem_non_heap_usedm float64, mem_non_heap_committedm float64, mem_heap_usedm float64, mem_heap_committedm float64) {
-	fmt.Println("jvm_url: ", http_url)
+	// fmt.Println("jvm_url: ", http_url)
 	res := utils.GetUrl(http_url)
-	fmt.Println("url response: ", res)
+	// fmt.Println("url response: ", res)
+	utils.Logger.Printf("UnmarshalJVMMetrics(body_byte): %s\n", res)
 
 	body_byte := []byte(res)
 	jvm_metrics, err := UnmarshalJVMMetrics(body_byte)
 	if err == nil {
-		fmt.Println("err: ", err.Error())
+		// fmt.Println("err: ", err.Error())
+		utils.Logger.Printf("UnmarshalJVMMetrics(body_byte): %s\n", err.Error())
 	}
 	fmt.Println(jvm_metrics.Beans[0].Name)
 	fmt.Println(jvm_metrics.Beans[0].MemNonHeapUsedM)
@@ -97,11 +110,11 @@ func GetDFSInfo(namenoeUrl string) (capacity_total_gb *int64, capacity_remaining
 	fs_namesystem_bytes := []byte(response)
 	fs_namesystem, err := UnmarshalFSNamesystem(fs_namesystem_bytes)
 	if err != nil {
-		fmt.Println(err.Error())
+		utils.Logger.Printf("UnmarshalFSNamesystem(fs_namesystem_bytes): %s\n", err.Error())
 	}
-	fmt.Println("fs_namesystem.Beans[0].CapacityTotal: ", fs_namesystem.Beans[0].CapacityTotal)
-	fmt.Println("fs_namesystem.Beans[0].CapacityUsed: ", fs_namesystem.Beans[0].CapacityUsed)
-	fmt.Println("fs_namesystem.Beans[0].CapacityRemaining: ", fs_namesystem.Beans[0].CapacityRemaining)
+	// fmt.Println("fs_namesystem.Beans[0].CapacityTotal: ", fs_namesystem.Beans[0].CapacityTotal)
+	// fmt.Println("fs_namesystem.Beans[0].CapacityUsed: ", fs_namesystem.Beans[0].CapacityUsed)
+	// fmt.Println("fs_namesystem.Beans[0].CapacityRemaining: ", fs_namesystem.Beans[0].CapacityRemaining)
 
 	capacity_total_gb = fs_namesystem.Beans[0].CapacityTotalGB
 	capacity_remaining_gb = fs_namesystem.Beans[0].CapacityRemainingGB
@@ -149,14 +162,17 @@ func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (num_active_nms *int
 			break
 		}
 		if idx == len(yarnUrls)-1 {
+			utils.Logger.Println("len(yarnUrls)-1: 访问地址失败")
 			panic("访问地址失败！")
+
 		}
 	}
 	fmt.Println("response: ", response)
 	cluster_metrics_bytes := []byte(response)
 	cm, err := UnmarshalClusterMetrics(cluster_metrics_bytes)
 	if err == nil {
-		fmt.Println("err: ", err.Error())
+		// fmt.Println("err: ", err.Error())
+		utils.Logger.Printf("UnmarshalClusterMetrics(cluster_metrics_bytes): %s\n", err.Error())
 	}
 	num_active_nms = cm.Beans[0].NumActiveNMS
 	fmt.Println("cm.Beans[0].NumActiveNMS: ", cm.Beans[0].NumActiveNMS)
@@ -175,13 +191,15 @@ func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (num_active_nms *int
 			break
 		}
 		if idx == len(namenodeUrls)-1 {
+			utils.Logger.Println("len(namenodeUrls)-1: 访问地址失败!")
 			panic("访问地址失败！")
 		}
 	}
 	fsnamesystem_state_bytes := []byte(response)
 	fs, err2 := UnmarshalFSNamesystemState(fsnamesystem_state_bytes)
 	if err2 != nil {
-		fmt.Println("error: ", err2.Error())
+		utils.Logger.Printf("UnmarshalFSNamesystemState(fsnamesystem_state_bytes): %s", err2.Error())
+		// fmt.Println("error: ", err2.Error())
 	}
 	num_live_datanodes = fs.Beans[0].NumLiveDataNodes
 	fmt.Println("fs.Beans[0].NumLiveDataNodes: ", fs.Beans[0].NumLiveDataNodes)
@@ -211,7 +229,8 @@ func GetNameNodeRPCInfo(namenode_url string) (call_queue_length *int64, rpc_slow
 
 	rfp, err := UnmarshalRPCActivityForPort8020(rpc_activity_bytes)
 	if err != nil {
-		fmt.Println("error: ", err.Error())
+		// fmt.Println("error: ", err.Error())
+		utils.Logger.Printf("UnmarshalRPCActivityForPort8020(rpc_activity_bytes): %s", err.Error())
 	}
 
 	call_queue_length = rfp.Beans[0].CallQueueLength
@@ -260,7 +279,8 @@ func GetDataNodeRPCInfo(datanode_url string) {
 	datanode_response_byte := []byte(response)
 	rfp, err := UnmarshalRPCActivityForPort9867(datanode_response_byte)
 	if err != nil {
-		fmt.Println("error: ", err.Error())
+		// fmt.Println("error: ", err.Error())
+		utils.Logger.Printf("UnmarshalRPCActivityForPort9867(datanode_response_byte): %s", err.Error())
 	}
 
 	fmt.Println("rfp.Beans[0].RPCAuthenticationFailures: ", rfp.Beans[0].RPCAuthenticationFailures)
@@ -284,7 +304,8 @@ func GetNameNodeOps(namenode_url string) (fileinfo_ops *int64, createfile_ops *i
 	namenode_activity_byte := []byte(response)
 	nna, err := UnmarshalNameNodeActivity(namenode_activity_byte)
 	if err != nil {
-		fmt.Println("error: ", err.Error())
+		// fmt.Println("error: ", err.Error())
+		utils.Logger.Printf("UnmarshalNameNodeActivity(namenode_activity_byte): %s\n", err.Error())
 	}
 	fileinfo_ops = nna.Beans[0].CreateFileOps
 	createfile_ops = nna.Beans[0].CreateFileOps
@@ -308,7 +329,8 @@ func GetDataNodeInfo(datanode_url string) (bytes_read *int64, bytes_written *int
 	datanode_activity_byte := []byte(response)
 	dna, err := UnmarshalDataNodeActivity(datanode_activity_byte)
 	if err != nil {
-		fmt.Println("error: ", err.Error())
+		// fmt.Println("error: ", err.Error())
+		utils.Logger.Printf("UnmarshalDataNodeActivity(datanode_activity_byte): %s\n", err.Error())
 	}
 
 	bytes_read = dna.Beans[0].BytesRead
