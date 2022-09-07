@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"metric_exporter/config"
+	"metric_exporter/utils"
 	"runtime"
 	"strings"
 	"syscall"
@@ -28,10 +29,10 @@ func runFuncName() string {
 	return f.Name()
 }
 
-func Parse_kafka_config() *config.KafkConfigure {
+func Parse_kafka_config() *config.KafkaConfigure {
 	fmt.Println("in function: ", runFuncName())
 	bytes, _ := ioutil.ReadFile("./kafka/config.yaml")
-	kafkaConfig := new(config.KafkConfigure)
+	kafkaConfig := new(config.KafkaConfigure)
 	err := yaml.Unmarshal(bytes, kafkaConfig)
 	if err != nil {
 		fmt.Println("Unmarshal failed: ", err)
@@ -343,7 +344,8 @@ func GetKafkaMetrics() (diskStatus []*DiskStatus, total_brokers int, alive_broke
 
 func Metadata_test() {
 	fmt.Printf("metadata test\n")
-	kafka_config := Parse_kafka_config()
+	// kafka_config := Parse_kafka_config()
+	kafka_config := (utils.ConfigStruct.ConfigData["kafka"]).(config.KafkaConfigure)
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_7_0_0
 	// config.Version = sarama.V0_11_0_2
