@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"fmt"
+	"metric_exporter/config"
 	"metric_exporter/utils"
 	"strconv"
 	"strings"
@@ -91,15 +92,17 @@ func (e *MysqlExporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	// 实现exporter的collector方法
 	e = NewMysqlExporter()
-	mysqlConfig := Parse_mysql_config()
+	// mysqlConfig := Parse_mysql_config()
+	mysqlConfig, _ := (utils.ConfigStruct.ConfigData["mysql"]).(config.MysqlConfig)
+
 	fmt.Println(mysqlConfig.Cluster.Ips)
 	fmt.Println(mysqlConfig.Cluster.Port)
 	mysqlConnector := utils.MysqlConnect{
 		Host:      mysqlConfig.Cluster.Ips[0],
 		Port:      mysqlConfig.Cluster.Port,
-		Username:  "root",
-		Password:  "pwd@123",
-		DefaultDB: "information_schema",
+		Username:  mysqlConfig.Cluster.Username,  // "root",
+		Password:  mysqlConfig.Cluster.Password,  // "pwd@123",
+		DefaultDB: mysqlConfig.Cluster.DefaultDB, // "information_schema",
 	}
 	fmt.Println("mysqlConnector: ", mysqlConnector)
 	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1, mysqlConfig.Cluster.Name, mysqlConfig.Cluster.Role[0], mysqlConnector.Host)
@@ -147,7 +150,6 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 		fmt.Println("schema.SchemaName: ", schema.SchemaName)
 		fmt.Println("schema.: ", schema.DefaultCharacterSetName)
 		ch <- prometheus.MustNewConstMetric(e.dbInfos[idx], prometheus.GaugeValue, 1, schema.SchemaName, schema.DefaultCharacterSetName, mysqlConfig.Cluster.Name, mysqlConnector.Host)
-
 	}
 
 	//"db_name", "table_name", "table_rows", "data_size", "index_size", "cluster", "ip"

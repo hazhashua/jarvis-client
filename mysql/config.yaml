@@ -3,5 +3,8 @@ cluster:
   ips:
     - 192.168.10.70
   port: 3306
+  username: root
+  password: pwd@123
+  defaultdb: information_schema
   role:
     - master
