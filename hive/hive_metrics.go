@@ -70,7 +70,8 @@ func Parse_hive_config() *config.HiveConfig {
 
 // 获取库个数
 func GetDbs() []DB {
-	hive_config := Parse_hive_config()
+	// hive_config := Parse_hive_config()
+	hive_config := (utils.ConfigStruct.ConfigData["hive"]).(config.HiveConfig)
 	mysql_connection := utils.MysqlConnect{
 		Host:      hive_config.Cluster.Mysql.Host,
 		Port:      hive_config.Cluster.Mysql.Port,
