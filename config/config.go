@@ -69,7 +69,7 @@ type HiveConfig struct {
 	}
 }
 
-type KafkConfigure struct {
+type KafkaConfigure struct {
 	Cluster struct {
 		Name  string   `yaml:"name"`
 		Hosts []string `yaml:"hosts"`

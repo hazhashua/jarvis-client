@@ -12,11 +12,13 @@ type configData struct {
 }
 
 type configStruct struct {
-	configData map[string]interface{}
-	modes      []string
-	name       string
-	path       string
+	ConfigData map[string]interface{}
+	Modes      []string
+	Name       string
+	Path       string
 }
+
+var ConfigStruct configStruct
 
 type configI interface {
 	// 初始化配置的基础信息
@@ -29,6 +31,7 @@ type configI interface {
 
 // 初始化获取所有的模块
 func (cf configStruct) init() {
+	ConfigStruct = cf
 	modes := make([]string, 0)
 	allMode := map[string]int{"hadoop": 0, "hbase": 0, "hive": 0, "kafka": 0, "micro_service": 0,
 		"mysql": 0, "node_exporter": 0, "redis": 0, "service_alive": 0, "skywalking": 0, "spark": 0, "zookeeper": 0}
@@ -42,20 +45,105 @@ func (cf configStruct) init() {
 			}
 		}
 	}
-	cf.modes = modes
+	ConfigStruct.Modes = modes
+	fmt.Println("ConfigStruct.Modes: ", ConfigStruct.Modes)
+	ConfigStruct.ConfigData = make(map[string]interface{})
+	// ConfigStruct.ConfigData["hadoop"] = config.HadoopConfigure{}
+	// ConfigStruct.ConfigData["hbase"] = config.HbaseConfigure{}
+	// ConfigStruct.ConfigData["hive"] = config.HiveConfig{}
+	// ConfigStruct.ConfigData["kafka"] = config.KafkConfigure{}
+	// ConfigStruct.ConfigData["micro_service"] = config.K8sYamlConfig{}
+	// ConfigStruct.ConfigData["mysql"] = config.MysqlConfig{}
+	// ConfigStruct.ConfigData["node_exporter"] = config.NodeConfig{}
+	// ConfigStruct.ConfigData["redis"] = config.RedisConfig{}
+	// ConfigStruct.ConfigData["skywalking"] = config.SkyWalkingConfig{}
+	// ConfigStruct.ConfigData["spark"] = config.SparkConfig{}
+	// ConfigStruct.ConfigData["zookeeper"] = config.ZookeepeConfig{}
 }
 
 // 解析所有的yaml配置文件，公用类
 func (cf configStruct) loadAll() {
-	for _, model := range cf.modes {
-		var confid configData
-		path := fmt.Sprintf("./%s", model)
+	ConfigStruct = cf
+	for _, model := range cf.Modes {
+		// var confid configData
+		path := fmt.Sprintf("./%s/config.yaml", model)
+		fmt.Println("path: ", path)
 		if bytes, err := ioutil.ReadFile(path); err == nil {
 			fmt.Println("bytes: ", string(bytes))
-			if err2 := yaml.Unmarshal(bytes, &confid); err2 == nil {
-				fmt.Println("解析配置文件成功...")
-				cf.configData[model] = confid
+			var err2 error
+			switch model {
+			case "hadoop":
+				configR := config.HadoopConfigure{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "hbase":
+				configR := config.HbaseConfigure{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "hive":
+				configR := config.HiveConfig{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "kafka":
+				configR := config.KafkConfigure{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "micro_service":
+				configR := config.K8sYamlConfig{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "mysql":
+				configR := config.MysqlConfig{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "node_exporter":
+				configR := config.NodeConfig{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "redis":
+				configR := config.RedisConfig{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "service_alive":
+				fmt.Println("...")
+			case "skywalking":
+				configR := config.SkyWalkingConfig{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "spark":
+				configR := config.SparkConfig{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
+			case "zookeeper":
+				configR := config.ZookeepeConfig{}
+				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
+					ConfigStruct.ConfigData[model] = configR
+					fmt.Println("解析配置文件成功...")
+				}
 			}
+
+		} else {
+			fmt.Println("读文件失败: ", err.Error())
 		}
 	}
 }
@@ -69,79 +157,79 @@ func (cf configStruct) load(model string) (iface interface{}) {
 			configs := config.HadoopConfigure{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "hbase":
 			configs := config.HbaseConfigure{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "spark":
 			configs := config.SparkConfig{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "hive":
 			configs := config.HiveConfig{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "kafka":
 			configs := config.KafkConfigure{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "micro_service":
 			configs := config.K8sYamlConfig{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "mysql":
 			configs := config.MysqlConfig{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "node_exporter":
 			configs := config.NodeConfig{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "redis":
 			configs := config.RedisConfig{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "service_alive":
-			fmt.Println("")
+			fmt.Println("没有配置文件...")
 		case "skywalking":
 			configs := config.SkyWalkingConfig{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		case "zookeeper":
 			configs := config.ZookeepeConfig{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
-				cf.configData[model] = configs
+				cf.ConfigData[model] = configs
 				return configs
 			}
 		default:
@@ -149,4 +237,20 @@ func (cf configStruct) load(model string) (iface interface{}) {
 		}
 	}
 	return nil
+}
+
+// 初始化配置
+func init() {
+	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@")
+	ConfigStruct = configStruct{}
+	ConfigStruct.init()
+	fmt.Println("modes: ", ConfigStruct.Modes)
+	if Logger != nil {
+		Logger.Println("执行完configure初始化...")
+	}
+	ConfigStruct.loadAll()
+	fmt.Println("ConfigStruct.ConfigData: ", ConfigStruct.ConfigData)
+	if Logger != nil {
+		Logger.Println("执行完configure配置")
+	}
 }
