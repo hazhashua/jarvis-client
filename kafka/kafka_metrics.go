@@ -63,7 +63,8 @@ func getBrokerInfo(client sarama.Client) (total int, alive int, broker_infos []K
 	fmt.Println("活的broker个数: ", len(alive_brokers))
 
 	//总的broker个数，读取配置文件
-	kafkaConfig := Parse_kafka_config()
+	// kafkaConfig := Parse_kafka_config()
+	kafkaConfig := (utils.ConfigStruct.ConfigData["kafka"]).(config.KafkaConfigure)
 	broker_total := len(kafkaConfig.Cluster.Hosts)
 	fmt.Println("总的broker个数: ", broker_total)
 	return broker_total, len(alive_brokers), kafkaBrokers
@@ -294,7 +295,8 @@ func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric
 }
 
 func GetClient() (sarama.Client, sarama.Config) {
-	kafka_config := Parse_kafka_config()
+	// kafka_config := Parse_kafka_config()
+	kafka_config := (utils.ConfigStruct.ConfigData["kafka"]).(config.KafkaConfigure)
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_7_0_0
 	var kafka_host string
