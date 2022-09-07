@@ -39,8 +39,9 @@ type HiveExporter struct {
 func NewHiveExporter() *HiveExporter {
 
 	// hive_exporter := new(HiveExporter)
-	hiveConfig := *Parse_hive_config()
-	hiveCluster := Parse_hive_config().Cluster.Name
+	// hiveConfig := *Parse_hive_config()
+	hiveConfig := (utils.ConfigStruct.ConfigData["hive"]).(config.HiveConfig)
+	hiveCluster := hiveConfig.Cluster.Name
 	clusterMode := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace:   "",
 		Name:        "cluster_mode",
@@ -84,12 +85,12 @@ func NewHiveExporter() *HiveExporter {
 			nil,
 		)
 	}
-	hive_config := Parse_hive_config()
+	// hive_config := Parse_hive_config()
 	mysql_connection := utils.MysqlConnect{
-		Host:      hive_config.Cluster.Mysql.Host,
-		Port:      hive_config.Cluster.Mysql.Port,
-		Username:  hive_config.Cluster.Mysql.User,
-		Password:  hive_config.Cluster.Mysql.Password,
+		Host:      hiveConfig.Cluster.Mysql.Host,
+		Port:      hiveConfig.Cluster.Mysql.Port,
+		Username:  hiveConfig.Cluster.Mysql.User,
+		Password:  hiveConfig.Cluster.Mysql.Password,
 		DefaultDB: "hive",
 	}
 	db_tables := QueryDetailTbls(mysql_connection)
@@ -140,7 +141,8 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 	// db_num := len(dbs)
 
 	exporter = NewHiveExporter()
-	hive_config := Parse_hive_config()
+	// hive_config := Parse_hive_config()
+	hive_config := (utils.ConfigStruct.ConfigData["hive"]).(config.HiveConfig)
 	mysql_connection := utils.MysqlConnect{
 		Host:      hive_config.Cluster.Mysql.Host,
 		Port:      hive_config.Cluster.Mysql.Port,
