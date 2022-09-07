@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"metric_exporter/config"
+	"metric_exporter/utils"
 	"net/http"
 	"strings"
 
@@ -89,16 +90,20 @@ func initUrl() (int, *jmxHttpUrl) {
 	/*
 		从配置中获取请求地址，及active master信息
 	*/
-	bytes, err := ioutil.ReadFile("./hbase/config.yaml")
-	if err != nil {
-		fmt.Println("*****************************")
-		fmt.Println("err: ", err.Error())
-	}
-	hbase_config := new(config.HbaseConfigure)
-	err = yaml.Unmarshal(bytes, hbase_config)
-	if err != nil {
-		fmt.Println("err: ", err.Error())
-	}
+	// bytes, err := ioutil.ReadFile("./hbase/config.yaml")
+	// if err != nil {
+	// 	fmt.Println("*****************************")
+	// 	fmt.Println("err: ", err.Error())
+	// }
+	// hbase_config := new(config.HbaseConfigure)
+	// err = yaml.Unmarshal(bytes, hbase_config)
+	// if err != nil {
+	// 	fmt.Println("err: ", err.Error())
+	// }
+
+	// hbase_config := ParseHbaseConfig()
+	hbase_config := (utils.ConfigStruct.ConfigData["hbase"]).(config.HbaseConfigure)
+
 	// 获取active的master
 	var jmx_url, master_jmx_url string
 	active_master_index := -1
@@ -190,7 +195,8 @@ func QueryMetric() *hbaseData {
 	// fmt.Println(jmx_http_url.regionserversUrls)
 
 	// 获取集群主机的名称IP信息
-	hbase_config := ParseHbaseConfig()
+	// hbase_config := ParseHbaseConfig()
+	hbase_config := (utils.ConfigStruct.ConfigData["hbase"]).(config.HbaseConfigure)
 
 	host := hbase_config.Cluster.Hosts[active_no]
 	cluster := hbase_config.Cluster.ClusterName
