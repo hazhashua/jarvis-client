@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"metric_exporter/config"
+	"metric_exporter/utils"
 	"sort"
 	"time"
 
@@ -58,10 +59,15 @@ func NewSkywalkingExporter() *SkyWalkingExporter {
 	beforeOneM := now.Add(time.Duration(-1000000000 * 60 * 480))
 	year, month, day := beforeOneM.Date()
 	eventIndex := fmt.Sprintf("sw_events-%04d%02d%02d", year, month, day)
-	fmt.Printf("skywalking 采集当前时间: %04d-%02d-%02d %02d:%02d:%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
+	fmt.Printf("skywalking 采集当前时间: %04d-%02d-%02d %02d:%02d:%02d\n", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
 	skyEventDatas := make([]SkwEvent, 0)
 	var typ SkwEvent
 	events := GetAll(eventIndex, "_doc", typ)
+	if events == nil {
+		fmt.Println("没有查询到es数据...")
+		utils.Logger.Printf("没有查询到es数据...\n")
+		return nil
+	}
 	for _, event := range events {
 		switch ret := event.(type) {
 		case string:
@@ -112,7 +118,10 @@ func (e *SkyWalkingExporter) Describe(ch chan<- *prometheus.Desc) {
 
 // 收集skywalking事件方法
 func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
-	e = NewSkywalkingExporter()
+	if e = NewSkywalkingExporter(); e == nil {
+		utils.Logger.Println("es数据为空")
+		return
+	}
 
 	sort.Slice(e.CpmDatas, func(i, j int) bool {
 		if e.CpmDatas[i].TimeBucket > e.CpmDatas[j].TimeBucket {

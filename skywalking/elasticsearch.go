@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"metric_exporter/utils"
 	"reflect"
 	"regexp"
 	"time"
@@ -140,13 +141,15 @@ func GetAll(index string, types string, typ interface{}) (results []interface{})
 	// get1, err := client.Get().Index("megacorp").Type("employee").Id("2").Do(context.Background())
 	getRes, err := client.Search().Size(10000).Index(index).Type(types).Do(context.Background())
 	if err != nil {
-		panic(err)
+		// panic(err)
+		fmt.Println("查询es错误: ", err.Error())
+		utils.Logger.Printf("查询es错误: %s", err.Error())
+		return nil
 	}
 
 	// var typ skwEvent
 	printEvents(getRes, err, typ)
 
-	// var typ skwEvent
 	typet := reflect.TypeOf(typ)
 	results = getRes.Each(typet)
 	return results
