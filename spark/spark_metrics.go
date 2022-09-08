@@ -7,8 +7,6 @@ import (
 	"metric_exporter/utils"
 	"net/http"
 	"os"
-
-	// "os"
 	"regexp"
 	"strings"
 
@@ -52,22 +50,21 @@ func (handler SparkHandler) ServeHTTP(writer http.ResponseWriter, r *http.Reques
 func GetMetrics() []string {
 	// url_array := []string{"http://192.168.10.220", "http://192.168.10.221", "http://192.168.10.222"}
 	arrs := make([]string, 0)
-	var yamlConfig *config.SparkConfig
-	var err error
-	if yamlConfig, err = LoadSparkConf(); err != nil {
+	sparkConfig, err := (utils.ConfigStruct.ConfigData["spark"]).(config.SparkConfig)
+
+	if err != true {
 		fmt.Println("load spark configure failed!")
 		return []string{}
 	}
 
 	url_array := make([]string, 0)
-	for _, ip := range yamlConfig.Masterhttp.Ips {
+	for _, ip := range sparkConfig.Masterhttp.Ips {
 		url_array = append(url_array, fmt.Sprintf("http://%s", ip))
 	}
-
-	url_s := yamlConfig.Masterhttp.Ips
+	url_s := sparkConfig.Masterhttp.Ips
 	fmt.Println("url_s:", url_s)
-	ports := yamlConfig.Applicationhttp.Ports
-	ports = append(ports, yamlConfig.Workerhttp.Port)
+	ports := sparkConfig.Applicationhttp.Ports
+	ports = append(ports, sparkConfig.Workerhttp.Port)
 	fmt.Println("ports: ", ports)
 	// 抓取master的网页地址，获取active的地址
 	// 添加is_active_node指标
@@ -78,7 +75,7 @@ func GetMetrics() []string {
 			//获取driver进程的堆栈内存使用率
 			// master_metric_url := yamlConfig.Masterhttp.Ips[idx] + ":" + fmt.Sprintf("%d", yamlConfig.Masterhttp.Port) + yamlConfig.Masterhttp.Path
 			// fmt.Println("master_metric_url", master_metric_url)
-			metric_url := yamlConfig.Applicationhttp.Ips[idx] + ":" + fmt.Sprintf("%d", port) + yamlConfig.Applicationhttp.MainPath
+			metric_url := sparkConfig.Applicationhttp.Ips[idx] + ":" + fmt.Sprintf("%d", port) + sparkConfig.Applicationhttp.MainPath
 			fmt.Println("metric_url: ", metric_url)
 
 			metric_url = fmt.Sprintf(url+":%d/metrics/prometheus", port)
@@ -113,7 +110,6 @@ func GetMetrics() []string {
 				// 	line = strings.ReplaceAll(line, ss[1], ss[1]+","+"host=\""+url_array[active_node_index]+"\" ")
 				// 	arrs = append(arrs, line+"\n")
 				// }
-
 			}
 		}
 
@@ -133,7 +129,7 @@ func GetMetrics() []string {
 			active_node_index = idx
 
 			// 获取完成的app数量
-			fmt.Println("active_url: ", url+fmt.Sprintf(":%d", yamlConfig.Masterhttp.Port))
+			fmt.Println("active_url: ", url+fmt.Sprintf(":%d", sparkConfig.Masterhttp.Port))
 			// response := utils.GetUrl(urls[active_node_index] + ":28080")
 			response := utils.GetUrl(url_array[active_node_index] + ":8080")
 			reg := regexp.MustCompile("(\\d+) <a href=\"#completed-app\">Completed</a>")
@@ -147,7 +143,6 @@ func GetMetrics() []string {
 			fmt.Println("match strings: ", match_strings[1])
 			// strconv.Itoa(match_strings[1])    int to string...
 			arrs = append(arrs, "master_running_apps{type=\"gauges\", host=\""+host+"\"} "+match_strings[1]+"\n")
-
 		} else if is_standby_node {
 			arrs = append(arrs, "is_active_master"+"{type=\"gauges\", host=\""+host+"\"} 0\n")
 		} else {
@@ -193,7 +188,7 @@ func GetMetrics() []string {
 			arrs = append(arrs, line+"\n")
 		}
 	}
-	cluster := fmt.Sprintf("cluster=\"%s\"", yamlConfig.Cluster)
+	cluster := fmt.Sprintf("cluster=\"%s\"", sparkConfig.Cluster)
 	print_metrics := []string{}
 	for _, line := range arrs {
 		ss := regexp.FindStringSubmatch(line)
@@ -208,7 +203,7 @@ func GetMetrics() []string {
 	return print_metrics
 }
 
-func LoadSparkConf() (*config.SparkConfig, error) {
+func ParseSparkConf() (*config.SparkConfig, error) {
 	config := new(config.SparkConfig)
 	// var yamlConfig YamlConfig
 	dir, _ := os.Getwd()
