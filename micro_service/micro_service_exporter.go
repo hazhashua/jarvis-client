@@ -107,7 +107,7 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 
 	// 抓取k8s的相关配置
 	// k8s_config := Parse_k8s_config()
-	k8s_config, _ := (utils.ConfigStruct.ConfigData["micro_service"]).(config.K8sYamlConfig)
+	k8s_config, _ := (utils.ConfigStruct.ConfigData[config.MICROSERVICE]).(config.K8sYamlConfig)
 
 	fmt.Println("k8s_config: ", k8s_config.Cluster.Name)
 	master0 := k8s_config.Cluster.Master[0]
