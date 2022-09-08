@@ -136,7 +136,6 @@ func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
 
 	// skywalkingConfig := ParseSkyWalkingConfig()
 	skywalkingConfig, _ := (utils.ConfigStruct.ConfigData["skywalking"]).(config.SkyWalkingConfig)
-	// println("e address: %p", e, "**************************************")
 	// 获取event数据
 	eventInfoDatas := e.SkyEventDatas
 	for idx, eventInfo := range e.EventInfos {

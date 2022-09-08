@@ -102,7 +102,7 @@ func initUrl() (int, *jmxHttpUrl) {
 	// }
 
 	// hbase_config := ParseHbaseConfig()
-	hbase_config := (utils.ConfigStruct.ConfigData["hbase"]).(config.HbaseConfigure)
+	hbase_config := (utils.ConfigStruct.ConfigData[config.HBASE]).(config.HbaseConfigure)
 
 	// 获取active的master
 	var jmx_url, master_jmx_url string
@@ -196,7 +196,7 @@ func QueryMetric() *hbaseData {
 
 	// 获取集群主机的名称IP信息
 	// hbase_config := ParseHbaseConfig()
-	hbase_config := (utils.ConfigStruct.ConfigData["hbase"]).(config.HbaseConfigure)
+	hbase_config := (utils.ConfigStruct.ConfigData[config.HBASE]).(config.HbaseConfigure)
 
 	host := hbase_config.Cluster.Hosts[active_no]
 	cluster := hbase_config.Cluster.ClusterName

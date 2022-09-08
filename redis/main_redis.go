@@ -83,7 +83,7 @@ func Parse_redis_config() *config.RedisConfig {
 
 func RedisExporter() {
 	// redis_config := Parse_redis_config()
-	redis_config, _ := (utils.ConfigStruct.ConfigData["redis"]).(config.RedisConfig)
+	redis_config, _ := (utils.ConfigStruct.ConfigData[config.REDIS]).(config.RedisConfig)
 
 	// ip := redis_config.Cluster.Ips[0]
 	// host := redis_config.Cluster.Hosts[0]

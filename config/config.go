@@ -1,5 +1,19 @@
 package config
 
+const (
+	HADOOP       string = "hadoop"
+	HBASE        string = "hbase"
+	HIVE         string = "hive"
+	KAFKA        string = "kafka"
+	MICROSERVICE string = "micro_service"
+	MYSQL        string = "mysql"
+	NODE         string = "node_exporter"
+	REDIS        string = "redis"
+	SKYWALKING   string = "skywalking"
+	SPARK        string = "spark"
+	ZOOKEEPER    string = "zookeeper"
+)
+
 type K8sConfig struct {
 	ServiceURL      string `yaml:"serviceUrl,omitempty"`
 	EndpointURL     string `yaml:"endpointUrl,omitempty"`
@@ -87,13 +101,27 @@ type K8sYamlConfig struct {
 	}
 }
 
+// cluster:
+//   name: bigdata-dev-cluster
+//   ips:
+//     - 192.168.10.70
+//   port: 3306
+//   username: root
+//   password: pwd@123
+//   defaultdb: information_schema
+//   role:
+//     - master
+
 // 存储mysql配置文件信息
 type MysqlConfig struct {
 	Cluster struct {
-		Name string   `yaml:"name"`
-		Ips  []string `yaml:"ips"`
-		Port int      `yaml:"port"`
-		Role []string `yaml:"role"`
+		Name      string   `yaml:"name"`
+		Ips       []string `yaml:"ips"`
+		Port      int      `yaml:"port"`
+		Username  string   `yaml:"username"`
+		Password  string   `yaml:"password"`
+		DefaultDB string   `yaml:"defaultdb"`
+		Role      []string `yaml:"role"`
 	}
 }
 

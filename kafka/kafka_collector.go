@@ -211,7 +211,7 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// 获取kafka的配置信息
 	// kafka_config := Parse_kafka_config()
-	kafka_config := (utils.ConfigStruct.ConfigData["kafka"]).(config.KafkaConfigure)
+	kafka_config := (utils.ConfigStruct.ConfigData[config.KAFKA]).(config.KafkaConfigure)
 	collector = NewKafkaCollector()
 	// 获取kafka的metric数据
 	//    disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate_metric := GetKafkaMetrics()

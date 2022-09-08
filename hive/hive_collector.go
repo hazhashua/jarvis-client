@@ -40,7 +40,7 @@ func NewHiveExporter() *HiveExporter {
 
 	// hive_exporter := new(HiveExporter)
 	// hiveConfig := *Parse_hive_config()
-	hiveConfig := (utils.ConfigStruct.ConfigData["hive"]).(config.HiveConfig)
+	hiveConfig := (utils.ConfigStruct.ConfigData[config.HIVE]).(config.HiveConfig)
 	hiveCluster := hiveConfig.Cluster.Name
 	clusterMode := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace:   "",
@@ -142,7 +142,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 
 	exporter = NewHiveExporter()
 	// hive_config := Parse_hive_config()
-	hive_config := (utils.ConfigStruct.ConfigData["hive"]).(config.HiveConfig)
+	hive_config := (utils.ConfigStruct.ConfigData[config.HIVE]).(config.HiveConfig)
 	mysql_connection := utils.MysqlConnect{
 		Host:      hive_config.Cluster.Mysql.Host,
 		Port:      hive_config.Cluster.Mysql.Port,

@@ -32,7 +32,7 @@ type Employee struct {
 func init() {
 	//errorlog := log.New(os.Stdout, "APP", log.LstdFlags)
 	// skywalkingConfig := ParseSkyWalkingConfig()
-	skywalkingConfig, _ := (utils.ConfigStruct.ConfigData["skywalking"]).(config.SkyWalkingConfig)
+	skywalkingConfig, _ := (utils.ConfigStruct.ConfigData[config.SKYWALKING]).(config.SkyWalkingConfig)
 
 	for _, ip := range skywalkingConfig.Cluster.ElasticSearch.Ips {
 		hostUrl := fmt.Sprintf("http://%s:%d", ip, skywalkingConfig.Cluster.ElasticSearch.Port)

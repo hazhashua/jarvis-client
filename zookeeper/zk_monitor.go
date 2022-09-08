@@ -2,25 +2,25 @@ package zookeeper
 
 import (
 	"fmt"
-	"io/ioutil"
 	"metric_exporter/config"
+	"metric_exporter/utils"
 	"time"
 
 	"github.com/samuel/go-zookeeper/zk"
-	"gopkg.in/yaml.v2"
 )
 
 // 获取到zookeeper的连接
 func conn() *zk.Conn {
 	var zookeeper_config config.ZookeepeConfig
-	bytes, err2 := ioutil.ReadFile("./zookeeper/config.yaml")
-	if err2 == nil {
-		fmt.Println("err2: ", err2.Error())
+	var ok bool
+
+	zookeeper_config, ok = (utils.ConfigStruct.ConfigData[config.ZOOKEEPER]).(config.ZookeepeConfig)
+	if ok == false {
+		fmt.Println("获取zookeeper config配置失败!")
+		utils.Logger.Println("获取zookeeper config配置失败!")
+		return nil
 	}
-	err := yaml.Unmarshal(bytes, &zookeeper_config)
-	if err == nil {
-		fmt.Println("err: ", err.Error())
-	}
+
 	fmt.Println("zookeeper_config.Cluster.Name: ", zookeeper_config.Cluster.Name)
 	fmt.Println("zookeeper_config.Cluster.Hosts: ", zookeeper_config.Cluster.Hosts)
 	fmt.Println("zookeeper_config.Cluster.ClientPort: ", zookeeper_config.Cluster.ClientPort)

@@ -481,7 +481,7 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// collector = NewHadoopCollector()
 	// hadoop_config := Parse_hadoop_config()
-	hadoop_config, _ := (utils.ConfigStruct.ConfigData["hadoop"]).(config.HadoopConfigure)
+	hadoop_config, _ := (utils.ConfigStruct.ConfigData[config.HADOOP]).(config.HadoopConfigure)
 	fmt.Println("hadoop_config: ", hadoop_config)
 	yarn_urls := make([]string, 0)
 	namenode_urls := make([]string, 0)

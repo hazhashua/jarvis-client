@@ -176,7 +176,7 @@ func (e *MachineExporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	e = NewNodeExporter()
 	// nodeConfig := parseNodeConfig()
-	nodeConfig, _ := (utils.ConfigStruct.ConfigData["node"]).(config.NodeConfig)
+	nodeConfig, _ := (utils.ConfigStruct.ConfigData[config.NODE]).(config.NodeConfig)
 
 	hostInfo := HostInfoGet()
 	fmt.Println(hostInfo.hostName)
