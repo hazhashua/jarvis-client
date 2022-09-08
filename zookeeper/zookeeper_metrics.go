@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"metric_exporter/config"
+	"metric_exporter/utils"
 	"net"
 	"net/http"
 	"regexp"
@@ -62,7 +64,9 @@ func Parse_zookeeper_config() *ZookeeperConfig {
 }
 
 func ZookeeperExporter() {
-	zk_config := Parse_zookeeper_config()
+	// zk_config := Parse_zookeeper_config()
+	zk_config, _ := (utils.ConfigStruct.ConfigData[utils.ZOOKEEPER]).(config.ZookeepeConfig)
+
 	// var hosts_str string
 	// hosts_str = strings.Join(zk_config.cluster.Hosts, " ")
 
