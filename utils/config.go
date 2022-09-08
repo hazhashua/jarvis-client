@@ -8,6 +8,20 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	HADOOP       string = "hadoop"
+	HBASE        string = "hbase"
+	HIVE         string = "hive"
+	KAFKA        string = "kafka"
+	MICROSERVICE string = "micro_service"
+	MYSQL        string = "mysql"
+	NODE         string = "node_exporter"
+	REDIS        string = "redis"
+	SKYWALKING   string = "skywalking"
+	SPARK        string = "spark"
+	ZOOKEEPER    string = "zookeeper"
+)
+
 type configData struct {
 }
 
@@ -91,7 +105,7 @@ func (cf configStruct) loadAll() {
 					fmt.Println("解析配置文件成功...")
 				}
 			case "kafka":
-				configR := config.KafkConfigure{}
+				configR := config.KafkaConfigure{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
 					fmt.Println("解析配置文件成功...")
@@ -182,7 +196,7 @@ func (cf configStruct) load(model string) (iface interface{}) {
 				return configs
 			}
 		case "kafka":
-			configs := config.KafkConfigure{}
+			configs := config.KafkaConfigure{}
 			if err2 := yaml.Unmarshal(bytes, &configs); err2 == nil {
 				// 解析配置
 				cf.ConfigData[model] = configs
