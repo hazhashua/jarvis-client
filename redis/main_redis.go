@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"metric_exporter/config"
+	"metric_exporter/utils"
 	"os"
 	"runtime"
 	"strconv"
@@ -81,7 +82,9 @@ func Parse_redis_config() *config.RedisConfig {
 }
 
 func RedisExporter() {
-	redis_config := Parse_redis_config()
+	// redis_config := Parse_redis_config()
+	redis_config, _ := (utils.ConfigStruct.ConfigData["redis"]).(config.RedisConfig)
+
 	// ip := redis_config.Cluster.Ips[0]
 	// host := redis_config.Cluster.Hosts[0]
 	// cluster := redis_config.Cluster.Name
@@ -189,7 +192,7 @@ func RedisExporter() {
 	}
 
 	exp, err := NewRedisExporter(
-		*redis_config,
+		redis_config,
 		Options{
 			// User:                  *redisUser,
 			Password:             *redisPwd,

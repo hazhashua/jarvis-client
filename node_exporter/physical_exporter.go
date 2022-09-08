@@ -2,6 +2,7 @@ package nodeexporter
 
 import (
 	"fmt"
+	"metric_exporter/config"
 	"metric_exporter/utils"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -174,7 +175,9 @@ func (e *MachineExporter) Describe(ch chan<- *prometheus.Desc) {
 
 func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	e = NewNodeExporter()
-	nodeConfig := parseNodeConfig()
+	// nodeConfig := parseNodeConfig()
+	nodeConfig, _ := (utils.ConfigStruct.ConfigData["node"]).(config.NodeConfig)
+
 	hostInfo := HostInfoGet()
 	fmt.Println(hostInfo.hostName)
 	cpuInfo := CpuUsageGet()
