@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"metric_exporter/config"
 	"metric_exporter/utils"
 	"reflect"
 	"regexp"
@@ -30,8 +31,9 @@ type Employee struct {
 //初始化
 func init() {
 	//errorlog := log.New(os.Stdout, "APP", log.LstdFlags)
+	// skywalkingConfig := ParseSkyWalkingConfig()
+	skywalkingConfig, _ := (utils.ConfigStruct.ConfigData["skywalking"]).(config.SkyWalkingConfig)
 
-	skywalkingConfig := ParseSkyWalkingConfig()
 	for _, ip := range skywalkingConfig.Cluster.ElasticSearch.Ips {
 		hostUrl := fmt.Sprintf("http://%s:%d", ip, skywalkingConfig.Cluster.ElasticSearch.Port)
 		hosts = append(hosts, hostUrl)

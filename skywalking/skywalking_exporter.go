@@ -54,7 +54,6 @@ func ParseSkyWalkingConfig() *config.SkyWalkingConfig {
 // 创建skywalking exporter对象
 func NewSkywalkingExporter() *SkyWalkingExporter {
 	eventInfos := make([]EventInfo, 0)
-	// skywalkingConfig := ParseSkyWalkingConfig()
 	now := time.Now()
 	beforeOneM := now.Add(time.Duration(-1000000000 * 60 * 480))
 	year, month, day := beforeOneM.Date()
@@ -135,8 +134,9 @@ func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
 		fmt.Println("......", serviceData.ServiceId, "*********", serviceData.EntityId, "*******", serviceData.TimeBucket)
 	}
 
-	skywalkingConfig := ParseSkyWalkingConfig()
-	println("e address: %p", e, "**************************************")
+	// skywalkingConfig := ParseSkyWalkingConfig()
+	skywalkingConfig, _ := (utils.ConfigStruct.ConfigData["skywalking"]).(config.SkyWalkingConfig)
+	// println("e address: %p", e, "**************************************")
 	// 获取event数据
 	eventInfoDatas := e.SkyEventDatas
 	for idx, eventInfo := range e.EventInfos {
