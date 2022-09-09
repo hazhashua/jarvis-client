@@ -6,6 +6,7 @@ import (
 	"metric_exporter/config"
 	"metric_exporter/utils"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -32,6 +33,17 @@ type hmasterData struct {
 	ip                       *string
 }
 
+type tableData struct {
+	namespace         string
+	tableName         string
+	regionCount       int64
+	storefileCount    int64
+	readRequestCount  int64
+	writeRequestCount int64
+	tableSize         int64
+	regionServer      string
+}
+
 type regionData struct {
 	blockCacheCountHitPercent   float32
 	blockCacheExpressHitPercent float32
@@ -52,6 +64,7 @@ type regionData struct {
 	slowIncrementCount          int64
 	fsReadTimeMax               int64
 	fsWriteTimeMax              int64
+	tableDatas                  map[string]tableData
 	cluster                     string
 	host                        string
 	ip                          string
@@ -331,7 +344,7 @@ func QueryMetric() *hbaseData {
 			utils.Logger.Printf("解析jmx:%s 数据出错    %s\n", "Hadoop:service=HBase,name=RegionServer,sub=Server", unmarshalErr.Error())
 		}
 
-		//	Hadoop:service=HBase,name=RegionServer,sub=IO
+		// Hadoop:service=HBase,name=RegionServer,sub=IO
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IO")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		if region_io, unmarshalErr := UnmarshalRegionserverIO(body); unmarshalErr == nil {
@@ -341,6 +354,84 @@ func QueryMetric() *hbaseData {
 			fmt.Println(*region_io.Beans[0].FSReadTimeMax)
 			// 文件系统最大写时间
 			fmt.Println(*region_io.Beans[0].FSWriteTimeMax)
+		}
+
+		// 解析hbase table相关的数据
+		// Hadoop:service=HBase,name=RegionServer,sub=Tables
+		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=Tables")
+		body = HttpRequest(false, jmx_http_url, query_url, region_no)
+		fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+		if region_tables, unmarshalErr := UnmarshalTables(body); unmarshalErr == nil {
+			if len(region_tables.Beans) != 0 {
+				tds := make(map[string]*tableData, 0)
+				var hostName, tableName string
+				for key, value := range region_tables.Beans[0] {
+					// fmt.Println("key: ", key)
+					reg := regexp.MustCompile("Namespace_([^_].*)_table_(.*)")
+					rss := reg.FindSubmatch([]byte(key))
+					// var tabled tableData
+					if len(rss) == 3 {
+						// fmt.Printf("namespace: %s   table: %s\n", rss[1], rss[2])
+						splits := strings.Split(string(rss[2]), "_metric_")
+						tableName = splits[0]
+						if _, ok := tds[tableName]; !ok {
+							tds[tableName] = &tableData{namespace: string(rss[1]), tableName: tableName}
+							tableName = string(tableName)
+						}
+						// tabled.tableName = string(rss[2])
+						// tabled.namespace = string(rss[1])
+					}
+					if key == "tag.Hostname" {
+						hostName = *value.String
+					}
+					if idx := strings.Index(key, "_metric_"); idx != -1 {
+						metric := key[idx+len("_metric_"):]
+						// fmt.Println("metric: ", metric)
+						switch metric {
+						case "regionCount":
+							// if value.Integer != nil {
+							// }
+							tds[tableName].regionCount = *value.Integer
+							fmt.Printf("tds[%s].regionCount: %d \n", tableName, *value.Integer)
+						case "storeFileCount":
+							// tabled.storefileCount = *value.Integer
+							tds[tableName].storefileCount = *value.Integer
+							fmt.Printf("tds[%s].storefileCount: %d \n", tableName, *value.Integer)
+						case "readRequestCount":
+							// tabled.readRequestCount = *value.Integer
+							tds[tableName].readRequestCount = *value.Integer
+							fmt.Printf("tds[%s].readRequestCount: %d \n", tableName, *value.Integer)
+						case "writeRequestCount":
+							// tabled.writeRequestCount = *value.Integer
+							tds[tableName].writeRequestCount = *value.Integer
+							fmt.Printf("tds[%s].writeRequestCount: %d \n", tableName, *value.Integer)
+						case "tableSize":
+							// tabled.writeRequestCount = *value.Integer
+							tds[tableName].tableSize = *value.Integer
+							fmt.Printf("tds[%s].tableSize: %d \n", tableName, *value.Integer)
+						default:
+						}
+					}
+
+					//reg := regexp.MustCompile("Namespace_([^_].*)_table_((?!metric_).*)_metric_(.*)")
+
+					// var stringv string
+					// if value.String != nil {
+					// 	stringv = *value.String
+					// }
+					// var valuev int64
+					// if value.Integer != nil {
+					// 	valuev = *value.Integer
+					// }
+					// fmt.Println("value: ", valuev, "  ", stringv)
+				}
+				if hostName != "" {
+					for _, value := range tds {
+						value.regionServer = hostName
+						fmt.Println("table info: ", value)
+					}
+				}
+			}
 		}
 
 		// cluster, host, ip := "cluster1", fmt.Sprintf("dev%02d", region_no), "192.168.10.220"
