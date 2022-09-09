@@ -48,8 +48,8 @@ type ServerBean struct {
 	StaticBloomSize                               *int64   `json:"staticBloomSize,omitempty"`
 	MutationsWithoutWALCount                      *int64   `json:"mutationsWithoutWALCount,omitempty"`
 	MutationsWithoutWALSize                       *int64   `json:"mutationsWithoutWALSize,omitempty"`
-	PercentFilesLocal                             *int64   `json:"percentFilesLocal,omitempty"`
-	PercentFilesLocalSecondaryRegions             *int64   `json:"percentFilesLocalSecondaryRegions,omitempty"`
+	PercentFilesLocal                             *float32 `json:"percentFilesLocal,omitempty"`
+	PercentFilesLocalSecondaryRegions             *float32 `json:"percentFilesLocalSecondaryRegions,omitempty"`
 	TotalBytesRead                                *int64   `json:"totalBytesRead,omitempty"`
 	LocalBytesRead                                *int64   `json:"localBytesRead,omitempty"`
 	ShortCircuitBytesRead                         *int64   `json:"shortCircuitBytesRead,omitempty"`
@@ -62,23 +62,23 @@ type ServerBean struct {
 	BlockCacheFreeSize                            *int64   `json:"blockCacheFreeSize,omitempty"`
 	BlockCacheCount                               *int64   `json:"blockCacheCount,omitempty"`
 	BlockCacheSize                                *int64   `json:"blockCacheSize,omitempty"`
-	BlockCacheCountHitPercent                     *float64 `json:"blockCacheCountHitPercent,omitempty"`
-	BlockCacheExpressHitPercent                   *float64 `json:"blockCacheExpressHitPercent,omitempty"`
+	BlockCacheCountHitPercent                     *float32 `json:"blockCacheCountHitPercent,omitempty"`
+	BlockCacheExpressHitPercent                   *float32 `json:"blockCacheExpressHitPercent,omitempty"`
 	L1CacheHitCount                               *int64   `json:"l1CacheHitCount,omitempty"`
 	L1CacheMissCount                              *int64   `json:"l1CacheMissCount,omitempty"`
-	L1CacheHitRatio                               *int64   `json:"l1CacheHitRatio,omitempty"`
-	L1CacheMissRatio                              *int64   `json:"l1CacheMissRatio,omitempty"`
+	L1CacheHitRatio                               *float32 `json:"l1CacheHitRatio,omitempty"`
+	L1CacheMissRatio                              *float32 `json:"l1CacheMissRatio,omitempty"`
 	L2CacheHitCount                               *int64   `json:"l2CacheHitCount,omitempty"`
 	L2CacheMissCount                              *int64   `json:"l2CacheMissCount,omitempty"`
-	L2CacheHitRatio                               *int64   `json:"l2CacheHitRatio,omitempty"`
-	L2CacheMissRatio                              *int64   `json:"l2CacheMissRatio,omitempty"`
+	L2CacheHitRatio                               *float32 `json:"l2CacheHitRatio,omitempty"`
+	L2CacheMissRatio                              *float32 `json:"l2CacheMissRatio,omitempty"`
 	MobFileCacheCount                             *int64   `json:"mobFileCacheCount,omitempty"`
-	MobFileCacheHitPercent                        *int64   `json:"mobFileCacheHitPercent,omitempty"`
-	ReadRequestRatePerSecond                      *int64   `json:"readRequestRatePerSecond,omitempty"`
-	WriteRequestRatePerSecond                     *int64   `json:"writeRequestRatePerSecond,omitempty"`
+	MobFileCacheHitPercent                        *float32 `json:"mobFileCacheHitPercent,omitempty"`
+	ReadRequestRatePerSecond                      *float32 `json:"readRequestRatePerSecond,omitempty"`
+	WriteRequestRatePerSecond                     *float32 `json:"writeRequestRatePerSecond,omitempty"`
 	ByteBuffAllocatorHeapAllocationBytes          *int64   `json:"ByteBuffAllocatorHeapAllocationBytes,omitempty"`
 	ByteBuffAllocatorPoolAllocationBytes          *int64   `json:"ByteBuffAllocatorPoolAllocationBytes,omitempty"`
-	ByteBuffAllocatorHeapAllocationRatio          *int64   `json:"ByteBuffAllocatorHeapAllocationRatio,omitempty"`
+	ByteBuffAllocatorHeapAllocationRatio          *float32 `json:"ByteBuffAllocatorHeapAllocationRatio,omitempty"`
 	ByteBuffAllocatorTotalBufferCount             *int64   `json:"ByteBuffAllocatorTotalBufferCount,omitempty"`
 	ByteBuffAllocatorUsedBufferCount              *int64   `json:"ByteBuffAllocatorUsedBufferCount,omitempty"`
 	TotalRequestCount                             *int64   `json:"totalRequestCount,omitempty"`
@@ -493,10 +493,10 @@ type ServerBean struct {
 	FlushOutputSize99ThPercentile                 *int64   `json:"FlushOutputSize_99th_percentile,omitempty"`
 	FlushOutputSize999ThPercentile                *int64   `json:"FlushOutputSize_99.9th_percentile,omitempty"`
 	BulkloadCount                                 *int64   `json:"Bulkload_count,omitempty"`
-	BulkloadMeanRate                              *int64   `json:"Bulkload_mean_rate,omitempty"`
-	Bulkload1MinRate                              *int64   `json:"Bulkload_1min_rate,omitempty"`
-	Bulkload5MinRate                              *int64   `json:"Bulkload_5min_rate,omitempty"`
-	Bulkload15MinRate                             *int64   `json:"Bulkload_15min_rate,omitempty"`
+	BulkloadMeanRate                              *float32 `json:"Bulkload_mean_rate,omitempty"`
+	Bulkload1MinRate                              *float32 `json:"Bulkload_1min_rate,omitempty"`
+	Bulkload5MinRate                              *float32 `json:"Bulkload_5min_rate,omitempty"`
+	Bulkload15MinRate                             *float32 `json:"Bulkload_15min_rate,omitempty"`
 	BulkloadNumOps                                *int64   `json:"Bulkload_num_ops,omitempty"`
 	BulkloadMin                                   *int64   `json:"Bulkload_min,omitempty"`
 	BulkloadMax                                   *int64   `json:"Bulkload_max,omitempty"`
@@ -510,13 +510,13 @@ type ServerBean struct {
 	Bulkload99ThPercentile                        *int64   `json:"Bulkload_99th_percentile,omitempty"`
 	Bulkload999ThPercentile                       *int64   `json:"Bulkload_99.9th_percentile,omitempty"`
 	ServerReadQueryPerSecondCount                 *int64   `json:"ServerReadQueryPerSecond_count,omitempty"`
-	ServerReadQueryPerSecondMeanRate              *int64   `json:"ServerReadQueryPerSecond_mean_rate,omitempty"`
-	ServerReadQueryPerSecond1MinRate              *int64   `json:"ServerReadQueryPerSecond_1min_rate,omitempty"`
-	ServerReadQueryPerSecond5MinRate              *int64   `json:"ServerReadQueryPerSecond_5min_rate,omitempty"`
-	ServerReadQueryPerSecond15MinRate             *int64   `json:"ServerReadQueryPerSecond_15min_rate,omitempty"`
+	ServerReadQueryPerSecondMeanRate              *float32 `json:"ServerReadQueryPerSecond_mean_rate,omitempty"`
+	ServerReadQueryPerSecond1MinRate              *float32 `json:"ServerReadQueryPerSecond_1min_rate,omitempty"`
+	ServerReadQueryPerSecond5MinRate              *float32 `json:"ServerReadQueryPerSecond_5min_rate,omitempty"`
+	ServerReadQueryPerSecond15MinRate             *float32 `json:"ServerReadQueryPerSecond_15min_rate,omitempty"`
 	ServerWriteQueryPerSecondCount                *int64   `json:"ServerWriteQueryPerSecond_count,omitempty"`
-	ServerWriteQueryPerSecondMeanRate             *int64   `json:"ServerWriteQueryPerSecond_mean_rate,omitempty"`
-	ServerWriteQueryPerSecond1MinRate             *int64   `json:"ServerWriteQueryPerSecond_1min_rate,omitempty"`
-	ServerWriteQueryPerSecond5MinRate             *int64   `json:"ServerWriteQueryPerSecond_5min_rate,omitempty"`
-	ServerWriteQueryPerSecond15MinRate            *int64   `json:"ServerWriteQueryPerSecond_15min_rate,omitempty"`
+	ServerWriteQueryPerSecondMeanRate             *float32 `json:"ServerWriteQueryPerSecond_mean_rate,omitempty"`
+	ServerWriteQueryPerSecond1MinRate             *float32 `json:"ServerWriteQueryPerSecond_1min_rate,omitempty"`
+	ServerWriteQueryPerSecond5MinRate             *float32 `json:"ServerWriteQueryPerSecond_5min_rate,omitempty"`
+	ServerWriteQueryPerSecond15MinRate            *float32 `json:"ServerWriteQueryPerSecond_15min_rate,omitempty"`
 }

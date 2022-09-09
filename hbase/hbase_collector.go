@@ -33,8 +33,8 @@ type hmasterData struct {
 }
 
 type regionData struct {
-	blockCacheCountHitPercent   float64
-	blockCacheExpressHitPercent float64
+	blockCacheCountHitPercent   float32
+	blockCacheExpressHitPercent float32
 	numActiveHandler            int64
 	receivedBytes               int64
 	sentBytes                   int64
@@ -251,7 +251,6 @@ func QueryMetric() *hbaseData {
 		var region_data regionData
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IPC")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
-		fmt.Println("body: ", body)
 		if region_ipc, unmarshalErr := UnmarshalRegionserverIPC(body); unmarshalErr == nil {
 			region_data.numActiveHandler = *region_ipc.Beans[0].NumActiveHandler
 			region_data.receivedBytes = *region_ipc.Beans[0].ReceivedBytes
@@ -260,17 +259,17 @@ func QueryMetric() *hbaseData {
 			region_data.authenticationFailures = *region_ipc.Beans[0].AuthenticationFailures
 			region_data.authenticationSuccesses = *region_ipc.Beans[0].AuthenticationSuccesses
 
-			fmt.Println(*region_ipc.Beans[0].NumActiveHandler)
+			fmt.Println("NumActiveHandler: ", *region_ipc.Beans[0].NumActiveHandler)
 			// 接收的数据量
-			fmt.Println(*region_ipc.Beans[0].ReceivedBytes)
+			fmt.Println("ReceivedBytes: ", *region_ipc.Beans[0].ReceivedBytes)
 			// 发送的数据量
-			fmt.Println(*region_ipc.Beans[0].SentBytes)
+			fmt.Println("SentBytes: ", *region_ipc.Beans[0].SentBytes)
 			// 打开的ipc连接数
-			fmt.Println(*region_ipc.Beans[0].NumOpenConnections)
+			fmt.Println("NumOpenConnections: ", *region_ipc.Beans[0].NumOpenConnections)
 			// rpc认证失败次数
-			fmt.Println(*region_ipc.Beans[0].AuthenticationFailures)
+			fmt.Println("AuthenticationFailures: ", *region_ipc.Beans[0].AuthenticationFailures)
 			// rpc认证成功次数
-			fmt.Println(*region_ipc.Beans[0].AuthenticationSuccesses)
+			fmt.Println("AuthenticationSuccesses: ", *region_ipc.Beans[0].AuthenticationSuccesses)
 		}
 
 		//Hadoop:service=HBase,name=RegionServer,sub=Server
@@ -312,7 +311,8 @@ func QueryMetric() *hbaseData {
 				fmt.Println(*region_server.Beans[0].SlowIncrementCount)
 
 			} else {
-				fmt.Println("jmx中没有抓取到数据......")
+				fmt.Println("jmx中数据为空......")
+				utils.Logger.Printf("jmx中数据为空......")
 				region_data.blockCacheCountHitPercent = -1
 				region_data.blockCacheExpressHitPercent = -1
 				region_data.readRequestCount = -1
@@ -326,6 +326,9 @@ func QueryMetric() *hbaseData {
 				region_data.slowIncrementCount = -1
 
 			}
+		} else {
+			fmt.Printf("解析jmx:%s 数据出错  %s\n", "Hadoop:service=HBase,name=RegionServer,sub=Server", unmarshalErr.Error())
+			utils.Logger.Printf("解析jmx:%s 数据出错    %s\n", "Hadoop:service=HBase,name=RegionServer,sub=Server", unmarshalErr.Error())
 		}
 
 		//	Hadoop:service=HBase,name=RegionServer,sub=IO
@@ -634,8 +637,8 @@ func (collector *hbaseCollector) Collect(ch chan<- prometheus.Metric) {
 	for index, region_info := range collector.regionMetrics {
 		// ch <- prometheus.MustNewConstMetric(alive.aliveMetric, prometheus.GaugeValue, float64(da[index].MetricValue), *da[index].ClusterName, *da[index].ServiceName, *da[index].ChildService, *da[index].IP, fmt.Sprintf("%d", da[index].Port), *da[index].PortType)
 		//NumActiveHandler
-		ch <- prometheus.MustNewConstMetric(region_info.BlockCacheCountHitPercent, prometheus.GaugeValue, hbase_data.regionDatas[index].blockCacheCountHitPercent, hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
-		ch <- prometheus.MustNewConstMetric(region_info.BlockCacheExpressHitPercent, prometheus.GaugeValue, hbase_data.regionDatas[index].blockCacheExpressHitPercent, hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.BlockCacheCountHitPercent, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].blockCacheCountHitPercent), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+		ch <- prometheus.MustNewConstMetric(region_info.BlockCacheExpressHitPercent, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].blockCacheExpressHitPercent), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
 		ch <- prometheus.MustNewConstMetric(region_info.NumActiveHandler, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].numActiveHandler), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
 		ch <- prometheus.MustNewConstMetric(region_info.ReceivedBytes, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].receivedBytes), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
 		ch <- prometheus.MustNewConstMetric(region_info.SentBytes, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].sentBytes), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
