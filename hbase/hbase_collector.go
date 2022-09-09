@@ -437,10 +437,10 @@ func NewHbaseCollector() *hbaseCollector {
 	var regionMetricList []hbaseRegionMetric
 	_, jmx_http_url := initUrl()
 	fmt.Println("jmx_http_url: ", jmx_http_url)
-	region_num := len(*jmx_http_url.regionserversUrls)
-	fmt.Println("region_num: ", region_num)
+	regionserver_num := len(*jmx_http_url.regionserversUrls)
+	fmt.Println("region_num: ", regionserver_num)
 	// length := 0
-	for length := 0; length < region_num; length++ {
+	for length := 0; length < regionserver_num; length++ {
 		// var service_alive_collector hbaseRegionMetric
 		var region_metrics hbaseRegionMetric
 
