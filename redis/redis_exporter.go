@@ -14,6 +14,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+
+	// "gorm.io/gorm/utils"
+	"metric_exporter/utils"
 )
 
 type BuildInfo struct {
@@ -93,7 +96,7 @@ func NewRedisExporter(redis_config config.RedisConfig, opts Options) (*Exporter,
 	// host := redis_config.Cluster.Hosts[0]
 	cluster := redis_config.Cluster.Name
 	redis_addr := fmt.Sprintf("redis://%s:%d", ip, redis_config.Cluster.RedisPort)
-
+	utils.Logger.Printf("redis_addr: %s\n", redis_addr)
 	e := &Exporter{
 		redis_config: redis_config,
 		redisAddr:    redis_addr,
@@ -102,8 +105,7 @@ func NewRedisExporter(redis_config config.RedisConfig, opts Options) (*Exporter,
 		redisCluster: cluster,
 		options:      opts,
 		namespace:    opts.Namespace,
-
-		buildInfo: opts.BuildInfo,
+		buildInfo:    opts.BuildInfo,
 
 		// redis的集群模式
 		clusterMode: prometheus.NewGauge(prometheus.GaugeOpts{

@@ -178,6 +178,8 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	// nodeConfig := parseNodeConfig()
 	nodeConfig, _ := (utils.ConfigStruct.ConfigData[config.NODE]).(config.NodeConfig)
 
+	fmt.Println("nodeConfig: ", nodeConfig.Cluster.Name, "   ", nodeConfig)
+
 	hostInfo := HostInfoGet()
 	fmt.Println(hostInfo.hostName)
 	cpuInfo := CpuUsageGet()
