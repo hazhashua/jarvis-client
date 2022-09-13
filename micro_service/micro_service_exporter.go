@@ -159,7 +159,7 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 			prometheus.Labels{})
 		k8sNodeDesc.MaxCpuValType = prometheus.GaugeValue
 
-		k8sNodeDesc.MaxDiskStorageDesc = prometheus.NewDesc("max_disk_total", "主机的磁盘总大小",
+		k8sNodeDesc.MaxDiskStorageDesc = prometheus.NewDesc("max_disk_total", "主机的磁盘总大小(单位byte)",
 			[]string{"cluster", "host", "ip"},
 			prometheus.Labels{})
 		k8sNodeDesc.MaxDiskStorageValType = prometheus.GaugeValue
@@ -179,7 +179,7 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 			prometheus.Labels{})
 		k8sNodeDesc.AllocateCpuValType = prometheus.GaugeValue
 
-		k8sNodeDesc.AllocateDiskStorageDesc = prometheus.NewDesc("allocate_disk_total", "分配的磁盘总大小",
+		k8sNodeDesc.AllocateDiskStorageDesc = prometheus.NewDesc("allocate_disk_total", "分配的磁盘总大小(单位byte)",
 			[]string{"cluster", "host", "ip"},
 			prometheus.Labels{})
 		k8sNodeDesc.AllocateDiskStorageValType = prometheus.GaugeValue

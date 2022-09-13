@@ -235,19 +235,23 @@ func GetNodeInfo(url string) []*MyK8sNodeInfo {
 
 			if strings.Contains(*data.Status.Capacity.EphemeralStorage, "Ki") {
 				storageK := (*data.Status.Capacity.EphemeralStorage)[:len(*data.Status.Capacity.EphemeralStorage)-2]
+				fmt.Println("Ki  Capacity storageK: ", storageK)
 				storageKv, _ := strconv.ParseUint(storageK, 10, 32)
-				nodeCapacity.diskStorage = storageKv
+				fmt.Println("Ki  Capacity node disk storage: ", storageKv*1024)
+				nodeCapacity.diskStorage = storageKv * 1024
 			} else {
-				storagev, _ := strconv.ParseUint(*data.Status.Capacity.EphemeralStorage, 10, 32)
+				fmt.Println("Capacity : ", *data.Status.Capacity.EphemeralStorage)
+				storagev, _ := strconv.ParseUint(*data.Status.Capacity.EphemeralStorage, 10, 64)
+				fmt.Println("Capacity node disk storage: ", storagev)
 				nodeCapacity.diskStorage = storagev
 			}
 
 			if strings.Contains(*data.Status.Capacity.Memory, "Ki") {
 				memoryK := (*data.Status.Capacity.Memory)[:len(*data.Status.Capacity.Memory)-2]
 				memoryKv, _ := strconv.ParseUint(memoryK, 10, 32)
-				nodeCapacity.memory = memoryKv
+				nodeCapacity.memory = memoryKv * 1024
 			}
-			nodeCapacity.pods, _ = strconv.ParseInt(*data.Status.Capacity.Pods, 10, 32)
+			nodeCapacity.pods, _ = strconv.ParseInt(*data.Status.Capacity.Pods, 10, 64)
 		}
 		myNodeInfo.NodeCapacityS = &nodeCapacity
 
@@ -264,17 +268,21 @@ func GetNodeInfo(url string) []*MyK8sNodeInfo {
 
 			if strings.Contains(*data.Status.Allocatable.EphemeralStorage, "Ki") {
 				storageK := (*data.Status.Allocatable.EphemeralStorage)[:len(*data.Status.Allocatable.EphemeralStorage)-2]
-				storageKv, _ := strconv.ParseUint(storageK, 10, 32)
-				allocatable.diskStorage = storageKv
+				fmt.Println("Allocate Ki storageK: ", storageK)
+				storageKv, _ := strconv.ParseUint(storageK, 10, 64)
+				fmt.Println("Ki  Allocate node disk storage: ", storageKv*1024)
+				allocatable.diskStorage = storageKv * 1024
 			} else {
-				storagev, _ := strconv.ParseUint(*data.Status.Allocatable.EphemeralStorage, 10, 32)
+				fmt.Println("Allocate *data.Status.Allocatable.EphemeralStorage: ", *data.Status.Allocatable.EphemeralStorage)
+				storagev, _ := strconv.ParseUint(*data.Status.Allocatable.EphemeralStorage, 10, 64)
+				fmt.Println("Allocate node disk storage: ", storagev)
 				allocatable.diskStorage = storagev
 			}
 
 			if strings.Contains(*data.Status.Allocatable.Memory, "Ki") {
 				memoryK := (*data.Status.Allocatable.Memory)[:len(*data.Status.Allocatable.Memory)-2]
 				memoryKv, _ := strconv.ParseUint(memoryK, 10, 32)
-				allocatable.memory = memoryKv
+				allocatable.memory = memoryKv * 1024
 			}
 			allocatable.pods, _ = strconv.ParseInt(*data.Status.Allocatable.Pods, 10, 32)
 		}
