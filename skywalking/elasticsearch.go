@@ -257,7 +257,6 @@ func GetCpmInfo(metricTable string) (cpmInfo []MyCpmInfo) {
 // 根据base64密文解析成明文数据
 func analysisItem(item string) []string {
 	r := regexp.MustCompile("(.*)(\\.\\d+[_-]?)(.*)")
-
 	bbs := r.FindSubmatch([]byte(item))
 	fmt.Println("len(findsubmatch): ", len(bbs))
 	if len(bbs) == 2 || len(bbs) == 3 {
