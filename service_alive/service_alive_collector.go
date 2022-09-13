@@ -24,6 +24,7 @@ import (
 
 type serviceCollector struct {
 	serviceAliveCollector []serviceAlive2Collector
+	datas                 []DatsourceAlive
 }
 
 type serviceAlive2Collector struct {
@@ -59,7 +60,13 @@ func NewServiceAliveCollector() *serviceCollector {
 		serviceAliveList = append(serviceAliveList, service_alive_collector)
 
 	}
-	return &serviceCollector{serviceAliveCollector: serviceAliveList}
+
+	da := GetAliveInfos()
+
+	return &serviceCollector{
+		serviceAliveCollector: serviceAliveList,
+		datas:                 da,
+	}
 
 }
 
@@ -108,21 +115,23 @@ func (collector *serviceCollector) Describe(ch chan<- *prometheus.Desc) {
 func (collector *serviceCollector) Collect(ch chan<- prometheus.Metric) {
 	//Implement logic here to determine proper metric value to return to prometheus
 	//for each descriptor or call other functions that do so.
-	da := GetAliveInfos()
-	fmt.Println("da: ", da)
+	collector = NewServiceAliveCollector()
+	datas := collector.datas
+	fmt.Println("collector datas: ", datas)
+
 	// for _, alive := range da {
 	for index, alive := range collector.serviceAliveCollector {
-		if index >= len(da) {
+		if index >= len(datas) {
 			//查询数据已经遍历完，退出
 			break
 		}
 		var portValue string
-		if da[index].Port.Valid == true {
-			portValue = fmt.Sprintf("%d", da[index].Port.Int64)
+		if datas[index].Port.Valid == true {
+			portValue = fmt.Sprintf("%d", datas[index].Port.Int64)
 		} else {
 			portValue = ""
 		}
-		ch <- prometheus.MustNewConstMetric(alive.aliveMetric, prometheus.GaugeValue, float64(da[index].MetricValue), *da[index].ClusterName, *da[index].ServiceName, *da[index].ChildService, *da[index].IP, portValue, *da[index].PortType)
+		ch <- prometheus.MustNewConstMetric(alive.aliveMetric, prometheus.GaugeValue, float64(datas[index].MetricValue), *datas[index].ClusterName, *datas[index].ServiceName, *datas[index].ChildService, *datas[index].IP, portValue, *datas[index].PortType)
 		// break
 	}
 
