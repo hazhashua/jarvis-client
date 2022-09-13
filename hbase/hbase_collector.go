@@ -64,7 +64,7 @@ type regionData struct {
 	slowIncrementCount          int64
 	fsReadTimeMax               int64
 	fsWriteTimeMax              int64
-	tableDatas                  map[string]tableData
+	tableDatas                  []tableData
 	cluster                     string
 	host                        string
 	ip                          string
@@ -258,6 +258,7 @@ func QueryMetric() *hbaseData {
 	region_no := 1
 	// var region_datas [3]regionData
 	region_datas := make([]regionData, 0)
+	// tdL := make([]*tableData, 0)
 	for {
 		// 查询所有regionserver的特定指标
 		//?qry=Hadoop:service=HBase,name=RegionServer,sub=IPC
@@ -367,13 +368,15 @@ func QueryMetric() *hbaseData {
 				var hostName, tableName string
 				for key, value := range region_tables.Beans[0] {
 					// fmt.Println("key: ", key)
-					reg := regexp.MustCompile("Namespace_([^_].*)_table_(.*)")
+					reg := regexp.MustCompile("Namespace_([^_]+?)_table_(.*)")
 					rss := reg.FindSubmatch([]byte(key))
 					// var tabled tableData
 					if len(rss) == 3 {
-						// fmt.Printf("namespace: %s   table: %s\n", rss[1], rss[2])
+						fmt.Printf("key: %s, namespace: %s   table: %s\n", key, rss[1], rss[2])
 						splits := strings.Split(string(rss[2]), "_metric_")
 						tableName = splits[0]
+						fmt.Println("splits: ", splits)
+						fmt.Println("tableName: ", tableName)
 						if _, ok := tds[tableName]; !ok {
 							tds[tableName] = &tableData{namespace: string(rss[1]), tableName: tableName}
 							tableName = string(tableName)
@@ -410,6 +413,8 @@ func QueryMetric() *hbaseData {
 							tds[tableName].tableSize = *value.Integer
 							fmt.Printf("tds[%s].tableSize: %d \n", tableName, *value.Integer)
 						default:
+							// fmt.Printf("忽略的hbase table相关指标%s\n", metric)
+							utils.Logger.Printf("忽略的hbase table相关指标: %s \n", metric)
 						}
 					}
 
@@ -429,6 +434,8 @@ func QueryMetric() *hbaseData {
 					for _, value := range tds {
 						value.regionServer = hostName
 						fmt.Println("table info: ", value)
+						region_data.tableDatas = append(region_data.tableDatas, *value)
+						// tdL = append(tdL, value)
 					}
 				}
 			}
@@ -458,8 +465,10 @@ func QueryMetric() *hbaseData {
 }
 
 type hbaseCollector struct {
-	masterMetrics hbaseMasterMetric
-	regionMetrics []hbaseRegionMetric
+	masterMetrics        hbaseMasterMetric
+	regionMetrics        []hbaseRegionMetric
+	regionDynamicMetrics [][]hbaseRegionDynamicMetric
+	datas                hbaseData
 }
 
 type hbaseRegionMetric struct {
@@ -504,6 +513,11 @@ type hbaseRegionMetric struct {
 	FSWriteTimeMaxValType              prometheus.ValueType
 }
 
+type hbaseRegionDynamicMetric struct {
+	TableInfo        *prometheus.Desc
+	TableInfoValType prometheus.ValueType
+}
+
 type hbaseMasterMetric struct {
 	// 下面是master的指标
 	NumRegionServers                *prometheus.Desc
@@ -533,11 +547,13 @@ func NewHbaseCollector() *hbaseCollector {
 	fmt.Println("jmx_http_url: ", jmx_http_url)
 	regionserver_num := len(*jmx_http_url.regionserversUrls)
 	fmt.Println("region_num: ", regionserver_num)
-	// length := 0
+
+	hbasedatas := QueryMetric()
+	region_dynamicss := make([][]hbaseRegionDynamicMetric, 0)
+
 	for length := 0; length < regionserver_num; length++ {
 		// var service_alive_collector hbaseRegionMetric
 		var region_metrics hbaseRegionMetric
-
 		region_metrics.BlockCacheCountHitPercent = prometheus.NewDesc("blockcache_count_hit_percent", "show the hit percent of the blockcache to all read request",
 			[]string{"cluster", "host", "ip"},
 			prometheus.Labels{})
@@ -633,6 +649,26 @@ func NewHbaseCollector() *hbaseCollector {
 			prometheus.Labels{})
 		region_metrics.FSWriteTimeMaxValType = prometheus.GaugeValue
 		regionMetricList = append(regionMetricList, region_metrics)
+
+		// namespace         string
+		// tableName         string
+		// regionCount       int64
+		// storefileCount    int64
+		// readRequestCount  int64
+		// writeRequestCount int64
+		// tableSize         int64
+		// regionServer      string
+		region_dynamic_metricL := make([]hbaseRegionDynamicMetric, 0)
+		for i := 0; i < len(hbasedatas.regionDatas[length].tableDatas); i++ {
+			var region_dynamic_metrics hbaseRegionDynamicMetric
+			region_dynamic_metrics.TableInfo = prometheus.NewDesc("table_info", "the table info on every regionservers",
+				[]string{"cluster", "namespace", "table_name", "region_count", "storefile_count", "read_request_count", "write_request_count", "table_size", "regionserver"},
+				prometheus.Labels{})
+			region_dynamic_metrics.TableInfoValType = prometheus.GaugeValue
+			region_dynamic_metricL = append(region_dynamic_metricL, region_dynamic_metrics)
+		}
+		region_dynamicss = append(region_dynamicss, region_dynamic_metricL)
+
 	}
 
 	fmt.Println("regionserver metric init over......")
@@ -676,7 +712,12 @@ func NewHbaseCollector() *hbaseCollector {
 		prometheus.Labels{})
 	master_metrics.MasterNumOpenConnectionsValType = prometheus.GaugeValue
 
-	return &hbaseCollector{masterMetrics: master_metrics, regionMetrics: regionMetricList}
+	return &hbaseCollector{
+		masterMetrics:        master_metrics,
+		regionMetrics:        regionMetricList,
+		regionDynamicMetrics: region_dynamicss,
+		datas:                *hbasedatas,
+	}
 
 }
 
@@ -718,7 +759,9 @@ func (collector *hbaseCollector) Describe(ch chan<- *prometheus.Desc) {
 //Collect implements required collect function for all promehteus collectors
 func (collector *hbaseCollector) Collect(ch chan<- prometheus.Metric) {
 
-	hbase_data := QueryMetric()
+	collector = NewHbaseCollector()
+	hbase_data := collector.datas
+
 	if hbase_data.masterData == nil || len(hbase_data.regionDatas) == 0 {
 		// 集群异常，数据为空，直接返回
 		return
@@ -747,6 +790,19 @@ func (collector *hbaseCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(region_info.SlowIncrementCount, prometheus.CounterValue, float64(hbase_data.regionDatas[index].slowIncrementCount), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
 		ch <- prometheus.MustNewConstMetric(region_info.FSWriteTimeMax, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].fsWriteTimeMax), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
 		ch <- prometheus.MustNewConstMetric(region_info.FSReadTimeMax, prometheus.GaugeValue, float64(hbase_data.regionDatas[index].fsReadTimeMax), hbase_data.regionDatas[index].cluster, hbase_data.regionDatas[index].host, hbase_data.regionDatas[index].ip)
+
+		for idx, dynamicMetric := range collector.regionDynamicMetrics[index] {
+			// "namespace", "table_name", "region_count", "storefile_count", "read_request_count", "write_request_count", "table_size", "regionserver"
+			ch <- prometheus.MustNewConstMetric(dynamicMetric.TableInfo, dynamicMetric.TableInfoValType, 1,
+				hbase_data.regionDatas[index].cluster,
+				hbase_data.regionDatas[index].tableDatas[idx].namespace, hbase_data.regionDatas[index].tableDatas[idx].tableName,
+				fmt.Sprintf("%d", hbase_data.regionDatas[index].tableDatas[idx].regionCount),
+				fmt.Sprintf("%d", hbase_data.regionDatas[index].tableDatas[idx].storefileCount),
+				fmt.Sprintf("%d", hbase_data.regionDatas[index].tableDatas[idx].readRequestCount),
+				fmt.Sprintf("%d", hbase_data.regionDatas[index].tableDatas[idx].writeRequestCount),
+				fmt.Sprintf("%d", hbase_data.regionDatas[index].tableDatas[idx].tableSize),
+				hbase_data.regionDatas[index].tableDatas[idx].regionServer)
+		}
 	}
 	// NumRegionServers                *prometheus.Desc
 	// NumDeadRegionServers            *prometheus.Desc
