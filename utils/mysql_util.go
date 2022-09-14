@@ -12,6 +12,7 @@ import (
 	"time"
 
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"gorm.io/gorm"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -311,7 +312,11 @@ func Serilize() bool {
 	// var serilize_data []byte
 	serilize_data := make([]byte, 0)
 	// service_ports := Query("")
-	db := Db
+	var db *gorm.DB
+	if Db == nil {
+		Db = DbOpen(nil)
+	}
+	db = Db
 	service_ports := PgServiceQuery(db, "")
 	for _, service_port := range service_ports {
 		service_port_seriaize, _ := json.Marshal(service_port)
