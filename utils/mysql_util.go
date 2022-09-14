@@ -317,7 +317,7 @@ func Serilize() bool {
 		Db = DbOpen(nil)
 	}
 	db = Db
-	service_ports := PgServiceQuery(db, "")
+	service_ports := PgServiceQuery(db)
 	for _, service_port := range service_ports {
 		service_port_seriaize, _ := json.Marshal(service_port)
 		// fmt.Println("&&&&&&&", string(service_port_seriaize))
