@@ -64,6 +64,8 @@ type HadoopMetric struct {
 	Running300ValType prometheus.ValueType
 
 	//hdfs相关的指标
+	CapacityNonDFSGB           *prometheus.Desc
+	CapacityNonDFSGBValType    prometheus.ValueType
 	CapacityTotalGB            *prometheus.Desc
 	CapacityTotalGBValType     prometheus.ValueType
 	CapacityUsedGB             *prometheus.Desc
@@ -273,6 +275,11 @@ func NewHadoopCollector() *HadoopCollector {
 			prometheus.Labels{}))
 		hadoop_metrics.Running300ValType = prometheus.GaugeValue
 	}
+
+	hadoop_metrics.CapacityNonDFSGB = prometheus.NewDesc("capacity_nondfs_gb", "hadoop集群hdfs容量中未用做dfs的大小",
+		[]string{"cluster"},
+		prometheus.Labels{})
+	hadoop_metrics.CapacityNonDFSGBValType = prometheus.GaugeValue
 
 	hadoop_metrics.CapacityTotalGB = prometheus.NewDesc("capacity_total_gb", "hadoop集群hdfs的总容量",
 		[]string{"cluster"},
@@ -593,11 +600,12 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	fmt.Println("pending_replication_blocks: ", *pending_replication_blocks)
 	fmt.Println("files_total: ", *files_total)
 	fmt.Println("tag_ha_state: ", *tag_ha_state)
-	utils.Logger.Printf("capacity_total_gb:%f, capacity_remaining_gb:%f, capacity_used_gb:%f, blocks_total:%d, corrupt_blocks:%d, pending_deletion_blocks:%d, pending_replication_blocks:%d files_total:%d  tag_ha_state:%s\n",
-		*capacity_total_gb, *capacity_remaining_gb, *capacity_used_gb,
+	utils.Logger.Printf("nondfs_gb:%f, capacity_total_gb:%f, capacity_remaining_gb:%f, capacity_used_gb:%f, blocks_total:%d, corrupt_blocks:%d, pending_deletion_blocks:%d, pending_replication_blocks:%d files_total:%d  tag_ha_state:%s\n",
+		*nondfs_gb, *capacity_total_gb, *capacity_remaining_gb, *capacity_used_gb,
 		*blocks_total, *corrupt_blocks, *pending_deletion_blocks, *pending_replication_blocks,
 		*files_total, *tag_ha_state)
 
+	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityNonDFSGB, collector.hadoopMetrics.CapacityNonDFSGBValType, float64(*nondfs_gb), hadoop_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityTotalGB, collector.hadoopMetrics.CapacityTotalGBValType, float64(*capacity_total_gb), hadoop_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityUsedGB, collector.hadoopMetrics.CapacityUsedGBValType, float64(*capacity_used_gb), hadoop_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityRemainingGB, collector.hadoopMetrics.CapacityRemainingGBValType, float64(*capacity_remaining_gb), hadoop_config.Cluster.Name)
