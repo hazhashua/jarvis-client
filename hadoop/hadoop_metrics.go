@@ -100,17 +100,19 @@ func GetJvmMetricsInfo(http_url string) (mem_non_heap_usedm float64, mem_non_hea
 	return
 }
 
-func GetDFSInfo(namenoeUrl string) (capacity_total_gb *int64, capacity_remaining_gb *int64,
-	capacity_used_gb *int64, blocks_total *int64, corrupt_blocks *int64,
+func GetDFSInfo(namenoeUrl string) (capacity_total_gb *float64, capacity_remaining_gb *float64,
+	capacity_used_gb *float64, blocks_total *int64, corrupt_blocks *int64,
 	pending_deletion_blocks *int64, pending_replication_blocks *int64,
 	files_total *int64, tag_ha_state *string) {
 
 	url := namenoeUrl + "?qry=Hadoop:service=NameNode,name=FSNamesystem"
+	fmt.Println("fs_url: ", url)
 	response := utils.GetUrl(url)
 	fs_namesystem_bytes := []byte(response)
 	fs_namesystem, err := UnmarshalFSNamesystem(fs_namesystem_bytes)
 	if err != nil {
 		utils.Logger.Printf("UnmarshalFSNamesystem(fs_namesystem_bytes): %s\n", err.Error())
+		fmt.Printf("UnmarshalFSNamesystem(fs_namesystem_bytes): %s\n", err.Error())
 	}
 	// fmt.Println("fs_namesystem.Beans[0].CapacityTotal: ", fs_namesystem.Beans[0].CapacityTotal)
 	// fmt.Println("fs_namesystem.Beans[0].CapacityUsed: ", fs_namesystem.Beans[0].CapacityUsed)

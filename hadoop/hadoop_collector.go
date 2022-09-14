@@ -584,19 +584,19 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	namenode_url := fmt.Sprintf("http://%s:%d/jmx", hadoop_config.Cluster.Namenodes[0], hadoop_config.Cluster.NamenodeHttpPort)
 	capacity_total_gb, capacity_remaining_gb, capacity_used_gb, blocks_total, corrupt_blocks, pending_deletion_blocks, pending_replication_blocks, files_total, tag_ha_state := GetDFSInfo(namenode_url)
 
-	fmt.Println("capacity_total_gb: ", capacity_total_gb)
-	fmt.Println("capacity_remaining_gb: ", capacity_remaining_gb)
-	fmt.Println("capacity_used_gb: ", capacity_used_gb)
-	fmt.Println("blocks_total: ", blocks_total)
-	fmt.Println("corrupt_blocks: ", corrupt_blocks)
-	fmt.Println("pending_deletion_blocks: ", pending_deletion_blocks)
-	fmt.Println("pending_replication_blocks: ", pending_replication_blocks)
-	fmt.Println("files_total: ", files_total)
-	fmt.Println("tag_ha_state: ", tag_ha_state)
-	utils.Logger.Printf("capacity_total_gb:%d, capacity_remaining_gb:%d, capacity_used_gb:%d, blocks_total:%d, corrupt_blocks:%d, pending_deletion_blocks:%d, pending_replication_blocks:%d files_total:%d  tag_ha_state:%d\n",
-		capacity_total_gb, capacity_remaining_gb, capacity_used_gb,
-		blocks_total, corrupt_blocks, pending_deletion_blocks, pending_replication_blocks,
-		files_total, tag_ha_state)
+	fmt.Println("capacity_total_gb: ", *capacity_total_gb)
+	fmt.Println("capacity_remaining_gb: ", *capacity_remaining_gb)
+	fmt.Println("capacity_used_gb: ", *capacity_used_gb)
+	fmt.Println("blocks_total: ", *blocks_total)
+	fmt.Println("corrupt_blocks: ", *corrupt_blocks)
+	fmt.Println("pending_deletion_blocks: ", *pending_deletion_blocks)
+	fmt.Println("pending_replication_blocks: ", *pending_replication_blocks)
+	fmt.Println("files_total: ", *files_total)
+	fmt.Println("tag_ha_state: ", *tag_ha_state)
+	utils.Logger.Printf("capacity_total_gb:%f, capacity_remaining_gb:%f, capacity_used_gb:%f, blocks_total:%d, corrupt_blocks:%d, pending_deletion_blocks:%d, pending_replication_blocks:%d files_total:%d  tag_ha_state:%s\n",
+		*capacity_total_gb, *capacity_remaining_gb, *capacity_used_gb,
+		*blocks_total, *corrupt_blocks, *pending_deletion_blocks, *pending_replication_blocks,
+		*files_total, *tag_ha_state)
 
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityTotalGB, collector.hadoopMetrics.CapacityTotalGBValType, float64(*capacity_total_gb), hadoop_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityUsedGB, collector.hadoopMetrics.CapacityUsedGBValType, float64(*capacity_used_gb), hadoop_config.Cluster.Name)
@@ -629,7 +629,10 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		call_queue_length, rpc_slow_calls, num_open_connections, num_dropped_connections, rpc_authentication_successes, rpc_authentication_failures, sent_bytes, received_bytes, call_queuetime_avgtime, tag_hostname, tag_port := GetNameNodeRPCInfo(namenode_url)
-		fmt.Println(call_queue_length, rpc_slow_calls, num_open_connections, num_dropped_connections, rpc_authentication_successes, rpc_authentication_failures, sent_bytes, received_bytes, call_queuetime_avgtime, tag_hostname, tag_port)
+		fmt.Printf("call_queue_length:%d\n  rpc_slow_calls:%d\n  num_open_connections:%d\n  num_dropped_connections:%d\n rpc_authentication_successes:%d\n  rpc_authentication_failures:%d\n  sent_bytes:%d\n  received_bytes:%d\n  call_queuetime_avgtime:%f\n  tag_hostname:%s\n  tag_port:%s \n",
+			*call_queue_length, *rpc_slow_calls, *num_open_connections, *num_dropped_connections,
+			*rpc_authentication_successes, *rpc_authentication_failures, *sent_bytes, *received_bytes,
+			*call_queuetime_avgtime, *tag_hostname, *tag_port)
 		// RpcQueueTimeAvgTime        []*prometheus.Desc
 		// NumOpenConnections         []*prometheus.Desc
 		// RpcSlowCalls               []*prometheus.Desc
