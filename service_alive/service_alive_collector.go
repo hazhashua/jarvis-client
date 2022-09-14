@@ -185,13 +185,17 @@ func GetAliveInfos() []DatsourceAlive {
 			// 如果不是本地的进程探测数据，则跳过
 			if *servicePort.IP == localIp {
 				fmt.Println("ip是本地地址...")
+				utils.Logger.Printf("ip是本地地址...")
 			} else {
-				fmt.Printf("待检测的ip地址: %s", *servicePort.IP)
-				fmt.Printf("本地ip地址: %s", localIp)
+				fmt.Printf("待检测的ip地址: %s\n", *servicePort.IP)
+				fmt.Printf("本地ip地址: %s\n", localIp)
+				utils.Logger.Printf("待检测的ip地址: %s", *servicePort.IP)
+				utils.Logger.Printf("本地ip地址: %s", localIp)
 				// 测试时, 不跳过
 				// continue
 			}
-
+			fmt.Printf("执行服务进程检测: %s ...\n", *servicePort.ChildService)
+			utils.Logger.Printf("执行服务进程检测: %s ...\n", *servicePort.ChildService)
 			alive := IsProcessRunning(*servicePort.ChildService)
 			if alive == true {
 				datasourceAlive.MetricValue = float32(1)

@@ -19,9 +19,10 @@ func IsProcessRunning(processName string) bool {
 	processes := make([]string, 0)
 	if bytes, err := cmd.Output(); err == nil {
 		processes = strings.Fields(string(bytes))
+		fmt.Println("processes: ", processes)
 	}
 	for _, process := range processes {
-		if process == processName {
+		if process == processName || strings.Contains(processName, process) {
 			find = true
 			fmt.Println("发现进程: ", processName)
 		}
