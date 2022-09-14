@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"gorm.io/gorm"
 )
 
 //Define a struct for you collector that contains pointers
@@ -46,8 +47,12 @@ type DatsourceAlive struct {
 //initializes every descriptor and returns a pointer to the collector
 func NewServiceAliveCollector() *serviceCollector {
 	var serviceAliveList []serviceAlive2Collector
-	// datasource_count := utils.ValueQuery("")
-	db := utils.DbOpen(nil)
+	// db := utils.DbOpen(nil)
+	var db *gorm.DB
+	if utils.Db == nil {
+		utils.Db = utils.DbOpen(nil)
+	}
+	db = utils.Db
 	datasource_count := utils.PgCountQuery(db, "")
 
 	fmt.Println("查询到的service_port表记录数: ", datasource_count)
