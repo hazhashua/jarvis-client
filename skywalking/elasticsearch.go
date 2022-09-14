@@ -38,22 +38,29 @@ func init() {
 		hostUrl := fmt.Sprintf("http://%s:%d", ip, skywalkingConfig.Cluster.ElasticSearch.Port)
 		hosts = append(hosts, hostUrl)
 	}
+	if len(hosts) == 0 {
+		utils.Logger.Printf("读取skywalking配置为空，退出init函数")
+		return
+	}
 	host = hosts[0]
 
 	var err error
 	//这个地方有个小坑 不加上elastic.SetSniff(false) 会连接不上
 	client, err = elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(host))
 	if err != nil {
+		utils.Logger.Printf("elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(host)) error: %s", err.Error())
 		panic(err)
 	}
 	info, code, err1 := client.Ping(host).Do(context.Background())
 	if err1 != nil {
+		utils.Logger.Printf("client.Ping(host).Do(context.Background()) error: %s", err.Error())
 		panic(err1)
 	}
 	fmt.Printf("Elasticsearch returned with code %d and version %s\n", code, info.Version.Number)
 	var esversion string
 	esversion, err = client.ElasticsearchVersion(host)
 	if err != nil {
+		utils.Logger.Printf("client.ElasticsearchVersion(host) error: %s", err.Error())
 		panic(err)
 	}
 	fmt.Printf("Elasticsearch version %s\n", esversion)
