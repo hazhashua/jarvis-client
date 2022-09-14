@@ -8,20 +8,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	HADOOP       string = "hadoop"
-	HBASE        string = "hbase"
-	HIVE         string = "hive"
-	KAFKA        string = "kafka"
-	MICROSERVICE string = "micro_service"
-	MYSQL        string = "mysql"
-	NODE         string = "node_exporter"
-	REDIS        string = "redis"
-	SKYWALKING   string = "skywalking"
-	SPARK        string = "spark"
-	ZOOKEEPER    string = "zookeeper"
-)
-
 type configData struct {
 }
 
