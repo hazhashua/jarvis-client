@@ -100,7 +100,7 @@ func GetJvmMetricsInfo(http_url string) (mem_non_heap_usedm float64, mem_non_hea
 	return
 }
 
-func GetDFSInfo(namenoeUrl string) (capacity_total_gb *float64, capacity_remaining_gb *float64,
+func GetDFSInfo(namenoeUrl string) (nondfs_gb *float64, capacity_total_gb *float64, capacity_remaining_gb *float64,
 	capacity_used_gb *float64, blocks_total *int64, corrupt_blocks *int64,
 	pending_deletion_blocks *int64, pending_replication_blocks *int64,
 	files_total *int64, tag_ha_state *string) {
@@ -118,6 +118,8 @@ func GetDFSInfo(namenoeUrl string) (capacity_total_gb *float64, capacity_remaini
 	// fmt.Println("fs_namesystem.Beans[0].CapacityUsed: ", fs_namesystem.Beans[0].CapacityUsed)
 	// fmt.Println("fs_namesystem.Beans[0].CapacityRemaining: ", fs_namesystem.Beans[0].CapacityRemaining)
 
+	nondfs_gbv := float64(*fs_namesystem.Beans[0].CapacityUsedNonDFS) / float64(1024.0) / 1024 / 1024
+	nondfs_gb = &nondfs_gbv
 	capacity_total_gb = fs_namesystem.Beans[0].CapacityTotalGB
 	capacity_remaining_gb = fs_namesystem.Beans[0].CapacityRemainingGB
 	capacity_used_gb = fs_namesystem.Beans[0].CapacityUsedGB

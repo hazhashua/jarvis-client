@@ -582,8 +582,8 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running300[0], collector.hadoopMetrics.Running300ValType, float64(*running_300), hadoop_config.Cluster.Name, queue_name)
 
 	namenode_url := fmt.Sprintf("http://%s:%d/jmx", hadoop_config.Cluster.Namenodes[0], hadoop_config.Cluster.NamenodeHttpPort)
-	capacity_total_gb, capacity_remaining_gb, capacity_used_gb, blocks_total, corrupt_blocks, pending_deletion_blocks, pending_replication_blocks, files_total, tag_ha_state := GetDFSInfo(namenode_url)
-
+	nondfs_gb, capacity_total_gb, capacity_remaining_gb, capacity_used_gb, blocks_total, corrupt_blocks, pending_deletion_blocks, pending_replication_blocks, files_total, tag_ha_state := GetDFSInfo(namenode_url)
+	fmt.Println("nondfs_gb: ", *nondfs_gb)
 	fmt.Println("capacity_total_gb: ", *capacity_total_gb)
 	fmt.Println("capacity_remaining_gb: ", *capacity_remaining_gb)
 	fmt.Println("capacity_used_gb: ", *capacity_used_gb)
