@@ -3,9 +3,14 @@ package utils
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"metric_exporter/config"
+	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type configData struct {
@@ -239,6 +244,39 @@ func (cf configStruct) load(model string) (iface interface{}) {
 	return nil
 }
 
+// 全局Logger对象
+var Logger *log.Logger
+
+func init() {
+	if Logger == nil {
+		fmt.Println("日志对象为空，创建日志对象...")
+		if logFile, err := os.OpenFile("./exporter.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); err == nil {
+			Logger = log.New(logFile, "", log.Ldate|log.Ltime|log.Lshortfile)
+		}
+	}
+}
+
+// 全局Db对象
+var Db *gorm.DB
+
+func init() {
+	config := dbConfig{
+		Ip:       "192.168.10.68",
+		Port:     5432,
+		User:     "postgres",
+		Password: "pwd@123",
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Ip, config.User, config.Password, config.Port)
+	var err error
+	if Db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}); err == nil {
+		fmt.Println("*************************connect to db success")
+		Logger.Println("*************************connect to db success")
+	} else {
+		fmt.Println("*************************connet to db error!")
+		Logger.Println("*************************connect to db error")
+	}
+}
+
 // 初始化配置
 func init() {
 	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@")
@@ -248,6 +286,10 @@ func init() {
 	if Logger != nil {
 		Logger.Println("执行完configure初始化...")
 	}
+
+	maps := getSourceAddr()
+	fmt.Println("从数据库加载的配置: ", maps)
+
 	ConfigStruct.loadAll()
 	fmt.Println("ConfigStruct.ConfigData: ", ConfigStruct.ConfigData)
 	if Logger != nil {
@@ -258,3 +300,127 @@ func init() {
 // 数据库源数据的加载
 // 把ip和端口信息封装成访问地址类型信息
 // 配置默认的端口，防止在信息不全情况下数据获取的障碍
+func getSourceAddr() map[string][]ServicePort {
+	servicePorts := PgServiceQuery(Db)
+	sps := make(map[string][]ServicePort)
+	for _, sp := range servicePorts {
+		fmt.Println("servicePort: ", sp)
+		if len(sps[*sp.ServiceName]) == 0 {
+			sps[*sp.ServiceName] = make([]ServicePort, 0)
+		}
+		sps[*sp.ServiceName] = append(sps[*sp.ServiceName], sp)
+	}
+
+	// 提前hadoop相关源数据信息
+	resourceMap := make(map[string][]ServicePort, 0)
+	hadoopRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.HADOOP] {
+		switch *ele.ChildService {
+		case "resourcemanager":
+			if *ele.PortType == "http" && strings.Contains(*ele.Comment, "jmx") {
+				hadoopRes = append(hadoopRes, ele)
+			}
+		case "namenode":
+			if *ele.PortType == "http" && strings.Contains(*ele.Comment, "jmx") {
+				hadoopRes = append(hadoopRes, ele)
+			}
+		case "datanode":
+			if *ele.PortType == "http" && strings.Contains(*ele.Comment, "jmx") {
+				hadoopRes = append(hadoopRes, ele)
+			}
+		}
+	}
+	resourceMap[config.HADOOP] = hadoopRes
+
+	// 提取hbase相关源数据信息
+	hbaseRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.HBASE] {
+		switch *ele.ChildService {
+		case "hmaster":
+			if *ele.PortType == "http" && strings.Contains(*ele.Comment, "jmx") {
+				hbaseRes = append(hbaseRes, ele)
+			}
+		case "regionserver":
+			if *ele.PortType == "http" && strings.Contains(*ele.Comment, "jmx") {
+				hbaseRes = append(hbaseRes, ele)
+			}
+		}
+	}
+	resourceMap[config.HBASE] = hbaseRes
+
+	// 读取hive的相关源数据信息
+	hiveRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.HIVE] {
+		switch *ele.ChildService {
+		case "metastore":
+			hiveRes = append(hiveRes, ele)
+		}
+	}
+	resourceMap[config.HIVE] = hiveRes
+
+	// 读取kafka的相关源数据信息
+	kafkaRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.KAFKA] {
+		kafkaRes = append(kafkaRes, ele)
+	}
+	resourceMap[config.KAFKA] = kafkaRes
+
+	// 读取micro_service的相关源数据信息
+	micSerRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.MICROSERVICE] {
+		switch *ele.ChildService {
+		case "apiserver":
+			micSerRes = append(micSerRes, ele)
+		}
+	}
+	resourceMap[config.MICROSERVICE] = micSerRes
+
+	// 读取mysql的相关源数据信息
+	mysqlRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.MYSQL] {
+		mysqlRes = append(mysqlRes, ele)
+	}
+	resourceMap[config.MYSQL] = mysqlRes
+
+	// 读取redis的相关源数据信息
+	redisRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.REDIS] {
+		redisRes = append(redisRes, ele)
+	}
+	resourceMap[config.REDIS] = redisRes
+
+	// 读取skywalking相关源数据信息
+	skyRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.SKYWALKING] {
+		if *ele.ChildService == "elasticsearch" {
+			skyRes = append(skyRes, ele)
+		}
+	}
+	resourceMap[config.SKYWALKING] = skyRes
+
+	// 读取spark相关的源数据信息
+	sparkRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.SPARK] {
+		switch *ele.ChildService {
+		case "master":
+			if *ele.PortType == "http" {
+				sparkRes = append(sparkRes, ele)
+			}
+		case "worker":
+			if *ele.PortType == "http" {
+				sparkRes = append(sparkRes, ele)
+			}
+		}
+	}
+	resourceMap[config.SPARK] = sparkRes
+
+	// 读取zookeeper相关的源数据信息
+	zookeeperRes := make([]ServicePort, 0)
+	for _, ele := range sps[config.ZOOKEEPER] {
+		zookeeperRes = append(zookeeperRes, ele)
+	}
+	resourceMap[config.ZOOKEEPER] = zookeeperRes
+
+	return resourceMap
+
+}
