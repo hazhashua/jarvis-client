@@ -25,6 +25,7 @@ type ServicePort struct {
 	IP           *string
 	Port         sql.NullInt64
 	PortType     *string
+	Comment      *string
 }
 
 type MysqlConnect struct {
