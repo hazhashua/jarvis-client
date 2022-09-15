@@ -95,7 +95,8 @@ func PgServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 					when dgc.port!='' then cast(dgc.port as int)
 					else -1
 				end as port, 
-				dgc.protocol_type as port_type
+				dgc.protocol_type as port_type,
+				dgc.remarks as comment
 				FROM public.data_gather_configure dgc 
 				JOIN public.gather_name gn 
 				ON dgc.service_type=gn.id `
