@@ -175,7 +175,7 @@ func GetAliveInfos() []DatsourceAlive {
 		var datasourceAlive DatsourceAlive
 		datasourceAlive.ServiceName = servicePort.ServiceName
 		datasourceAlive.ChildService = servicePort.ChildService
-		datasourceAlive.ClusterName = servicePort.ClusterName
+		datasourceAlive.ClusterName = &utils.ClusterName
 		datasourceAlive.IP = servicePort.IP
 		datasourceAlive.Port = servicePort.Port
 		datasourceAlive.PortType = servicePort.PortType
