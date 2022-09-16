@@ -13,6 +13,33 @@ import (
 	"gorm.io/gorm"
 )
 
+// mysql:
+//   ip: 192.168.10.70
+//   port: 3306
+//   username: root
+//   password: pwd@123
+
+// postgres:
+//   ip: 192.168.10.68
+//   port: 5432
+//   username: postgres
+//   password: pwd@123
+//   datasourceinfo:
+//     schema: cluster
+
+func ParseDbConfig() *config.DbConfig {
+	if bytes, err := ioutil.ReadFile("./config.yaml"); err == nil {
+		var dbconfig config.DbConfig
+		yaml.Unmarshal(bytes, &dbconfig)
+		return &dbconfig
+
+	} else {
+		fmt.Printf("解析配置文件出错! %s\n", err.Error())
+		Logger.Printf("解析配置文件出错! %s\n", err.Error())
+		return nil
+	}
+}
+
 type configData struct {
 }
 
@@ -81,74 +108,87 @@ func (cf configStruct) loadAll() {
 				configR := config.HadoopConfigure{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析hadoop配置文件成功...")
+					Logger.Printf("解析hadoop配置文件成功...")
 				}
 			case "hbase":
 				configR := config.HbaseConfigure{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析hbase配置文件成功...")
+					Logger.Printf("解析hbase配置文件成功...")
 				}
 			case "hive":
 				configR := config.HiveConfig{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析hive配置文件成功...")
+					Logger.Printf("解析hive配置文件成功...")
 				}
 			case "kafka":
 				configR := config.KafkaConfigure{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析kafka配置文件成功...")
+					Logger.Printf("解析kafka配置文件成功...")
 				}
 			case "micro_service":
 				configR := config.K8sYamlConfig{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析微服务配置文件成功...")
+					Logger.Printf("解析微服务配置文件成功...")
 				}
 			case "mysql":
 				configR := config.MysqlConfig{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析mysql配置文件成功...")
+					Logger.Printf("解析mysql配置文件成功...")
 				}
 			case "node_exporter":
 				configR := config.NodeConfig{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析node配置文件成功...")
+					Logger.Printf("解析node配置文件成功...")
 				}
 			case "redis":
 				configR := config.RedisConfig{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析redis配置文件成功...")
+					Logger.Printf("解析redis配置文件成功...")
 				}
 			case "service_alive":
-				fmt.Println("...")
+				fmt.Println("服务存活未有配置文件")
+				Logger.Printf("服务存活未有配置文件")
 			case "skywalking":
 				configR := config.SkyWalkingConfig{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析skywalking配置文件成功...")
+					Logger.Printf("解析skywalking配置文件成功...")
 				}
 			case "spark":
 				configR := config.SparkConfig{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析spark配置文件成功...")
+					Logger.Printf("解析spark配置文件成功...")
 				}
 			case "zookeeper":
 				configR := config.ZookeepeConfig{}
 				if err2 = yaml.Unmarshal(bytes, &configR); err2 == nil {
 					ConfigStruct.ConfigData[model] = configR
-					fmt.Println("解析配置文件成功...")
+					fmt.Println("解析zookeeper配置文件成功...")
+					Logger.Printf("解析zookeeper配置文件成功...")
 				}
 			}
 
 		} else {
-			fmt.Println("读文件失败: ", err.Error())
+			fmt.Println("读配置文件失败: ", err.Error())
+			Logger.Printf("读配置文件失败 ...")
 		}
 	}
 }
@@ -260,13 +300,14 @@ func init() {
 var Db *gorm.DB
 
 func init() {
-	config := dbConfig{
-		Ip:       "192.168.10.68",
-		Port:     5432,
-		User:     "postgres",
-		Password: "pwd@123",
-	}
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Ip, config.User, config.Password, config.Port)
+	config := ParseDbConfig()
+	// config := dbConfig{
+	// 	Ip:       "192.168.10.68",
+	// 	Port:     5432,
+	// 	User:     "postgres",
+	// 	Password: "pwd@123",
+	// }
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Postgres.Ip, config.Postgres.Username, config.Postgres.Password, config.Postgres.Port)
 	var err error
 	if Db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}); err == nil {
 		fmt.Println("*************************connect to db success")

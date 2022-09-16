@@ -65,11 +65,12 @@ func DbOpen(dbConfig *dbConfig) (db *gorm.DB) {
 func PgServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 	sps := make([]ServicePort, 0)
 	sql := ` SELECT dgc.id as id, gn.name as service_name, dgc.service_name as child_service, 
-				case 
-					when dgc.remarks='' then '大数据融合平台'
-				else
-					dgc.remarks
-				end as cluster_name,
+				-- case 
+				-- 	when dgc.remarks='' then '大数据融合平台'
+				-- else
+				-- 	dgc.remarks
+				-- end as cluster_name,
+				'' as cluster_name,
 				dgc.ip as ip, 
 				case 
 					when dgc.port!='' then cast(dgc.port as int)
