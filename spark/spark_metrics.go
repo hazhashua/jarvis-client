@@ -58,19 +58,46 @@ func GetMetrics() []string {
 	}
 
 	url_array := make([]string, 0)
+	worker_array := make([]string, 0)
 	for _, ip := range sparkConfig.Masterhttp.Ips {
 		url_array = append(url_array, fmt.Sprintf("http://%s", ip))
 	}
+	for _, ip := range sparkConfig.Workerhttp.Ips {
+		worker_array = append(worker_array, fmt.Sprintf("http://%s", ip))
+	}
+
+	// 抓取worker jvm指标
+	// ports = append(ports, sparkConfig.Workerhttp.Port)
+	for _, url := range worker_array {
+		// for _, port := range sparkConfig.Workerhttp.Port {}
+		metric_url := fmt.Sprintf("%s:%d%s", url, sparkConfig.Workerhttp.Port, sparkConfig.Workerhttp.Path)
+		metric_response := utils.GetUrl(metric_url)
+		if metric_response == "" {
+			fmt.Println(fmt.Sprintf("%s worker metric指标获取失败", url))
+			utils.Logger.Printf("%s worker metric指标获取失败\n", url)
+		}
+
+		for _, line := range strings.Split(metric_response, "\n") {
+
+			if strings.Contains(line, "metrics_jvm_heap_usage_Value") {
+				line = strings.ReplaceAll(line, "metrics_jvm_heap_usage_Value", "worker_jvm_heap_usage")
+				regexp := regexp.MustCompile("[^{]*{(.*)}.*")
+				ss := regexp.FindStringSubmatch(line)
+				line = strings.ReplaceAll(line, ss[1], ss[1]+","+"host=\""+url+"\" ")
+				arrs = append(arrs, line+"\n")
+			}
+		}
+	}
+
 	url_s := sparkConfig.Masterhttp.Ips
 	fmt.Println("url_s:", url_s)
 	ports := sparkConfig.Applicationhttp.Ports
-	ports = append(ports, sparkConfig.Workerhttp.Port)
+	// ports = append(ports, sparkConfig.Workerhttp.Port)
 	fmt.Println("ports: ", ports)
 	// 抓取master的网页地址，获取active的地址
 	// 添加is_active_node指标
 	var active_node_index int
 	for idx, url := range url_array {
-
 		for _, port := range ports {
 			//获取driver进程的堆栈内存使用率
 			// master_metric_url := yamlConfig.Masterhttp.Ips[idx] + ":" + fmt.Sprintf("%d", yamlConfig.Masterhttp.Port) + yamlConfig.Masterhttp.Path
@@ -78,7 +105,7 @@ func GetMetrics() []string {
 			metric_url := sparkConfig.Applicationhttp.Ips[idx] + ":" + fmt.Sprintf("%d", port) + sparkConfig.Applicationhttp.MainPath
 			fmt.Println("metric_url: ", metric_url)
 
-			metric_url = fmt.Sprintf(url+":%d/metrics/prometheus", port)
+			metric_url = fmt.Sprintf(url+":%d%s", port, sparkConfig.Masterhttp.Path)
 			fmt.Println("metric_url: ", metric_url)
 
 			metric_response := utils.GetUrl(metric_url)
@@ -94,14 +121,6 @@ func GetMetrics() []string {
 					app_name := reg.FindStringSubmatch(line)[1]
 					fmt.Println("app name: ", app_name)
 					arrs = append(arrs, "driver_jvm_heap_usage{type=\"gauges\", application_name=\""+app_name+"\", host=\""+url+"\" }\n")
-				}
-
-				if strings.Contains(line, "metrics_jvm_heap_usage_Value") {
-					line = strings.ReplaceAll(line, "metrics_jvm_heap_usage_Value", "worker_jvm_heap_usage")
-					regexp := regexp.MustCompile("[^{]*{(.*)}.*")
-					ss := regexp.FindStringSubmatch(line)
-					line = strings.ReplaceAll(line, ss[1], ss[1]+","+"host=\""+url+"\" ")
-					arrs = append(arrs, line+"\n")
 				}
 
 				// if strings.Contains(line, "metrics_jvm_heap_usage_Value") {
@@ -156,7 +175,7 @@ func GetMetrics() []string {
 	// fmt.Println("match strings: ", match_strings)
 
 	// 查询active http metric数据
-	response := utils.GetUrl(url_array[active_node_index] + ":8080/metrics/prometheus/")
+	response := utils.GetUrl(url_array[active_node_index] + fmt.Sprintf(":8080%s", sparkConfig.Masterhttp.Path))
 	if response == "" {
 		fmt.Println("active master的指标数据为空！！！！")
 	}

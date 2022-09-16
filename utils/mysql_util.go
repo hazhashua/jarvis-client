@@ -25,6 +25,8 @@ type ServicePort struct {
 	IP           *string
 	Port         sql.NullInt64
 	PortType     *string
+	Username     *string
+	Password     *string
 	Comment      *string
 }
 

@@ -54,7 +54,7 @@ func NewMysqlExporter() *MysqlExporter {
 
 	//返回exporter对象
 	return &MysqlExporter{
-		up:                 prometheus.NewDesc("up", "show whether the mysql instance is ok", []string{"cluster", "role", "ip"}, prometheus.Labels{}),
+		up:                 prometheus.NewDesc("up", "show whether the mysql instance is ok", []string{"cluster", "ip"}, prometheus.Labels{}),
 		maxConnections:     prometheus.NewDesc("max_connections", "show the max connections of the mysql instance", []string{"cluster", "ip"}, prometheus.Labels{}),
 		maxUserConnections: prometheus.NewDesc("max_user_connections", "show the max user connections of the mysql instance", []string{"cluster", "ip"}, prometheus.Labels{}),
 
@@ -105,7 +105,7 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 		DefaultDB: mysqlConfig.Cluster.DefaultDB, // "information_schema",
 	}
 	fmt.Println("mysqlConnector: ", mysqlConnector)
-	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1, mysqlConfig.Cluster.Name, mysqlConfig.Cluster.Role[0], mysqlConnector.Host)
+	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1, mysqlConfig.Cluster.Name, mysqlConnector.Host)
 	// 查询mysql连接信息
 	variables := utils.ConnectionQuery(mysqlConnector)
 	for _, variable := range variables {

@@ -43,7 +43,6 @@ func init() {
 		return
 	}
 	host = hosts[0]
-
 	var err error
 	//这个地方有个小坑 不加上elastic.SetSniff(false) 会连接不上
 	client, err = elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(host))

@@ -76,7 +76,9 @@ func PgServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 					else -1
 				end as port, 
 				dgc.protocol_type as port_type,
-				dgc.remarks as comment
+				dgc.remarks as comment,
+				dgc.username as username,
+				dgc.password as password
 				FROM public.data_gather_configure dgc 
 				JOIN public.gather_name gn 
 				ON dgc.service_type=gn.id `
