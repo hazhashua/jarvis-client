@@ -47,7 +47,9 @@ type MysqlConnect struct {
 func ValueQuery(sqlstr string) int {
 	// dsn := "test:@tcp(localhost:3306)/test?charset=utf8&parseTime=true"
 	//      root:pwd@123@tcp(127.0.0.1:3306)/test
-	dsn := "root:pwd@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
+	config := ParseDbConfig()
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8&parseTime=true", config.Mysql.Username, config.Mysql.Password, config.Mysql.Ip, config.Mysql.Port) //"root:pwd@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
