@@ -90,11 +90,13 @@ func ParseHbaseConfig() *config.HbaseConfigure {
 	hbase_config := new(config.HbaseConfigure)
 	bytes, err := ioutil.ReadFile("./hbase/config.yaml")
 	if err != nil {
-		fmt.Println("err: ", err.Error())
+		// fmt.Println("err: ", err.Error())
+		utils.Logger.Printf("读取hbase配置文件出错 error:%s\n", err.Error())
 	}
 	err2 := yaml.Unmarshal(bytes, hbase_config)
 	if err2 != nil {
-		fmt.Println("err2: ", err2.Error())
+		// fmt.Println("err2: ", err2.Error())
+		utils.Logger.Printf("解析hbase配置文件出错 error:%s", err2.Error())
 	}
 	return hbase_config
 }
@@ -124,17 +126,18 @@ func initUrl() (int, *jmxHttpUrl) {
 	for idx, host := range hbase_config.Cluster.Hosts {
 		jmx_url = fmt.Sprintf("http://%s:%s/jmx", host, hbase_config.Cluster.MasterJmxPort)
 		master_url := fmt.Sprintf("http://%s:%s/master-status", host, hbase_config.Cluster.MasterJmxPort)
-		fmt.Println("jmx_url: ", jmx_url)
-		fmt.Println("master_url: ", master_url)
+		utils.Logger.Printf("jmx_url: %s \t master_url: %s \n", jmx_url, master_url)
 		response, err2 := http.Get(master_url)
 		if err2 != nil {
-			fmt.Println("err2: ", err2.Error())
+			// fmt.Println("err2: ", err2.Error())
+			utils.Logger.Printf("获取master_url失败 error:%s\n", err2.Error())
 			continue
 		}
 		defer response.Body.Close()
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			// handle error
+			utils.Logger.Printf("ioutil.ReadAll(response.Body) error:%s", err.Error())
 			panic(err)
 		}
 		body_str := string(body)
@@ -152,7 +155,6 @@ func initUrl() (int, *jmxHttpUrl) {
 		regionserver_urls = append(regionserver_urls, fmt.Sprintf("http://%s:%s/jmx", host, hbase_config.Cluster.RegionserverJmxPort))
 	}
 	// regionserversUrl := [3]string{"http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx", "http://124.65.131.14:16030/jmx"}
-	fmt.Println("before return jmxHttpUrl...")
 	return active_master_index, &jmxHttpUrl{
 		masterUrl:         &master_jmx_url,
 		masterBackupUrls:  &master_backup_urls,
@@ -161,28 +163,28 @@ func initUrl() (int, *jmxHttpUrl) {
 }
 
 func HttpRequest(is_master bool, jmx_http_url *jmxHttpUrl, uri string, region_no int) []byte {
-	fmt.Println(*jmx_http_url.masterUrl)
-	fmt.Println(*jmx_http_url.masterBackupUrls)
-	fmt.Println(jmx_http_url.regionserversUrls)
+	utils.Logger.Printf("config.masterUrl: %s\t config.masterBackupUrls: %s \t config.regionserversUrls: %s\n", *jmx_http_url.masterUrl, *jmx_http_url.masterBackupUrls, jmx_http_url.regionserversUrls)
 	// fmt.Println((*jmx_http_url.masterUrl) + uri)
 	var httpErr error
 	var response *http.Response
 	if is_master {
-		fmt.Println("master url: ", (*jmx_http_url.masterUrl)+uri)
+		// fmt.Println("master url: ", (*jmx_http_url.masterUrl)+uri)
+		utils.Logger.Printf("master url: %s\n", (*jmx_http_url.masterUrl)+uri)
 		response, httpErr = http.Get((*jmx_http_url.masterUrl) + uri)
 	} else {
-		fmt.Println("regionserver url: ", (*jmx_http_url.regionserversUrls)[region_no-1]+uri)
+		// fmt.Println("regionserver url: ", (*jmx_http_url.regionserversUrls)[region_no-1]+uri)
+		utils.Logger.Printf("regionserver url: %s\n", (*jmx_http_url.regionserversUrls)[region_no-1]+uri)
 		response, httpErr = http.Get((*jmx_http_url.regionserversUrls)[region_no-1] + uri)
 	}
 	defer response.Body.Close()
 	if httpErr != nil {
-		fmt.Println("http GET error! ")
+		utils.Logger.Printf("http.Get error:%s \n", httpErr.Error())
 		return []byte{}
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		// handle error
-		fmt.Println("")
+		utils.Logger.Printf("ioutil.ReadAll(response.Body) error:%s\n", err.Error())
 		panic(err)
 	}
 	//fmt.Println("------response:", string(body))
@@ -193,10 +195,11 @@ func QueryMetric() *hbaseData {
 	var hmaster_data hmasterData
 	// 查询master的特定指标
 	query_url := fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=Server")
-	fmt.Println("query_url: ", query_url)
+	utils.Logger.Printf("query_url: %s", query_url)
 
 	active_no, jmx_http_url := initUrl()
 	if active_no == -1 {
+		utils.Logger.Printf("initUrl() return -1\n")
 		// 没有找到active master, 返回
 		return &hbaseData{
 			masterData:  nil,
@@ -222,8 +225,7 @@ func QueryMetric() *hbaseData {
 	if mm, unmarshalErr := UnmarshalMasterMain(body); unmarshalErr == nil {
 		hmaster_data.numRegionServers = *mm.Beans[0].NumRegionServers
 		hmaster_data.numDeadRegionServers = *mm.Beans[0].NumDeadRegionServers
-		fmt.Println(*mm.Beans[0].NumRegionServers)
-		fmt.Println(*mm.Beans[0].NumDeadRegionServers)
+		utils.Logger.Printf("hmaster_data.numRegionServers: %d \t hmaster_data.numDeadRegionServers: %d \n", *mm.Beans[0].NumRegionServers, *mm.Beans[0].NumDeadRegionServers)
 	}
 
 	query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=AssignmentManager")
@@ -231,8 +233,9 @@ func QueryMetric() *hbaseData {
 	if assignment_manager, unmarshalErr := UnmarshalAssignmentManager(body); unmarshalErr == nil {
 		hmaster_data.ritCount = *assignment_manager.Beans[0].RitCount
 		hmaster_data.ritCountOverThreshold = *assignment_manager.Beans[0].RitCountOverThreshold
-		fmt.Println(*assignment_manager.Beans[0].RitCount)
-		fmt.Println(*assignment_manager.Beans[0].RitCountOverThreshold)
+		// fmt.Println(*assignment_manager.Beans[0].RitCount)
+		// fmt.Println(*assignment_manager.Beans[0].RitCountOverThreshold)
+		utils.Logger.Printf("hmaster_data.ritCount: %d \t hmaster_data.ritCountOverThreshold: %d \n", *assignment_manager.Beans[0].RitCount, *assignment_manager.Beans[0].RitCountOverThreshold)
 	}
 
 	//Hadoop:service=HBase,name=Master,sub=IPC
@@ -243,17 +246,17 @@ func QueryMetric() *hbaseData {
 		hmaster_data.masterReceivedBytes = *master_ipc.Beans[0].ReceivedBytes
 		hmaster_data.masterSentBytes = *master_ipc.Beans[0].SentBytes
 		hmaster_data.masterNumOpenConnections = *master_ipc.Beans[0].NumOpenConnections
-
-		fmt.Println(*master_ipc.Beans[0].NumActiveHandler)
-		// 接收的数据量
-		fmt.Println(*master_ipc.Beans[0].ReceivedBytes)
-		// 发送的数据量
-		fmt.Println(*master_ipc.Beans[0].SentBytes)
-		// 打开的ipc连接数
-		fmt.Println(*master_ipc.Beans[0].NumOpenConnections)
+		// fmt.Println(*master_ipc.Beans[0].NumActiveHandler)
+		// // 接收的数据量
+		// fmt.Println(*master_ipc.Beans[0].ReceivedBytes)
+		// // 发送的数据量
+		// fmt.Println(*master_ipc.Beans[0].SentBytes)
+		// // 打开的ipc连接数
+		// fmt.Println(*master_ipc.Beans[0].NumOpenConnections)
+		utils.Logger.Printf("NumActiveHandler: %d\t ReceivedBytes: %d\t SentBytes: %d \t, NumOpenConnections: %d \n", *master_ipc.Beans[0].NumActiveHandler, *master_ipc.Beans[0].ReceivedBytes, *master_ipc.Beans[0].SentBytes, *master_ipc.Beans[0].NumOpenConnections)
 	}
 
-	fmt.Println(jmx_http_url.regionserversUrls)
+	utils.Logger.Printf("jmx_http_url.regionserversUrls: %s", jmx_http_url.regionserversUrls)
 	region_num := len(*jmx_http_url.regionserversUrls)
 	region_no := 1
 	// var region_datas [3]regionData
@@ -273,24 +276,25 @@ func QueryMetric() *hbaseData {
 			region_data.authenticationFailures = *region_ipc.Beans[0].AuthenticationFailures
 			region_data.authenticationSuccesses = *region_ipc.Beans[0].AuthenticationSuccesses
 
-			fmt.Println("NumActiveHandler: ", *region_ipc.Beans[0].NumActiveHandler)
-			// 接收的数据量
-			fmt.Println("ReceivedBytes: ", *region_ipc.Beans[0].ReceivedBytes)
-			// 发送的数据量
-			fmt.Println("SentBytes: ", *region_ipc.Beans[0].SentBytes)
-			// 打开的ipc连接数
-			fmt.Println("NumOpenConnections: ", *region_ipc.Beans[0].NumOpenConnections)
-			// rpc认证失败次数
-			fmt.Println("AuthenticationFailures: ", *region_ipc.Beans[0].AuthenticationFailures)
-			// rpc认证成功次数
-			fmt.Println("AuthenticationSuccesses: ", *region_ipc.Beans[0].AuthenticationSuccesses)
+			// fmt.Println("NumActiveHandler: ", *region_ipc.Beans[0].NumActiveHandler)
+			// // 接收的数据量
+			// fmt.Println("ReceivedBytes: ", *region_ipc.Beans[0].ReceivedBytes)
+			// // 发送的数据量
+			// fmt.Println("SentBytes: ", *region_ipc.Beans[0].SentBytes)
+			// // 打开的ipc连接数
+			// fmt.Println("NumOpenConnections: ", *region_ipc.Beans[0].NumOpenConnections)
+			// // rpc认证失败次数
+			// fmt.Println("AuthenticationFailures: ", *region_ipc.Beans[0].AuthenticationFailures)
+			// // rpc认证成功次数
+			// fmt.Println("AuthenticationSuccesses: ", *region_ipc.Beans[0].AuthenticationSuccesses)
+
+			utils.Logger.Printf("NumActiveHandler: %d\t ReceivedBytes: %d\t SentBytes: %d\t NumOpenConnections: %d\t AuthenticationFailures: %d\t AuthenticationSuccesses: %d\n", *region_ipc.Beans[0].NumActiveHandler, *region_ipc.Beans[0].ReceivedBytes, *region_ipc.Beans[0].SentBytes, *region_ipc.Beans[0].NumOpenConnections, *region_ipc.Beans[0].AuthenticationFailures, *region_ipc.Beans[0].AuthenticationSuccesses)
 		}
 
 		//Hadoop:service=HBase,name=RegionServer,sub=Server
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=Server")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		if region_server, unmarshalErr := UnmarshalRegionserverServer(body); unmarshalErr == nil {
-
 			if len(region_server.Beans) != 0 {
 				// jmx没有抓取到数据
 				region_data.blockCacheCountHitPercent = *region_server.Beans[0].BlockCacheCountHitPercent
@@ -305,27 +309,26 @@ func QueryMetric() *hbaseData {
 				region_data.slowAppendCount = *region_server.Beans[0].SlowAppendCount
 				region_data.slowIncrementCount = *region_server.Beans[0].SlowIncrementCount
 
-				// server的读请求数
-				fmt.Println(*region_server.Beans[0].ReadRequestCount)
-				// server的写请求数
-				fmt.Println(*region_server.Beans[0].WriteRequestCount)
-				// regionserver的region个数
-				fmt.Println(*region_server.Beans[0].RegionCount)
-				// regionserver的store file个数
-				fmt.Println(*region_server.Beans[0].StoreFileCount)
-				// regionserver的slow get count
-				fmt.Println(*region_server.Beans[0].SlowGetCount)
-				// regionserver的slow put count
-				fmt.Println(*region_server.Beans[0].SlowPutCount)
-				// regionserver的slow delete count
-				fmt.Println(*region_server.Beans[0].SlowDeleteCount)
-				// regionserver的slow delete count
-				fmt.Println(*region_server.Beans[0].SlowAppendCount)
-				// regionserver的slow delete count
-				fmt.Println(*region_server.Beans[0].SlowIncrementCount)
+				// // server的读请求数
+				// fmt.Println(*region_server.Beans[0].ReadRequestCount)
+				// // server的写请求数
+				// fmt.Println(*region_server.Beans[0].WriteRequestCount)
+				// // regionserver的region个数
+				// fmt.Println(*region_server.Beans[0].RegionCount)
+				// // regionserver的store file个数
+				// fmt.Println(*region_server.Beans[0].StoreFileCount)
+				// // regionserver的slow get count
+				// fmt.Println(*region_server.Beans[0].SlowGetCount)
+				// // regionserver的slow put count
+				// fmt.Println(*region_server.Beans[0].SlowPutCount)
+				// // regionserver的slow delete count
+				// fmt.Println(*region_server.Beans[0].SlowDeleteCount)
+				// // regionserver的slow delete count
+				// fmt.Println(*region_server.Beans[0].SlowAppendCount)
+				// // regionserver的slow delete count
+				// fmt.Println(*region_server.Beans[0].SlowIncrementCount)
 
 			} else {
-				fmt.Println("jmx中数据为空......")
 				utils.Logger.Printf("jmx中数据为空......")
 				region_data.blockCacheCountHitPercent = -1
 				region_data.blockCacheExpressHitPercent = -1
@@ -341,7 +344,6 @@ func QueryMetric() *hbaseData {
 
 			}
 		} else {
-			fmt.Printf("解析jmx:%s 数据出错  %s\n", "Hadoop:service=HBase,name=RegionServer,sub=Server", unmarshalErr.Error())
 			utils.Logger.Printf("解析jmx:%s 数据出错    %s\n", "Hadoop:service=HBase,name=RegionServer,sub=Server", unmarshalErr.Error())
 		}
 
@@ -351,10 +353,10 @@ func QueryMetric() *hbaseData {
 		if region_io, unmarshalErr := UnmarshalRegionserverIO(body); unmarshalErr == nil {
 			region_data.fsReadTimeMax = *region_io.Beans[0].FSReadTimeMax
 			region_data.fsWriteTimeMax = *region_io.Beans[0].FSWriteTimeMax
-			// 文件系统最大读时间
-			fmt.Println(*region_io.Beans[0].FSReadTimeMax)
-			// 文件系统最大写时间
-			fmt.Println(*region_io.Beans[0].FSWriteTimeMax)
+			// // 文件系统最大读时间
+			// fmt.Println(*region_io.Beans[0].FSReadTimeMax)
+			// // 文件系统最大写时间
+			// fmt.Println(*region_io.Beans[0].FSWriteTimeMax)
 		}
 
 		// 解析hbase table相关的数据
@@ -367,7 +369,6 @@ func QueryMetric() *hbaseData {
 				tds := make(map[string]*tableData, 0)
 				var hostName, tableName string
 				for key, value := range region_tables.Beans[0] {
-					// fmt.Println("key: ", key)
 					reg := regexp.MustCompile("Namespace_([^_]+?)_table_(.*)")
 					rss := reg.FindSubmatch([]byte(key))
 					// var tabled tableData
@@ -381,61 +382,43 @@ func QueryMetric() *hbaseData {
 							tds[tableName] = &tableData{namespace: string(rss[1]), tableName: tableName}
 							tableName = string(tableName)
 						}
-						// tabled.tableName = string(rss[2])
-						// tabled.namespace = string(rss[1])
 					}
 					if key == "tag.Hostname" {
 						hostName = *value.String
 					}
 					if idx := strings.Index(key, "_metric_"); idx != -1 {
 						metric := key[idx+len("_metric_"):]
-						// fmt.Println("metric: ", metric)
 						switch metric {
 						case "regionCount":
-							// if value.Integer != nil {
-							// }
 							tds[tableName].regionCount = *value.Integer
-							fmt.Printf("tds[%s].regionCount: %d \n", tableName, *value.Integer)
+							utils.Logger.Printf("tds[%s].regionCount: %d \n", tableName, *value.Integer)
 						case "storeFileCount":
 							// tabled.storefileCount = *value.Integer
 							tds[tableName].storefileCount = *value.Integer
-							fmt.Printf("tds[%s].storefileCount: %d \n", tableName, *value.Integer)
+							utils.Logger.Printf("tds[%s].storefileCount: %d \n", tableName, *value.Integer)
 						case "readRequestCount":
 							// tabled.readRequestCount = *value.Integer
 							tds[tableName].readRequestCount = *value.Integer
-							fmt.Printf("tds[%s].readRequestCount: %d \n", tableName, *value.Integer)
+							utils.Logger.Printf("tds[%s].readRequestCount: %d \n", tableName, *value.Integer)
 						case "writeRequestCount":
 							// tabled.writeRequestCount = *value.Integer
 							tds[tableName].writeRequestCount = *value.Integer
-							fmt.Printf("tds[%s].writeRequestCount: %d \n", tableName, *value.Integer)
+							utils.Logger.Printf("tds[%s].writeRequestCount: %d \n", tableName, *value.Integer)
 						case "tableSize":
 							// tabled.writeRequestCount = *value.Integer
 							tds[tableName].tableSize = *value.Integer
-							fmt.Printf("tds[%s].tableSize: %d \n", tableName, *value.Integer)
+							utils.Logger.Printf("tds[%s].tableSize: %d \n", tableName, *value.Integer)
 						default:
 							// fmt.Printf("忽略的hbase table相关指标%s\n", metric)
 							utils.Logger.Printf("忽略的hbase table相关指标: %s \n", metric)
 						}
 					}
-
-					//reg := regexp.MustCompile("Namespace_([^_].*)_table_((?!metric_).*)_metric_(.*)")
-
-					// var stringv string
-					// if value.String != nil {
-					// 	stringv = *value.String
-					// }
-					// var valuev int64
-					// if value.Integer != nil {
-					// 	valuev = *value.Integer
-					// }
-					// fmt.Println("value: ", valuev, "  ", stringv)
 				}
 				if hostName != "" {
 					for _, value := range tds {
 						value.regionServer = hostName
-						fmt.Println("table info: ", value)
+						utils.Logger.Printf("table info: %v\n", value)
 						region_data.tableDatas = append(region_data.tableDatas, *value)
-						// tdL = append(tdL, value)
 					}
 				}
 			}
@@ -445,7 +428,7 @@ func QueryMetric() *hbaseData {
 		cluster = hbase_config.Cluster.ClusterName
 		host = hbase_config.Cluster.Names[region_no-1]
 		ip = hbase_config.Cluster.Hosts[region_no-1]
-		fmt.Println("@@@@@@@@@@@@@@@@@", cluster, host, ip)
+		utils.Logger.Printf("cluster:%s host:%s ip:%s\n", cluster, host, ip)
 		region_data.cluster = cluster
 		region_data.host = host
 		region_data.ip = ip
@@ -821,10 +804,5 @@ func (collector *hbaseCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(collector.masterMetrics.MasterNumOpenConnections, prometheus.GaugeValue, float64(hbase_data.masterData.masterNumOpenConnections), *hbase_data.masterData.cluster, *hbase_data.masterData.host, *hbase_data.masterData.ip)
 	ch <- prometheus.MustNewConstMetric(collector.masterMetrics.MasterReceivedBytes, prometheus.GaugeValue, float64(hbase_data.masterData.masterReceivedBytes), *hbase_data.masterData.cluster, *hbase_data.masterData.host, *hbase_data.masterData.ip)
 	ch <- prometheus.MustNewConstMetric(collector.masterMetrics.MasterSentBytes, prometheus.GaugeValue, float64(hbase_data.masterData.masterSentBytes), *hbase_data.masterData.cluster, *hbase_data.masterData.host, *hbase_data.masterData.ip)
-
-	//Write latest value for each metric in the prometheus metric channel.
-	//Note that you can pass CounterValue, GaugeValue, or UntypedValue types here.
-	// ch <- prometheus.MustNewConstMetric(collector.aliveMetric, prometheus.CounterValue, metricValue, "cluster1", "hbase", "regionserver", "127.0.0.1", "10000", "tcp")
-	// ch <- prometheus.MustNewConstMetric(collector.barMetric, prometheus.CounterValue, metricValue)
 
 }
