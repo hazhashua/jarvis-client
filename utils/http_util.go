@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -9,8 +8,7 @@ import (
 func GetUrl(url string) string {
 	resp, err := http.Get(url)
 	if err != nil {
-		// panic(err)
-		fmt.Println("err: ", err.Error())
+		Logger.Printf("GetUrl(%s) error!\n", url)
 		return ""
 	}
 
@@ -18,7 +16,7 @@ func GetUrl(url string) string {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		// panic(err)
-		fmt.Println("err: " + err.Error())
+		Logger.Printf("ioutil.ReadAll error: %s\n", err.Error())
 		return ""
 	}
 	// fmt.Println(string(body))

@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/shirou/gopsutil/net"
@@ -45,10 +44,10 @@ func NetInfoGet() *NetInfo {
 	}
 	for _, interfaceStat := range interfaces {
 		for _, v := range interfaceStat.Addrs {
-			fmt.Println("interfaceStat.Name: ", interfaceStat.Name, " net.InterfaceAddr: ", v.String(), v.Addr)
+			// fmt.Println("interfaceStat.Name: ", interfaceStat.Name, " net.InterfaceAddr: ", v.String(), v.Addr)
+			Logger.Printf("interfaceStat.Name: %s, net.InterfaceAddr: %s\n", interfaceStat.Name, v.String())
 			ips := strings.Split(v.Addr, "/")
-			fmt.Println("interface名称: ", interfaceStat.Name)
-			fmt.Println("ip地址: ", ips[0])
+			Logger.Printf("interface名称: %s\n", interfaceStat.Name)
 			if ips[0] != "127.0.0.1" && len(strings.Split(ips[0], ".")) == 4 {
 				interfaceInfo[interfaceStat.Name] = ips[0]
 				netInfo.Ip = ips[0]
@@ -59,7 +58,6 @@ func NetInfoGet() *NetInfo {
 	deviceFlows := make(map[string]FlowInfo, 0)
 	ioStats, _ := net.IOCounters(true)
 	for _, ioStat := range ioStats {
-		fmt.Println("ioStat: ", ioStat)
 		deviceFlows[ioStat.Name] = FlowInfo{
 			SentBytes:      ioStat.BytesSent,
 			ReceiveBytes:   ioStat.BytesRecv,

@@ -9,7 +9,8 @@ import (
 )
 
 func checkError(err error) {
-	fmt.Println("error: ", err.Error())
+	// fmt.Println("error: ", err.Error())
+	Logger.Printf("error: %s", err.Error())
 }
 
 type dbConfig struct {
@@ -42,13 +43,17 @@ func DbOpen(dbConfig *dbConfig) (db *gorm.DB) {
 	// var err error
 	//参数根据自己的数据库进行修改
 	// db, err = sql.Open("postgres", "host=192.168.10.79 port=5432 user=postgres password=pwd@123 dbname=ahdb sslmode=disable")
-	dsn := "host=192.168.10.68 user=postgres password=pwd@123 dbname=cluster port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+	dc := ParseDbConfig()
+	// dsn := "host=192.168.10.68 user=postgres password=pwd@123 dbname=cluster port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=5432 sslmode=disable TimeZone=Asia/Shanghai", dc.Postgres.Ip, dc.Postgres.Username, dc.Postgres.Password)
 	var err error
 	if db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}); err == nil {
-		fmt.Println("*************************connect to db success")
+		// fmt.Println("*************************connect to db success")
+		Logger.Printf("*************************connect to db success")
 		return db
 	} else {
-		fmt.Println("connet to db error!")
+		// fmt.Println("connet to db error!")
+		Logger.Printf("connet to db error!")
 		return nil
 	}
 }
@@ -105,12 +110,12 @@ func PgCountQuery(db *gorm.DB, sql string) int {
 
 // pg数据库中插入数据
 func PgGatherNameInsert(db *gorm.DB, srcData gatherName) {
-	fmt.Println("srcData: ", srcData)
+	Logger.Printf("插入表gather_name数据:  %v \n", srcData)
 	db.Table("public.gather_name").Create(&srcData)
 }
 
 func PgGatherNameConfigureInsert(db *gorm.DB, srcData dataGather) {
-	fmt.Println("srcData: ", srcData)
+	Logger.Printf("插入表data_gather_configure数据: %v ", srcData)
 	db.Table("public.data_gather_configure").Create(&srcData)
 }
 
@@ -140,7 +145,8 @@ func Migirate() {
 			})
 		}
 		lastName = newName
-		fmt.Println("serviceInfo: ", serviceInfo)
+		// fmt.Println("serviceInfo: ", serviceInfo)
+		Logger.Printf("serviceInfo: %v\n", serviceInfo)
 
 		var port string
 		if serviceInfo.Port.Valid {
@@ -165,16 +171,15 @@ func Migirate() {
 	// 分别写入gather_name 和 data_gather_configure中数据
 	for _, nameInfo := range gatherNames {
 		// 插入gather_name表数据
-
-		fmt.Println("name info: ", nameInfo.Name)
 		// db.Table("gather_name")
 		PgGatherNameInsert(db, nameInfo)
-		fmt.Println("------插入数据: ", nameInfo)
+		// fmt.Println("------插入数据: ", nameInfo)
+		Logger.Printf("插入gather_name数据: %v\n", nameInfo)
 	}
 
 	for _, gatherInfo := range dataGathers {
 		// 插入data_gather_configure表数据
 		PgGatherNameConfigureInsert(db, gatherInfo)
-		fmt.Println("******插入数据: ", gatherInfo)
+		Logger.Printf("插入gather_name_configure数据: %v\n", gatherInfo)
 	}
 }
