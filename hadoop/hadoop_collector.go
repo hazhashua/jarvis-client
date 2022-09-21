@@ -489,7 +489,8 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	// collector = NewHadoopCollector()
 	// hadoop_config := Parse_hadoop_config()
 	hadoop_config, _ := (utils.ConfigStruct.ConfigData[config.HADOOP]).(config.HadoopConfigure)
-	fmt.Println("hadoop_config: ", hadoop_config)
+	utils.Logger.Printf("hadoop_config: %v\n", hadoop_config)
+	// fmt.Println("hadoop_config: ", hadoop_config)
 	yarn_urls := make([]string, 0)
 	namenode_urls := make([]string, 0)
 	for _, yarn_ip := range hadoop_config.Cluster.ResourceManagers {
@@ -502,7 +503,7 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total := GetAliveInfo(yarn_urls, namenode_urls)
-	fmt.Println(num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
+	// fmt.Println(num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
 	utils.Logger.Printf("num_active_nms:%d  num_lost_nms:%d  num_shutdown_nms:%d  num_unhealthy_nms:%d  num_live_datanodes:%d  num_dead_datanodes:%d  num_decom_livedatanodes:%d  num_decom_missioningdatanodes:%d  num_decommissioning_datanodes:%d  blocks_total:%d  files_total:%d \n", num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
 
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.BlockSize, collector.hadoopMetrics.BlockSizeValType, 128, hadoop_config.Cluster.Name)
@@ -546,7 +547,8 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	mem_non_heap_committedm_list := make([]float64, 0)
 	mem_heap_usedm_list := make([]float64, 0)
 	mem_heap_committedm_list := make([]float64, 0)
-	fmt.Println("hadoop urls: ", urls)
+	// fmt.Println("hadoop urls: ", urls)
+	utils.Logger.Printf("hadoop urls: %s", urls)
 	utils.Logger.Printf("num_active_nms:%d  num_lost_nms:%d  num_shutdown_nms:%d  num_unhealthy_nms:%d  num_live_datanodes:%d  num_dead_datanodes:%d  num_decom_livedatanodes:%d  num_decom_missioningdatanodes:%d  num_decommissioning_datanodes:%d  blocks_total:%d  files_total:%d \n", num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
 	// resourcemanager的jvm信息
 	for _, url := range urls {
