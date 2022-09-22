@@ -177,9 +177,9 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	e = NewNodeExporter()
 	// nodeConfig := parseNodeConfig()
 	nodeConfig, _ := (utils.ConfigStruct.ConfigData[config.NODE]).(config.NodeConfig)
-	fmt.Println("nodeConfig: ", nodeConfig.Cluster.Name, "   ", nodeConfig)
+	utils.Logger.Println("nodeConfig: ", nodeConfig)
 	hostInfo := HostInfoGet()
-	fmt.Println(hostInfo.hostName)
+	utils.Logger.Printf("获取到的主机名称: %s\n", hostInfo.hostName)
 	cpuInfo := CpuUsageGet()
 	netInfo := utils.NetInfoGet()
 
@@ -236,8 +236,7 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	deviceNames := make([]string, 0)
 	flowInfos := make([]utils.FlowInfo, 0)
 	for deviceName, flowInfo := range netInfo.DeviceIds {
-		fmt.Println("deviceName: ", deviceName)
-		fmt.Println("flowInfo: ", flowInfo)
+		utils.Logger.Println("deviceName: ", deviceName, " flowInfo: ", flowInfo)
 		deviceNames = append(deviceNames, deviceName)
 		flowInfos = append(flowInfos, flowInfo)
 	}

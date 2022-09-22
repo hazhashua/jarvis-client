@@ -1,7 +1,6 @@
 package nodeexporter
 
 import (
-	"fmt"
 	"io/ioutil"
 
 	// "strings"
@@ -23,10 +22,10 @@ func parseNodeConfig() *config.NodeConfig {
 	if bytes, err := ioutil.ReadFile("./node_exporter/config.yaml"); err == nil {
 		err2 := yaml.Unmarshal(bytes, &nodeConfig)
 		if err2 != nil {
-			fmt.Println("解析node配置文件失败")
+			utils.Logger.Printf("解析node配置文件失败 error: %s\n", err2.Error())
 		}
 	}
-	fmt.Println("nodeConfig.Cluster.name: ", nodeConfig.Cluster.Name)
+	utils.Logger.Println("nodeConfig.Cluster.name: ", nodeConfig.Cluster.Name)
 	return &nodeConfig
 }
 
@@ -37,22 +36,14 @@ type CpuInfo struct {
 
 func CpuUsageGet() *CpuInfo {
 	// 获取cpu相关信息
-	if fls, err := cpu.Percent(time.Second, true); err == nil {
-		for _, f := range fls {
-			fmt.Println("every cpu usage: ", f)
-		}
-	} else {
-		fmt.Println("获取cpu使用率失败 ", err.Error())
-	}
-
 	f, _ := cpu.Percent(time.Second, false)
-	fmt.Println("cpu usage: ", f)
+	utils.Logger.Println("主机cpu usage: ", f)
 
 	cores := 0
 	//获取cpu配额信息
 	if infoStats, err := cpu.Info(); err == nil {
 		for _, infoStat := range infoStats {
-			fmt.Println("infoStat: ", infoStat)
+			// fmt.Println("infoStat: ", infoStat)
 			cores += int(infoStat.Cores)
 		}
 	}
@@ -78,24 +69,24 @@ func MemUsageGet() *Memory {
 	var vms *mem.VirtualMemoryStat
 	var err error
 	if vms, err = mem.VirtualMemory(); err == nil {
-		fmt.Println("vms.Used: ", vms.Used)
-		fmt.Println("vms.Total: ", vms.Total)
-		fmt.Println("vms.Available: ", vms.Available)
-		fmt.Println("vms.Cached: ", vms.Cached)
-		fmt.Println("vms.Buffers: ", vms.Buffers)
-		fmt.Println("vms.Free", vms.Free)
-		fmt.Println("vms.UsedPercent: ", vms.UsedPercent)
+		utils.Logger.Println("主机虚拟内存信息: ", vms)
+		// fmt.Println("vms.Used: ", vms.Used)
+		// fmt.Println("vms.Total: ", vms.Total)
+		// fmt.Println("vms.Available: ", vms.Available)
+		// fmt.Println("vms.Cached: ", vms.Cached)
+		// fmt.Println("vms.Buffers: ", vms.Buffers)
+		// fmt.Println("vms.Free", vms.Free)
+		// fmt.Println("vms.UsedPercent: ", vms.UsedPercent)
 	} else {
-		fmt.Println("获取物理内存使用率失败 ", err.Error())
+		utils.Logger.Println("获取主机物理内存使用率失败   error: ", err.Error())
 	}
 
 	// 获取交换内存使用信息
 	if sms, err := mem.SwapMemory(); err == nil {
-		fmt.Println("vms.Used: ", sms.Used)
-		fmt.Println("vms.UsedPercent: ", sms.UsedPercent)
+		utils.Logger.Println("交换主机内存信息: ", sms)
 
 	} else {
-		fmt.Println("获取交换内存使用率失败 ", err.Error())
+		utils.Logger.Println("获取主机交换内存使用率失败 ", err.Error())
 	}
 
 	return &Memory{
@@ -129,7 +120,7 @@ func DiskDeviceNum() int {
 
 func DiskIoDeviceNum() int {
 	ioStatMap, _ := disk.IOCounters()
-	fmt.Println("io操作的磁盘数: ", len(ioStatMap))
+	utils.Logger.Println("主机io操作的磁盘数: ", len(ioStatMap))
 	return len(ioStatMap)
 }
 
@@ -146,15 +137,14 @@ func DiskUsageGet() *Disk {
 
 	if ps, err := disk.Partitions(false); err == nil {
 		for _, partitionInfo := range ps {
-			fmt.Println("partitionInfo.Device: ", partitionInfo.Device)
-			fmt.Println("partitionInfo.Fstype: ", partitionInfo.Fstype)
-			fmt.Println("partitionInfo.Mountpoint: ", partitionInfo.Mountpoint)
-			fmt.Println("partitionInfo.Opts: ", partitionInfo.Opts)
+			// fmt.Println("partitionInfo.Device: ", partitionInfo.Device)
+			// fmt.Println("partitionInfo.Fstype: ", partitionInfo.Fstype)
+			// fmt.Println("partitionInfo.Mountpoint: ", partitionInfo.Mountpoint)
+			// fmt.Println("partitionInfo.Opts: ", partitionInfo.Opts)
 			var usage *disk.UsageStat
 			var err2 error
-			if usage, err2 = disk.Usage(partitionInfo.Mountpoint); err2 == nil {
-				fmt.Println("usage.Used, usage.Free, usage.Total, usage.UsedPercent")
-				fmt.Println(usage.Used, usage.Free, usage.Total, usage.UsedPercent)
+			if usage, err2 = disk.Usage(partitionInfo.Mountpoint); err2 != nil {
+				utils.Logger.Printf("获取主机disk.Usage失败   error: %s", err2.Error())
 			}
 
 			deviceIds = append(deviceIds, partitionInfo.Device)
@@ -168,8 +158,6 @@ func DiskUsageGet() *Disk {
 	ioDeviceNum := 0
 	if ioStatMap, err := disk.IOCounters(); err == nil {
 		for key, value := range ioStatMap {
-			fmt.Println("key: ", key)
-			fmt.Println("value: ", value)
 			ioDeviceNum += 1
 			readBytes[key] = value.ReadBytes
 			writeBytes[key] = value.WriteBytes
@@ -204,11 +192,7 @@ func HostInfoGet() *HostInfo {
 	var infoStat *host.InfoStat
 	var err error
 	if infoStat, err = host.Info(); err == nil {
-		fmt.Println(infoStat.Hostname)
-		fmt.Println(infoStat.BootTime)
-		fmt.Println(infoStat.OS)
-		fmt.Println(infoStat.Platform)
-		fmt.Println(infoStat.KernelVersion)
+		utils.Logger.Println("获取的主机信息: ", infoStat)
 	}
 	return &HostInfo{
 		hostName: infoStat.Hostname,
@@ -221,7 +205,7 @@ func HostInfoGet() *HostInfo {
 
 func NetDeviceNum() int {
 	ioStats, _ := net.IOCounters(true)
-	fmt.Println("iostats: ", ioStats)
+	utils.Logger.Println("获取的主机io设备信息: ", ioStats)
 	return len(ioStats)
 }
 
@@ -262,22 +246,16 @@ func ProcessInfoGet() (int, *ProcessInfo) {
 	var err error
 	if processes, err = process.Processes(); err == nil {
 		for _, process := range processes {
-			fmt.Println("process.Pid: ", process.Pid)
-			utils.Logger.Printf("process.Pid: %d\n", process.Pid)
 			if ioCounterStat, err := process.IOCounters(); err != nil {
 				utils.Logger.Printf("process.IOCounters() error:%s\n", err.Error())
 			} else {
-				fmt.Println("进程读字节数: ", ioCounterStat.ReadBytes)
-				fmt.Println("进程写字节数: ", ioCounterStat.WriteBytes)
-				utils.Logger.Printf("进程读字节数: %d\n", ioCounterStat.ReadBytes)
-				utils.Logger.Printf("进程写字节数: %d\n", ioCounterStat.WriteBytes)
+				utils.Logger.Printf("process.Pid: %d  进程读字节数: %d  进程写字节数: %d \n", process.Pid, ioCounterStat.ReadBytes, ioCounterStat.WriteBytes)
 				IoMap[process.Pid] = ProcessIO{
 					processId:  process.Pid,
 					readBytes:  ioCounterStat.ReadBytes,
 					writeBytes: ioCounterStat.WriteBytes,
 				}
 			}
-
 		}
 	}
 	processInfo.processIoMap = IoMap
