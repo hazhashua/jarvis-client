@@ -505,7 +505,10 @@ func init() {
 					}
 				}
 				ConfigStruct.ConfigData[config.MYSQL] = mysqlConf
-
+			case config.NODE:
+				nodeConf := config.NodeConfig{}
+				nodeConf.Cluster.Name = ClusterName
+				ConfigStruct.ConfigData[config.NODE] = nodeConf
 			case config.REDIS:
 				// cluster:
 				// 	name: bigdata-dev-cluster
