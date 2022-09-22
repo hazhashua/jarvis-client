@@ -51,7 +51,7 @@ func Parse_hive_config() *config.HiveConfig {
 	// var bytes []byte
 	hive_config := new(config.HiveConfig)
 	if bytes, err := ioutil.ReadFile("./hive/config.yaml"); err != nil {
-		fmt.Println("读配置文件 hive/config.yaml出错！")
+		utils.Logger.Printf("读配置文件 hive/config.yaml出错！")
 		return nil
 	} else {
 		yaml.Unmarshal(bytes, hive_config)
@@ -100,9 +100,10 @@ func GetDbs() []DB {
 		db.CtlgName = new(string)
 		err := res.Scan(&db.DbId, &db.Desc, db.DbLocaionUri, db.Name, db.OwnerName, db.OwnerType, db.CtlgName)
 		if err != nil {
-			fmt.Println("err: ", err.Error())
+			// fmt.Println("err: ", err.Error())
+			utils.Logger.Printf("scan db数据失败  error:%s\n", err.Error())
 		}
-		fmt.Println("数据库信息: ", *db.DbLocaionUri)
+		// fmt.Println("数据库信息: ", *db.DbLocaionUri)
 		dbs = append(dbs, db)
 	}
 	db.Close()
@@ -141,10 +142,11 @@ func QueryTbls(mysql_connection utils.MysqlConnect) []DbTables {
 		var table DbTables
 		err := res.Scan(&table.Name, &table.TableNum)
 		if err != nil {
-			fmt.Println("err: ", err.Error())
+			utils.Logger.Printf("scan db下table个数失败   error: %s\n", err.Error())
 		}
 		tables = append(tables, table)
-		fmt.Println("数据库名: ", table.Name, " 表个数: ", table.TableNum)
+		// fmt.Println("数据库名: ", table.Name, " 表个数: ", table.TableNum)
+		utils.Logger.Println("数据库名: ", table.Name, " 表个数: ", table.TableNum)
 	}
 	db.Close()
 	return tables
@@ -178,7 +180,7 @@ func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTable {
 			table.IsPartitioned = 0
 		}
 		if err != nil {
-			fmt.Println("err: ", err.Error())
+			utils.Logger.Printf("scan table分区数据失败  error: %s\n", err.Error())
 		}
 		tables = append(tables, *table)
 	}
@@ -228,7 +230,7 @@ func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTable {
 		var v1, v2 int
 		err := res.Scan(&table.Name, &table.TblName, &table.TblType, &tbl_id, &k1, &v1, &k2, &v2)
 		if err != nil {
-			fmt.Println("读取table表详细数据错误, ", err.Error())
+			fmt.Println("scan table表详细数据错误, ", err.Error())
 		}
 		if tbl_id.Valid {
 			table.IsPartitioned = 1
@@ -273,7 +275,7 @@ func QueryTableFileInfo(mysql_connection utils.MysqlConnect) {
 		var type_value string
 		err := res.Scan(&name, &tbl_name, &tbl_type, &type_value)
 		if err != nil {
-			fmt.Println("读取表存储相关数据错误！")
+			utils.Logger.Printf("scan table及字段数据失败  error: %s\n", err.Error())
 		}
 
 		fmt.Println("数据库名: ", name, " 表名: ", tbl_name, " 表指标类型: ", tbl_type, " 表指标值: ", type_value)

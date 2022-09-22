@@ -64,7 +64,6 @@ func NewHiveExporter() *HiveExporter {
 	} {
 		metricDescriptions[metric] = prometheus.NewDesc(prometheus.BuildFQName("", "", metric), desc.txt, desc.lbls, nil)
 	}
-	fmt.Println("in NewHiveExporter......")
 	dbs := GetDbs()
 	db_num := len(dbs)
 	dbInfoDescriptions := make([]*prometheus.Desc, db_num)
@@ -121,15 +120,12 @@ func (exporter *HiveExporter) Describe(ch chan<- *prometheus.Desc) {
 	for _, desc := range exporter.metricDescriptions {
 		ch <- desc
 	}
-	fmt.Println("in Describe......")
 	for _, db_desc := range exporter.dbInfoDescriptions {
 		// 创建counter desc 并写入 ch
-		fmt.Println("db_desc: ", db_desc)
 		ch <- db_desc
 	}
 	for _, table_desc := range exporter.tableInfoDescriptions {
 		// 创建counter desc 并写入 ch
-		fmt.Println("table_desc: ", table_desc)
 		ch <- table_desc
 	}
 	ch <- exporter.clusterMode.Desc()
@@ -183,12 +179,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(exporter.metricDescriptions["external_table_num"], prometheus.GaugeValue, float64(external_value), hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
 	ch <- prometheus.MustNewConstMetric(exporter.metricDescriptions["nonexternal_table_num"], prometheus.GaugeValue, float64(len(db_tables)-external_value), hive_config.Cluster.Name, hive_config.Cluster.ScrapeHost, hive_config.Cluster.ScrapeIp)
 
-	// for _, desc := range e.metricDescriptions {
-	// 	prometheus.MustNewConstMetric()
-	// }
-
 	// 写数据库的详细指标数据
-	fmt.Println("in Collect......")
 	dbs := exporter.dbDatas
 	// []string{"db_desc", "db_location_uri", "name", "owner_name", "cluster", "exporter_host", "exporter_ip"},
 	for idx, desc := range exporter.dbInfoDescriptions {
