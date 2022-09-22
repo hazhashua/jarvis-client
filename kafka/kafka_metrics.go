@@ -35,7 +35,7 @@ func Parse_kafka_config() *config.KafkaConfigure {
 	kafkaConfig := new(config.KafkaConfigure)
 	err := yaml.Unmarshal(bytes, kafkaConfig)
 	if err != nil {
-		utils.Logger.Printf("kafka配置 Unmarshal failed: %s", err.Error())
+		utils.Logger.Printf("kafka配置 Unmarshal failed: %s\n", err.Error())
 	}
 	// fmt.Println("kafkaConfig.Cluster.env: ", kafkaConfig.Cluster.Env)
 	// fmt.Println("kafkaConfig.Cluster.Hosts", kafkaConfig.Cluster.Hosts)
@@ -237,7 +237,6 @@ func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric
 
 	s := config.Admin
 	fmt.Println(s.Retry, s.Timeout)
-
 	cluster_admin, err2 := sarama.NewClusterAdminFromClient(client)
 	if err2 != nil {
 		utils.Logger.Printf("sarama.NewClusterAdminFromClient(client)  error: %s\n", err2.Error())
@@ -255,14 +254,13 @@ func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric
 			consumer_groups = append(consumer_groups, group)
 			ofr, err5 := cluster_admin.ListConsumerGroupOffsets(group, topic_partitions)
 			if err5 != nil {
-				fmt.Println("ListConsumerGroupOffsets error: ", err5.Error())
+				utils.Logger.Printf("ListConsumerGroupOffsets error: %s\n", err5.Error())
 			}
 			for topic, offset_infos := range ofr.Blocks {
 				// 消费组下partition的消费情况
 				for partition, offset_info := range offset_infos {
 					topic_partition := fmt.Sprintf("%s_%d", topic, partition)
 					topic_partition_consumer_group_offsets[group][topic_partition] = offset_info.Offset
-					// fmt.Println("partition: ", partition, "offset_info: ", offset_info.Offset, offset_info.Metadata)
 				}
 			}
 		}
@@ -294,9 +292,7 @@ func GetClient() (sarama.Client, sarama.Config) {
 		utils.Logger.Printf("try create client err :%s\n", err.Error())
 		return nil, *config
 	}
-
 	return client, *config
-
 }
 
 func GetKafkaMetrics() (diskStatus []*DiskStatus, total_brokers int, alive_brokers int, topic_num_metric int, topic_partition_metric map[string]int,
