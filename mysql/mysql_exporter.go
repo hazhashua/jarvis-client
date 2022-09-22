@@ -94,9 +94,7 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	e = NewMysqlExporter()
 	// mysqlConfig := Parse_mysql_config()
 	mysqlConfig, _ := (utils.ConfigStruct.ConfigData[config.MYSQL]).(config.MysqlConfig)
-
-	fmt.Println(mysqlConfig.Cluster.Ips)
-	fmt.Println(mysqlConfig.Cluster.Port)
+	utils.Logger.Printf("mysqlConfig:%v\n", mysqlConfig)
 	mysqlConnector := utils.MysqlConnect{
 		Host:      mysqlConfig.Cluster.Ips[0],
 		Port:      mysqlConfig.Cluster.Port,
@@ -104,7 +102,7 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 		Password:  mysqlConfig.Cluster.Password,  // "pwd@123",
 		DefaultDB: mysqlConfig.Cluster.DefaultDB, // "information_schema",
 	}
-	fmt.Println("mysqlConnector: ", mysqlConnector)
+	utils.Logger.Printf("mysqlConnector: %v\n", mysqlConnector)
 	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1, mysqlConfig.Cluster.Name, mysqlConnector.Host)
 	// 查询mysql连接信息
 	variables := utils.ConnectionQuery(mysqlConnector)
@@ -137,8 +135,7 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 
 	statuses := utils.TpsQuery(mysqlConnector)
 	for _, status := range statuses {
-		//
-		fmt.Println("status.ExecutedGtidSet: ", status.ExecutedGtidSet)
+		// fmt.Println("status.ExecutedGtidSet: ", status.ExecutedGtidSet)
 		length := len(strings.Split(status.ExecutedGtidSet, "-"))
 		tpsTotal, _ := strconv.Atoi(strings.Split(status.ExecutedGtidSet, "-")[length-1])
 		ch <- prometheus.MustNewConstMetric(e.executeTransactions, prometheus.CounterValue, float64(tpsTotal), mysqlConfig.Cluster.Name, mysqlConnector.Host)
@@ -147,15 +144,14 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	//"db_name", "default_character_set_name", "cluster", "ip"
 	schemaTables := utils.SchemaQuery(mysqlConnector)
 	for idx, schema := range schemaTables {
-		fmt.Println("schema.SchemaName: ", schema.SchemaName)
-		fmt.Println("schema.: ", schema.DefaultCharacterSetName)
+		fmt.Printf("schema: %v\n", schema)
 		ch <- prometheus.MustNewConstMetric(e.dbInfos[idx], prometheus.GaugeValue, 1, schema.SchemaName, schema.DefaultCharacterSetName, mysqlConfig.Cluster.Name, mysqlConnector.Host)
 	}
 
 	//"db_name", "table_name", "table_rows", "data_size", "index_size", "cluster", "ip"
 	tableTables := utils.TableQuery(mysqlConnector)
 	for idx, table := range tableTables {
-		fmt.Println(table.TableSchema, table.TableName, table.TableRows, table.DataSize, table.IndexSize)
+		// fmt.Println(table.TableSchema, table.TableName, table.TableRows, table.DataSize, table.IndexSize)
 		ch <- prometheus.MustNewConstMetric(e.tableInfos[idx], prometheus.GaugeValue, 1, table.TableSchema, table.TableName, fmt.Sprintf("%d", table.TableRows), fmt.Sprintf("%.5f", table.DataSize), fmt.Sprintf("%.5f", table.IndexSize), mysqlConfig.Cluster.Name, mysqlConnector.Host)
 	}
 

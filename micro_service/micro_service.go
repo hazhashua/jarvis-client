@@ -2,9 +2,10 @@ package micro_service
 
 import (
 	// utils "alive_exporter/utils"
-	"fmt"
+
 	"io/ioutil"
 	"metric_exporter/config"
+	"metric_exporter/utils"
 	"net/http"
 	"strconv"
 	"strings"
@@ -96,13 +97,13 @@ type MyK8sPodInfo struct {
 func Parse_k8s_config() *config.K8sYamlConfig {
 	bytes, err := ioutil.ReadFile("./micro_service/config.yaml")
 	if err != nil {
-		fmt.Println("读文件出错！")
+		utils.Logger.Printf("读文件出错！error: %s\n", err.Error())
 		return nil
 	}
 	k8sConfig := new(config.K8sYamlConfig)
 	err2 := yaml.Unmarshal(bytes, &k8sConfig)
 	if err2 != nil {
-		fmt.Println("Unmarshal失败！")
+		utils.Logger.Println("Unmarshal失败！")
 	}
 	return k8sConfig
 }
@@ -127,7 +128,6 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 	*/
 	//url 为apiservice service的路径地址，后面改成配置化
 	data := Get(url)
-	// fmt.Println("&&&&&&&", data)
 	aPIV1Services, _ := UnmarshalAPIV1Services([]byte(data))
 	//fmt.Println(*aPIV1Services.APIVersion, *aPIV1Services.Kind)
 	// 存储所有serviceinfo信息
@@ -135,7 +135,6 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 	serviceInfoMap = make(map[string]ServiceInfo)
 	for _, item := range aPIV1Services.Items {
 		// 取出所有service的名称
-		// fmt.Println("service_name:", *(*item.Metadata).Name)
 		var service_name = *(*item.Metadata).Name
 		serviceInfo := ServiceInfo{ServiceName: service_name}
 		//获得所有service的地址和端口
@@ -152,7 +151,7 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 			serviceInfoMap[service_name] = serviceInfo
 		}
 	}
-	//fmt.Println("serviceinfoMap: ", serviceInfoMap)
+	utils.Logger.Println("serviceinfoMap: ", serviceInfoMap)
 	return serviceInfoMap
 }
 
@@ -235,14 +234,14 @@ func GetNodeInfo(url string) []*MyK8sNodeInfo {
 
 			if strings.Contains(*data.Status.Capacity.EphemeralStorage, "Ki") {
 				storageK := (*data.Status.Capacity.EphemeralStorage)[:len(*data.Status.Capacity.EphemeralStorage)-2]
-				fmt.Println("Ki  Capacity storageK: ", storageK)
+				utils.Logger.Println("Ki  Capacity storageK: ", storageK)
 				storageKv, _ := strconv.ParseUint(storageK, 10, 32)
-				fmt.Println("Ki  Capacity node disk storage: ", storageKv*1024)
+				utils.Logger.Println("Ki  Capacity node disk storage: ", storageKv*1024)
 				nodeCapacity.diskStorage = storageKv * 1024
 			} else {
-				fmt.Println("Capacity : ", *data.Status.Capacity.EphemeralStorage)
+				utils.Logger.Println("Capacity : ", *data.Status.Capacity.EphemeralStorage)
 				storagev, _ := strconv.ParseUint(*data.Status.Capacity.EphemeralStorage, 10, 64)
-				fmt.Println("Capacity node disk storage: ", storagev)
+				utils.Logger.Println("Capacity node disk storage: ", storagev)
 				nodeCapacity.diskStorage = storagev
 			}
 
@@ -268,14 +267,14 @@ func GetNodeInfo(url string) []*MyK8sNodeInfo {
 
 			if strings.Contains(*data.Status.Allocatable.EphemeralStorage, "Ki") {
 				storageK := (*data.Status.Allocatable.EphemeralStorage)[:len(*data.Status.Allocatable.EphemeralStorage)-2]
-				fmt.Println("Allocate Ki storageK: ", storageK)
+				utils.Logger.Println("Allocate Ki storageK: ", storageK)
 				storageKv, _ := strconv.ParseUint(storageK, 10, 64)
-				fmt.Println("Ki  Allocate node disk storage: ", storageKv*1024)
+				utils.Logger.Println("Ki  Allocate node disk storage: ", storageKv*1024)
 				allocatable.diskStorage = storageKv * 1024
 			} else {
-				fmt.Println("Allocate *data.Status.Allocatable.EphemeralStorage: ", *data.Status.Allocatable.EphemeralStorage)
+				utils.Logger.Println("Allocate *data.Status.Allocatable.EphemeralStorage: ", *data.Status.Allocatable.EphemeralStorage)
 				storagev, _ := strconv.ParseUint(*data.Status.Allocatable.EphemeralStorage, 10, 64)
-				fmt.Println("Allocate node disk storage: ", storagev)
+				utils.Logger.Println("Allocate node disk storage: ", storagev)
 				allocatable.diskStorage = storagev
 			}
 
@@ -394,7 +393,7 @@ func GetPodInfo(podUrl string) []*MyK8sPodInfo {
 						myPodInfo.IsPodScheduled = false
 					}
 				default:
-					fmt.Println("unknown condition.type: ", *condition.Type)
+					utils.Logger.Println("parse k8s data::  unknown condition.type: ", *condition.Type)
 				}
 			}
 		}
@@ -414,7 +413,7 @@ func GetPodInfo(podUrl string) []*MyK8sPodInfo {
 				} else if containerStatus.State.Terminated != nil {
 					myContainerStatus.State = "Terminated"
 				}
-				fmt.Printf("container: %s restart_count: %d\n", *containerStatus.Name, int(*containerStatus.RestartCount))
+				utils.Logger.Printf("container: %s restart_count: %d\n", *containerStatus.Name, int(*containerStatus.RestartCount))
 				containerStatusList = append(containerStatusList, &myContainerStatus)
 			}
 			myPodInfo.containersStatus = containerStatusList
@@ -436,7 +435,6 @@ func GetResourceUsed(nodeMetricsUrl string) map[string]*NodeResourceUsed {
 	if node_metrics, err := UnmarshalNodeMetrics([]byte(node_metric_data)); err == nil {
 		for _, node_metric := range node_metrics.Items {
 			if node_metric.Metadata != nil {
-				fmt.Println("name: ", node_metric.Metadata.Name)
 				node_resource_used := NodeResourceUsed{
 					Name:   node_metric.Metadata.Name,
 					Cpu:    node_metric.Usage.CPU,
@@ -444,12 +442,12 @@ func GetResourceUsed(nodeMetricsUrl string) map[string]*NodeResourceUsed {
 				}
 				node_resource_data[*node_metric.Metadata.Name] = &node_resource_used
 			}
-			fmt.Println("cpu usage:", node_metric.Usage.CPU)
-			fmt.Println("memory usage: ", node_metric.Usage.Memory)
+			utils.Logger.Println("cpu usage:", node_metric.Usage.CPU)
+			utils.Logger.Println("memory usage: ", node_metric.Usage.Memory)
 
 		}
 	} else {
-		fmt.Println("解析node metric资源使用数据失败")
+		utils.Logger.Printf(" UnmarshalNodeMetrics 解析node metric资源使用数据失败 error:%s\n", err.Error())
 	}
 	return node_resource_data
 

@@ -161,7 +161,7 @@ func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (num_active_nms *int
 	fmt.Println("response: ", response)
 	cluster_metrics_bytes := []byte(response)
 	cm, err := UnmarshalClusterMetrics(cluster_metrics_bytes)
-	if err == nil {
+	if err != nil {
 		// fmt.Println("err: ", err.Error())
 		utils.Logger.Printf("UnmarshalClusterMetrics(cluster_metrics_bytes) error:%s\n", err.Error())
 	}

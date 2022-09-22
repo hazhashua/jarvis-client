@@ -176,7 +176,10 @@ func HttpRequest(is_master bool, jmx_http_url *jmxHttpUrl, uri string, region_no
 		utils.Logger.Printf("regionserver url: %s\n", (*jmx_http_url.regionserversUrls)[region_no-1]+uri)
 		response, httpErr = http.Get((*jmx_http_url.regionserversUrls)[region_no-1] + uri)
 	}
-	defer response.Body.Close()
+	if response != nil {
+		utils.Logger.Printf("response is not nil !")
+		defer response.Body.Close()
+	}
 	if httpErr != nil {
 		utils.Logger.Printf("http.Get error:%s \n", httpErr.Error())
 		return []byte{}
@@ -267,7 +270,9 @@ func QueryMetric() *hbaseData {
 		//?qry=Hadoop:service=HBase,name=RegionServer,sub=IPC
 		var region_data regionData
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IPC")
+		utils.Logger.Printf("query url: %s\n", query_url)
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
+		utils.Logger.Printf("response body: %s", string(body))
 		if region_ipc, unmarshalErr := UnmarshalRegionserverIPC(body); unmarshalErr == nil {
 			region_data.numActiveHandler = *region_ipc.Beans[0].NumActiveHandler
 			region_data.receivedBytes = *region_ipc.Beans[0].ReceivedBytes

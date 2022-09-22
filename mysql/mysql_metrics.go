@@ -1,9 +1,9 @@
 package mysql
 
 import (
-	"fmt"
 	"io/ioutil"
 	"metric_exporter/config"
+	"metric_exporter/utils"
 
 	"gopkg.in/yaml.v2"
 )
@@ -23,7 +23,8 @@ func Parse_mysql_config() *config.MysqlConfig {
 		return &mysql_config
 
 	} else {
-		fmt.Println("解析配置文件出错! ", err.Error())
+		// fmt.Println("解析配置文件出错! ", err.Error())
+		utils.Logger.Println("解析配置文件出错! ", err.Error())
 		return nil
 	}
 }

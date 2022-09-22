@@ -135,7 +135,7 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 				if cpuUsedint, err := strconv.ParseUint((*cpuUsed)[:len(*cpuUsed)-1], 10, 64); err == nil {
 					nodeInfo.CpuUsedN = cpuUsedint
 				} else {
-					fmt.Println("获取cpu使用数据失败!")
+					utils.Logger.Printf("获取cpu使用数据失败!")
 				}
 			}
 			memoryUsed := nodeResourceUsedData[nodeInfo.Ip].Memory
@@ -143,11 +143,11 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 				if memoryUsedData, err := strconv.ParseUint((*memoryUsed)[:len(*memoryUsed)-2], 10, 64); err == nil {
 					nodeInfo.MemoryUsedKB = memoryUsedData
 				} else {
-					fmt.Println("获取内存使用数据失败!")
+					utils.Logger.Printf("获取内存使用数据失败!")
 				}
 			}
 		} else {
-			fmt.Println("没有抓取到这个ip主机的IP资源使用情况")
+			utils.Logger.Println("warnning: 没有抓取到这个ip主机的IP资源使用情况")
 		}
 	}
 
@@ -240,14 +240,14 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 		podInfoDescs = append(podInfoDescs, k8spodDesc)
 	}
 
-	fmt.Println("k8s_config: ", k8s_config)
-	fmt.Println("nodeDescs: ", nodeDescs)
-	fmt.Println("nodeInfoDescs: ", nodeInfoDescs)
-	fmt.Println("serviceinfoDescs: ", serviceinfoDescs)
-	fmt.Println("podInfoDescs: ", podInfoDescs)
-	fmt.Println("myk8sNodeInfos: ", myk8sNodeInfos)
-	fmt.Println("serviceinfo: ", serviceinfo)
-	fmt.Println("myk8spodinfo: ", myk8spodinfo)
+	// fmt.Println("k8s_config: ", k8s_config)
+	// fmt.Println("nodeDescs: ", nodeDescs)
+	// fmt.Println("nodeInfoDescs: ", nodeInfoDescs)
+	// fmt.Println("serviceinfoDescs: ", serviceinfoDescs)
+	// fmt.Println("podInfoDescs: ", podInfoDescs)
+	// fmt.Println("myk8sNodeInfos: ", myk8sNodeInfos)
+	// fmt.Println("serviceinfo: ", serviceinfo)
+	// fmt.Println("myk8spodinfo: ", myk8spodinfo)
 	return &MicroServiceExporter{
 		k8sConfig:        k8s_config,
 		nodeDescs:        nodeDescs,
@@ -367,10 +367,10 @@ func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 		} else if contaionerStatus == "Waiting" {
 			stateCode = -1
 		} else {
-			fmt.Println("containerStatus: ", contaionerStatus)
+			utils.Logger.Printf("containerStatus: %s", contaionerStatus)
 			stateCode = 1
 		}
-		fmt.Printf("%s restartcount:%d", e.podInfoDatas[idx].Name, restartCount)
+		// fmt.Printf("%s restartcount:%d", e.podInfoDatas[idx].Name, restartCount)
 		ch <- prometheus.MustNewConstMetric(pod_info.PodInfoDesc, pod_info.PodInfoValType, 1,
 			e.k8sConfig.Cluster.Name, e.podInfoDatas[idx].Name, e.podInfoDatas[idx].App, e.podInfoDatas[idx].Status,
 			e.podInfoDatas[idx].RunHostIP, fmt.Sprintf("%d", restartCount), fmt.Sprintf("%d", stateCode), contaionerStatus)
