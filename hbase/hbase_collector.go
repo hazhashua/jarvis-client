@@ -177,7 +177,6 @@ func HttpRequest(is_master bool, jmx_http_url *jmxHttpUrl, uri string, region_no
 		response, httpErr = http.Get((*jmx_http_url.regionserversUrls)[region_no-1] + uri)
 	}
 	if response != nil {
-		utils.Logger.Printf("response is not nil !")
 		defer response.Body.Close()
 	}
 	if httpErr != nil {
@@ -272,7 +271,7 @@ func QueryMetric() *hbaseData {
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IPC")
 		utils.Logger.Printf("query url: %s\n", query_url)
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
-		utils.Logger.Printf("response body: %s", string(body))
+		// utils.Logger.Printf("response body: %s", string(body))
 		if region_ipc, unmarshalErr := UnmarshalRegionserverIPC(body); unmarshalErr == nil {
 			region_data.numActiveHandler = *region_ipc.Beans[0].NumActiveHandler
 			region_data.receivedBytes = *region_ipc.Beans[0].ReceivedBytes
@@ -414,8 +413,7 @@ func QueryMetric() *hbaseData {
 							tds[tableName].tableSize = *value.Integer
 							utils.Logger.Printf("tds[%s].tableSize: %d \n", tableName, *value.Integer)
 						default:
-							// fmt.Printf("忽略的hbase table相关指标%s\n", metric)
-							utils.Logger.Printf("忽略的hbase table相关指标: %s \n", metric)
+							// utils.Logger.Printf("忽略的hbase table相关指标: %s \n", metric)
 						}
 					}
 				}

@@ -249,7 +249,7 @@ func ProcessInfoGet() (int, *ProcessInfo) {
 			if ioCounterStat, err := process.IOCounters(); err != nil {
 				utils.Logger.Printf("process.IOCounters() error:%s\n", err.Error())
 			} else {
-				utils.Logger.Printf("process.Pid: %d  进程读字节数: %d  进程写字节数: %d \n", process.Pid, ioCounterStat.ReadBytes, ioCounterStat.WriteBytes)
+				// utils.Logger.Printf("process.Pid: %d  进程读字节数: %d  进程写字节数: %d \n", process.Pid, ioCounterStat.ReadBytes, ioCounterStat.WriteBytes)
 				IoMap[process.Pid] = ProcessIO{
 					processId:  process.Pid,
 					readBytes:  ioCounterStat.ReadBytes,

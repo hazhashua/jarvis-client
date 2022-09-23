@@ -68,8 +68,6 @@ func GetAppInfo(yarnUrl string) (apps_submitted *int64, apps_running *int64, app
 func GetJvmMetricsInfo(http_url string) (mem_non_heap_usedm float64, mem_non_heap_committedm float64, mem_heap_usedm float64, mem_heap_committedm float64) {
 	// fmt.Println("jvm_url: ", http_url)
 	res := utils.GetUrl(http_url)
-	utils.Logger.Printf("UnmarshalJVMMetrics(body_byte) error:%s\n", res)
-
 	body_byte := []byte(res)
 	jvm_metrics, err := UnmarshalJVMMetrics(body_byte)
 	if err == nil {

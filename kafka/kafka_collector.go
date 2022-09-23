@@ -197,8 +197,8 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 	collector = NewKafkaCollector()
 	// 获取kafka的metric数据
 	//    disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate_metric := GetKafkaMetrics()
-	disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, consumer_group_topic_partition_offsets, topic_partition_balance_rate_metric, _ := GetKafkaMetrics()
-	utils.Logger.Printf("topic_partition_brokers: %v\n", topic_partition_brokers)
+	disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, _, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, consumer_group_topic_partition_offsets, topic_partition_balance_rate_metric, _ := GetKafkaMetrics()
+	// utils.Logger.Printf("topic_partition_brokers: %v\n", topic_partition_brokers)
 	for idx, disk_desc := range collector.kafkaMetrics.DiskUsage {
 		if idx >= len(disk_status) {
 			fmt.Println("数组索引, 超过获取的kafka磁盘数......")

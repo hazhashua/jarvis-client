@@ -367,7 +367,6 @@ func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 		} else if contaionerStatus == "Waiting" {
 			stateCode = -1
 		} else {
-			utils.Logger.Printf("containerStatus: %s", contaionerStatus)
 			stateCode = 1
 		}
 		// fmt.Printf("%s restartcount:%d", e.podInfoDatas[idx].Name, restartCount)
