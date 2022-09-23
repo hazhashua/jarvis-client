@@ -45,7 +45,7 @@ func DbOpen(dbConfig *dbConfig) (db *gorm.DB) {
 	// db, err = sql.Open("postgres", "host=192.168.10.79 port=5432 user=postgres password=pwd@123 dbname=ahdb sslmode=disable")
 	dc := ParseDbConfig()
 	// dsn := "host=192.168.10.68 user=postgres password=pwd@123 dbname=cluster port=5432 sslmode=disable TimeZone=Asia/Shanghai"
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=5432 sslmode=disable TimeZone=Asia/Shanghai", dc.Postgres.Ip, dc.Postgres.Username, dc.Postgres.Password)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=5432 sslmode=disable TimeZone=Asia/Shanghai", dc.Cluster.Postgres.Ip, dc.Cluster.Postgres.Username, dc.Cluster.Postgres.Password)
 	var err error
 	if db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}); err == nil {
 		// fmt.Println("*************************connect to db success")
@@ -126,7 +126,6 @@ func Migirate() {
 	// tx := db.Begin()
 	// tx.Exec("use public")
 	// tx.Commit()
-
 	servicePorts := Query("")
 	gatherNames := make([]gatherName, 0)
 	dataGathers := make([]dataGather, 0)
@@ -145,7 +144,6 @@ func Migirate() {
 			})
 		}
 		lastName = newName
-		// fmt.Println("serviceInfo: ", serviceInfo)
 		Logger.Printf("serviceInfo: %v\n", serviceInfo)
 
 		var port string
@@ -173,7 +171,6 @@ func Migirate() {
 		// 插入gather_name表数据
 		// db.Table("gather_name")
 		PgGatherNameInsert(db, nameInfo)
-		// fmt.Println("------插入数据: ", nameInfo)
 		Logger.Printf("插入gather_name数据: %v\n", nameInfo)
 	}
 

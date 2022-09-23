@@ -285,16 +285,19 @@ func init() {
 
 // 全局Db对象
 var Db *gorm.DB
+var DbConfig *config.DbConfig
 
 func init() {
 	config := ParseDbConfig()
+	// 赋值全局配置变量
+	DbConfig = config
 	// config := dbConfig{
 	// 	Ip:       "192.168.10.68",
 	// 	Port:     5432,
 	// 	User:     "postgres",
 	// 	Password: "pwd@123",
 	// }
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Postgres.Ip, config.Postgres.Username, config.Postgres.Password, config.Postgres.Port)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Cluster.Postgres.Ip, config.Cluster.Postgres.Username, config.Cluster.Postgres.Password, config.Cluster.Postgres.Port)
 	var err error
 	if Db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}); err == nil {
 		Logger.Println("*************************connect to db success")
@@ -303,12 +306,10 @@ func init() {
 	}
 }
 
-var ClusterName string
-
 // 初始化配置
 func init() {
 	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@")
-	ClusterName = "bigdata-dev-cluster"
+	// ClusterName = "bigdata-dev-cluster"
 	ConfigStruct = configStruct{}
 	ConfigStruct.init()
 	fmt.Println("modes: ", ConfigStruct.Modes)
@@ -364,7 +365,7 @@ func init() {
 				// resourcemanagerhost: bigdata-dev01
 				// resourcemanagerhttpport: 8088
 				hc := config.HadoopConfigure{}
-				hc.Cluster.Name = ClusterName
+				hc.Cluster.Name = DbConfig.Cluster.Name
 				for _, data := range datas {
 					if *data.ChildService == "resourcemanager" {
 						hc.Cluster.ResourceManagerHosts = append(hc.Cluster.ResourceManagerHosts, "")
@@ -398,7 +399,7 @@ func init() {
 				// 		- bigdata-dev02
 				// 		- bigdata-dev03
 				hbaseConf := config.HbaseConfigure{}
-				hbaseConf.Cluster.ClusterName = ClusterName
+				hbaseConf.Cluster.ClusterName = DbConfig.Cluster.Name
 				for _, data := range datas {
 					hbaseConf.Cluster.Names = append(hbaseConf.Cluster.Names, "")
 					if *data.ChildService == "hmaster" {
@@ -426,7 +427,7 @@ func init() {
 				// 	scrapehost: bigdata-dev01
 				// 	scrapeip: 192.168.10.220
 				hiveConf := config.HiveConfig{}
-				hiveConf.Cluster.Name = ClusterName
+				hiveConf.Cluster.Name = DbConfig.Cluster.Name
 				for _, data := range datas {
 					hiveConf.Cluster.Hosts = append(hiveConf.Cluster.Hosts, "")
 					if *data.ChildService == "metastore" {
@@ -447,7 +448,7 @@ func init() {
 				// 	port: 9092
 				// 	env: dev
 				kafkaConf := config.KafkaConfigure{}
-				kafkaConf.Cluster.Name = ClusterName
+				kafkaConf.Cluster.Name = DbConfig.Cluster.Name
 				for _, data := range datas {
 					kafkaConf.Cluster.Hosts = append(kafkaConf.Cluster.Hosts, *data.IP)
 					kafkaConf.Cluster.Port = int(data.Port.Int64)
@@ -471,7 +472,7 @@ func init() {
 				// 		- 192.168.10.111
 				// 	apiserverport: 8080
 				k8syamlConf := config.K8sYamlConfig{}
-				k8syamlConf.Cluster.Name = ClusterName
+				k8syamlConf.Cluster.Name = DbConfig.Cluster.Name
 				for _, data := range datas {
 					fmt.Println("micro_service: ", data)
 					if *data.ChildService == "apiserver" {
@@ -494,7 +495,7 @@ func init() {
 				// 	- master
 
 				mysqlConf := config.MysqlConfig{}
-				mysqlConf.Cluster.Name = ClusterName
+				mysqlConf.Cluster.Name = DbConfig.Cluster.Name
 				for _, data := range datas {
 					if *data.ChildService == "mysql" {
 						mysqlConf.Cluster.Ips = append(mysqlConf.Cluster.Ips, *data.IP)
@@ -505,10 +506,7 @@ func init() {
 					}
 				}
 				ConfigStruct.ConfigData[config.MYSQL] = mysqlConf
-			case config.NODE:
-				nodeConf := config.NodeConfig{}
-				nodeConf.Cluster.Name = ClusterName
-				ConfigStruct.ConfigData[config.NODE] = nodeConf
+
 			case config.REDIS:
 				// cluster:
 				// 	name: bigdata-dev-cluster
@@ -528,7 +526,7 @@ func init() {
 				// 	scrapeip: 192.168.10.107
 				// 	redisport: 6379
 				redisConf := config.RedisConfig{}
-				redisConf.Cluster.Name = ClusterName
+				redisConf.Cluster.Name = DbConfig.Cluster.Name
 				for _, data := range datas {
 					if *data.ChildService == "redis" {
 						redisConf.Cluster.Hosts = append(redisConf.Cluster.Hosts, *data.IP)
@@ -547,7 +545,7 @@ func init() {
 				// 		- 192.168.10.65
 				// 		port: 9200
 				swConf := config.SkyWalkingConfig{}
-				swConf.Cluster.Name = ClusterName
+				swConf.Cluster.Name = DbConfig.Cluster.Name
 				for _, data := range datas {
 					if *data.ChildService == "elasticsearch" {
 						swConf.Cluster.ElasticSearch.Ips = append(swConf.Cluster.ElasticSearch.Ips, *data.IP)
@@ -586,7 +584,7 @@ func init() {
 				// 	mainpath: /metrics/prometheus
 				// 	executorpath: /metrics/executors/prometheus
 				sparkConf := config.SparkConfig{}
-				sparkConf.Cluster = ClusterName
+				sparkConf.Cluster = DbConfig.Cluster.Name
 				for _, data := range datas {
 					if *data.ChildService == "master" && *data.PortType == "http" {
 						sparkConf.Masterhttp.Ips = append(sparkConf.Masterhttp.Ips, *data.IP)
@@ -614,7 +612,7 @@ func init() {
 				// 		- 192.168.10.222
 				// 	clientport: 2181
 				zkConf := config.ZookeepeConfig{}
-				zkConf.Cluster.Name = ClusterName
+				zkConf.Cluster.Name = DbConfig.Cluster.Name
 				for _, data := range datas {
 					if *data.ChildService == "zookeeper" {
 						zkConf.Cluster.Hosts = append(zkConf.Cluster.Hosts, *data.IP)
@@ -625,6 +623,10 @@ func init() {
 
 			}
 		}
+		// 默认加载node配置
+		nodeConf := config.NodeConfig{}
+		nodeConf.Cluster.Name = DbConfig.Cluster.Name
+		ConfigStruct.ConfigData[config.NODE] = nodeConf
 	} else {
 		// 从配置文件读取配置
 		ConfigStruct.loadAll()

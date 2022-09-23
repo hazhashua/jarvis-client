@@ -49,7 +49,7 @@ func ValueQuery(sqlstr string) int {
 	//      root:pwd@123@tcp(127.0.0.1:3306)/test
 	config := ParseDbConfig()
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8&parseTime=true", config.Mysql.Username, config.Mysql.Password, config.Mysql.Ip, config.Mysql.Port) //"root:pwd@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8&parseTime=true", config.Cluster.Mysql.Username, config.Cluster.Mysql.Password, config.Cluster.Mysql.Ip, config.Cluster.Mysql.Port) //"root:pwd@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -154,13 +154,14 @@ func ExecuteSchemaQuery(db *sql.DB, sqlStr string, columns []string, types []str
 		} else if len(columns) == 2 {
 			fmt.Println("查询两个字断...")
 			res.Scan(&st.SchemaName, &st.DefaultCharacterSetName)
-		} else if len(columns) == 3 {
-			fmt.Println("查询三个字断...")
-		} else if len(columns) == 4 {
-			fmt.Println("查询4个字断...")
-		} else if len(columns) == 5 {
-			fmt.Println("查询5个字断...")
 		}
+		// } else if len(columns) == 3 {
+		// 	fmt.Println("查询三个字断...")
+		// } else if len(columns) == 4 {
+		// 	fmt.Println("查询4个字断...")
+		// } else if len(columns) == 5 {
+		// 	fmt.Println("查询5个字断...")
+		// }
 		schemaTables = append(schemaTables, *st)
 	}
 	db.Close()
