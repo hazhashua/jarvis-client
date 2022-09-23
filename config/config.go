@@ -196,19 +196,22 @@ type ZookeepeConfig struct {
 
 // 存储utils工具包, 数据库源地址配置数据
 type DbConfig struct {
-	Mysql struct {
-		Ip       string
-		Port     int32
-		Username string
-		Password string
-	}
-	Postgres struct {
-		Ip             string
-		Port           int32
-		Username       string
-		Password       string
-		DatasourceInfo struct {
-			Schema string
+	Cluster struct {
+		Name  string
+		Mysql struct {
+			Ip       string
+			Port     int32
+			Username string
+			Password string
+		}
+		Postgres struct {
+			Ip             string
+			Port           int32
+			Username       string
+			Password       string
+			DatasourceInfo struct {
+				Schema string
+			}
 		}
 	}
 }
