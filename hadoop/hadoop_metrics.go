@@ -1,7 +1,6 @@
 package hadoop
 
 import (
-	"fmt"
 	"metric_exporter/utils"
 )
 
@@ -52,16 +51,16 @@ func GetAppInfo(yarnUrl string) (apps_submitted *int64, apps_running *int64, app
 	running_60 = rma.Beans[0].Running60
 	running_300 = rma.Beans[0].Running300
 	running_1440 = rma.Beans[0].Running1440
-	utils.Logger.Printf("rma.Beans[0].AppsSubmitted: %d\n", *rma.Beans[0].AppsSubmitted)
-	utils.Logger.Printf("rma.Beans[0].AppsRunning: %d\n", *rma.Beans[0].AppsRunning)
-	utils.Logger.Printf("rma.Beans[0].AppsPending: %d\n", *rma.Beans[0].AppsPending)
-	utils.Logger.Printf("rma.Beans[0].AppsKilled: %d\n", *rma.Beans[0].AppsKilled)
-	utils.Logger.Printf("rma.Beans[0].AppsFailed: %d\n", *rma.Beans[0].AppsFailed)
-	utils.Logger.Printf("rma.Beans[0].AppsCompleted: %d\n", *rma.Beans[0].AppsCompleted)
-	utils.Logger.Printf("rma.Beans[0].running_0: %d\n", *rma.Beans[0].Running0)
-	utils.Logger.Printf("rma.Beans[0].running_60: %d\n", *rma.Beans[0].Running60)
-	utils.Logger.Printf("rma.Beans[0].running_300: %d\n", *rma.Beans[0].Running300)
-	utils.Logger.Printf("rma.Beans[0].running_1440: %d\n", *rma.Beans[0].Running1440)
+	// utils.Logger.Printf("rma.Beans[0].AppsSubmitted: %d\n", *rma.Beans[0].AppsSubmitted)
+	// utils.Logger.Printf("rma.Beans[0].AppsRunning: %d\n", *rma.Beans[0].AppsRunning)
+	// utils.Logger.Printf("rma.Beans[0].AppsPending: %d\n", *rma.Beans[0].AppsPending)
+	// utils.Logger.Printf("rma.Beans[0].AppsKilled: %d\n", *rma.Beans[0].AppsKilled)
+	// utils.Logger.Printf("rma.Beans[0].AppsFailed: %d\n", *rma.Beans[0].AppsFailed)
+	// utils.Logger.Printf("rma.Beans[0].AppsCompleted: %d\n", *rma.Beans[0].AppsCompleted)
+	// utils.Logger.Printf("rma.Beans[0].running_0: %d\n", *rma.Beans[0].Running0)
+	// utils.Logger.Printf("rma.Beans[0].running_60: %d\n", *rma.Beans[0].Running60)
+	// utils.Logger.Printf("rma.Beans[0].running_300: %d\n", *rma.Beans[0].Running300)
+	// utils.Logger.Printf("rma.Beans[0].running_1440: %d\n", *rma.Beans[0].Running1440)
 	return
 }
 
@@ -99,9 +98,6 @@ func GetDFSInfo(namenoeUrl string) (nondfs_gb *float64, capacity_total_gb *float
 	if err != nil {
 		utils.Logger.Printf("UnmarshalFSNamesystem(fs_namesystem_bytes) error:%s\n", err.Error())
 	}
-	// fmt.Println("fs_namesystem.Beans[0].CapacityTotal: ", fs_namesystem.Beans[0].CapacityTotal)
-	// fmt.Println("fs_namesystem.Beans[0].CapacityUsed: ", fs_namesystem.Beans[0].CapacityUsed)
-	// fmt.Println("fs_namesystem.Beans[0].CapacityRemaining: ", fs_namesystem.Beans[0].CapacityRemaining)
 
 	nondfs_gbv := float64(*fs_namesystem.Beans[0].CapacityUsedNonDFS) / float64(1024.0) / 1024 / 1024
 	nondfs_gb = &nondfs_gbv
@@ -116,16 +112,12 @@ func GetDFSInfo(namenoeUrl string) (nondfs_gb *float64, capacity_total_gb *float
 
 	// 总的block数量
 	blocks_total = fs_namesystem.Beans[0].BlocksTotal
-	// fmt.Println("fs_namesystem.Beans[0].BlocksTotal: ", fs_namesystem.Beans[0].BlocksTotal)
 	// 已损坏的block数量
 	corrupt_blocks = fs_namesystem.Beans[0].CorruptBlocks
-	// fmt.Println("fs_namesystem.Beans[0].CorruptBlocks: ", fs_namesystem.Beans[0].CorruptBlocks)
 	//未被验证的block个数
 	pending_deletion_blocks = fs_namesystem.Beans[0].PendingDeletionBlocks
-	// fmt.Println("fs_namesystem.Beans[0].PendingDeletionBlocks: ", fs_namesystem.Beans[0].PendingDeletionBlocks)
 	//等待被备份的block个数
 	pending_replication_blocks = fs_namesystem.Beans[0].PendingReplicationBlocks
-	// fmt.Println("fs_namesystem.Beans[0].PendingReplicationBlocks: ", fs_namesystem.Beans[0].PendingReplicationBlocks)
 
 	// 总文件的数量
 	files_total = fs_namesystem.Beans[0].FilesTotal
@@ -156,25 +148,20 @@ func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (num_active_nms *int
 
 		}
 	}
-	fmt.Println("response: ", response)
+	// utils.Logger.Println("response: ", response)
 	cluster_metrics_bytes := []byte(response)
 	cm, err := UnmarshalClusterMetrics(cluster_metrics_bytes)
 	if err != nil {
-		// fmt.Println("err: ", err.Error())
 		utils.Logger.Printf("UnmarshalClusterMetrics(cluster_metrics_bytes) error:%s\n", err.Error())
 	}
 	num_active_nms = cm.Beans[0].NumActiveNMS
-	// fmt.Println("cm.Beans[0].NumActiveNMS: ", cm.Beans[0].NumActiveNMS)
-	utils.Logger.Printf("cm.Beans[0].NumActiveNMS: %d\n", *cm.Beans[0].NumActiveNMS)
+	// utils.Logger.Printf("cm.Beans[0].NumActiveNMS: %d\n", *cm.Beans[0].NumActiveNMS)
 	num_lost_nms = cm.Beans[0].NumLostNMS
-	// fmt.Println("cm.Beans[0].NumLostNMS: ", cm.Beans[0].NumLostNMS)
-	utils.Logger.Printf("cm.Beans[0].NumLostNMS: %d\n", *cm.Beans[0].NumLostNMS)
+	// utils.Logger.Printf("cm.Beans[0].NumLostNMS: %d\n", *cm.Beans[0].NumLostNMS)
 	num_shutdown_nms = cm.Beans[0].NumShutdownNMS
-	// fmt.Println("cm.Beans[0].NumShutdownNMS: ", cm.Beans[0].NumShutdownNMS)
-	utils.Logger.Printf("cm.Beans[0].NumShutdownNMS: %d\n", *cm.Beans[0].NumShutdownNMS)
+	// utils.Logger.Printf("cm.Beans[0].NumShutdownNMS: %d\n", *cm.Beans[0].NumShutdownNMS)
 	num_unhealthy_nms = cm.Beans[0].NumUnhealthyNMS
-	// fmt.Println("cm.Beans[0].NumUnhealthyNMS: ", cm.Beans[0].NumUnhealthyNMS)
-	utils.Logger.Printf("cm.Beans[0].NumUnhealthyNMS: %d\n", *cm.Beans[0].NumUnhealthyNMS)
+	// utils.Logger.Printf("cm.Beans[0].NumUnhealthyNMS: %d\n", *cm.Beans[0].NumUnhealthyNMS)
 
 	//获取datanode存活数据
 	for idx, url := range namenodeUrls {
@@ -195,24 +182,18 @@ func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (num_active_nms *int
 		// fmt.Println("error: ", err2.Error())
 	}
 	num_live_datanodes = fs.Beans[0].NumLiveDataNodes
-	// fmt.Println("fs.Beans[0].NumLiveDataNodes: ", fs.Beans[0].NumLiveDataNodes)
-	utils.Logger.Printf("fs.Beans[0].NumLiveDataNodes: %d\n", *fs.Beans[0].NumLiveDataNodes)
+	// utils.Logger.Printf("fs.Beans[0].NumLiveDataNodes: %d\n", *fs.Beans[0].NumLiveDataNodes)
 	num_dead_datanodes = fs.Beans[0].NumDeadDataNodes
-	// fmt.Println("fs.Beans[0].NumDeadDataNodes: ", fs.Beans[0].NumDeadDataNodes)
-	utils.Logger.Printf("fs.Beans[0].NumDeadDataNodes: %d\n", *fs.Beans[0].NumDeadDataNodes)
+	// utils.Logger.Printf("fs.Beans[0].NumDeadDataNodes: %d\n", *fs.Beans[0].NumDeadDataNodes)
 	num_decom_livedatanodes = fs.Beans[0].NumDecomLiveDataNodes
-	// fmt.Println("fs.Beans[0].NumDecomLiveDataNodes: ", fs.Beans[0].NumDecomLiveDataNodes)
-	utils.Logger.Printf("fs.Beans[0].NumDecomLiveDataNodes: %d\n", *fs.Beans[0].NumDecomLiveDataNodes)
+	// utils.Logger.Printf("fs.Beans[0].NumDecomLiveDataNodes: %d\n", *fs.Beans[0].NumDecomLiveDataNodes)
 	num_decom_missioningdatanodes = fs.Beans[0].NumDecommissioningDataNodes
-	// fmt.Println("fs.Beans[0].NumDecommissioningDataNodes: ", fs.Beans[0].NumDecommissioningDataNodes)
-	utils.Logger.Printf("fs.Beans[0].NumDecommissioningDataNodes: %d\n", *fs.Beans[0].NumDecommissioningDataNodes)
+	// utils.Logger.Printf("fs.Beans[0].NumDecommissioningDataNodes: %d\n", *fs.Beans[0].NumDecommissioningDataNodes)
 	//hdfs 总块数
 	blocks_total = fs.Beans[0].BlocksTotal
-	// fmt.Println("fs.Beans[0].BlocksTotal: ", fs.Beans[0].BlocksTotal)
-	utils.Logger.Printf("fs.Beans[0].BlocksTotal: %d", *fs.Beans[0].BlocksTotal)
+	// utils.Logger.Printf("fs.Beans[0].BlocksTotal: %d", *fs.Beans[0].BlocksTotal)
 	files_total = fs.Beans[0].FilesTotal
-	// fmt.Println("fs.Beans[0].FilesTotal: ", fs.Beans[0].FilesTotal)
-	utils.Logger.Printf("fs.Beans[0].FilesTotal: %d\n", *fs.Beans[0].FilesTotal)
+	// utils.Logger.Printf("fs.Beans[0].FilesTotal: %d\n", *fs.Beans[0].FilesTotal)
 
 	return
 
@@ -244,9 +225,9 @@ func GetNameNodeRPCInfo(namenode_url string) (call_queue_length *int64, rpc_slow
 	tag_hostname = rfp.Beans[0].TagHostname
 	tag_port = rfp.Beans[0].TagPort
 
-	utils.Logger.Printf("rfp.Beans[0].CallQueueLength: %d\t rfp.Beans[0].RPCSlowCalls: %d\t rfp.Beans[0].NumOpenConnections: %d\n", *rfp.Beans[0].CallQueueLength, *rfp.Beans[0].RPCSlowCalls, *rfp.Beans[0].NumOpenConnections)
-	utils.Logger.Printf("rfp.Beans[0].NumDroppedConnections: %d\t rfp.Beans[0].RPCAuthenticationSuccesses: %d\t rfp.Beans[0].RPCAuthenticationFailures: %d\n", *rfp.Beans[0].NumDroppedConnections, *rfp.Beans[0].RPCAuthenticationSuccesses, *rfp.Beans[0].RPCAuthenticationFailures)
-	utils.Logger.Printf("rfp.Beans[0].SentBytes: %d\t rfp.Beans[0].ReceivedBytes: %d\t rfp.Beans[0].RPCQueueTimeAvgTime: %f\t\n", *rfp.Beans[0].SentBytes, *rfp.Beans[0].ReceivedBytes, *rfp.Beans[0].RPCQueueTimeAvgTime)
+	// utils.Logger.Printf("rfp.Beans[0].CallQueueLength: %d\t rfp.Beans[0].RPCSlowCalls: %d\t rfp.Beans[0].NumOpenConnections: %d\n", *rfp.Beans[0].CallQueueLength, *rfp.Beans[0].RPCSlowCalls, *rfp.Beans[0].NumOpenConnections)
+	// utils.Logger.Printf("rfp.Beans[0].NumDroppedConnections: %d\t rfp.Beans[0].RPCAuthenticationSuccesses: %d\t rfp.Beans[0].RPCAuthenticationFailures: %d\n", *rfp.Beans[0].NumDroppedConnections, *rfp.Beans[0].RPCAuthenticationSuccesses, *rfp.Beans[0].RPCAuthenticationFailures)
+	// utils.Logger.Printf("rfp.Beans[0].SentBytes: %d\t rfp.Beans[0].ReceivedBytes: %d\t rfp.Beans[0].RPCQueueTimeAvgTime: %f\t\n", *rfp.Beans[0].SentBytes, *rfp.Beans[0].ReceivedBytes, *rfp.Beans[0].RPCQueueTimeAvgTime)
 
 	// 主机名和密码
 	utils.Logger.Printf("rfp.Beans[0].TagHostname: %s\t rfp.Beans[0].TagPort: %s\n", *rfp.Beans[0].TagHostname, *rfp.Beans[0].TagPort)
@@ -324,32 +305,32 @@ func GetDataNodeInfo(datanode_url string) (bytes_read *int64, bytes_written *int
 	remote_bytes_written = dna.Beans[0].RemoteBytesWritten
 	tag_hostname = dna.Beans[0].TagHostname
 
-	// datanode读取的数据量
-	fmt.Println("dna.Beans[0].BytesRead: ", dna.Beans[0].BytesRead)
-	utils.Logger.Printf("dna.Beans[0].BytesRead: %d\n", *dna.Beans[0].BytesRead)
-	// datanode写入的数据量
-	fmt.Println("dna.Beans[0].BytesWritten: ", dna.Beans[0].BytesWritten)
-	utils.Logger.Printf("dna.Beans[0].BytesWritten: %d\n", *dna.Beans[0].BytesWritten)
+	// // datanode读取的数据量
+	// fmt.Println("dna.Beans[0].BytesRead: ", dna.Beans[0].BytesRead)
+	// utils.Logger.Printf("dna.Beans[0].BytesRead: %d\n", *dna.Beans[0].BytesRead)
+	// // datanode写入的数据量
+	// fmt.Println("dna.Beans[0].BytesWritten: ", dna.Beans[0].BytesWritten)
+	// utils.Logger.Printf("dna.Beans[0].BytesWritten: %d\n", *dna.Beans[0].BytesWritten)
 
-	// 💗数量
-	fmt.Println("dna.Beans[0].HeartbeatsNumOps: ", dna.Beans[0].HeartbeatsNumOps)
-	utils.Logger.Printf("dna.Beans[0].HeartbeatsNumOps: %d\n", *dna.Beans[0].HeartbeatsNumOps)
+	// // 💗数量
+	// fmt.Println("dna.Beans[0].HeartbeatsNumOps: ", dna.Beans[0].HeartbeatsNumOps)
+	// utils.Logger.Printf("dna.Beans[0].HeartbeatsNumOps: %d\n", *dna.Beans[0].HeartbeatsNumOps)
 
-	// 💗的平均时间
-	fmt.Println("dna.Beans[0].HeartbeatsAvgTime: ", dna.Beans[0].HeartbeatsAvgTime)
-	utils.Logger.Printf("dna.Beans[0].HeartbeatsAvgTime: %f\n", *dna.Beans[0].HeartbeatsAvgTime)
+	// // 💗的平均时间
+	// fmt.Println("dna.Beans[0].HeartbeatsAvgTime: ", dna.Beans[0].HeartbeatsAvgTime)
+	// utils.Logger.Printf("dna.Beans[0].HeartbeatsAvgTime: %f\n", *dna.Beans[0].HeartbeatsAvgTime)
 
-	// 远端读取数据量
-	// fmt.Println("dna.Beans[0].RemoteBytesRead: ", dna.Beans[0].RemoteBytesRead)
-	utils.Logger.Printf("dna.Beans[0].RemoteBytesRead: %d\n", *dna.Beans[0].RemoteBytesRead)
+	// // 远端读取数据量
+	// // fmt.Println("dna.Beans[0].RemoteBytesRead: ", dna.Beans[0].RemoteBytesRead)
+	// utils.Logger.Printf("dna.Beans[0].RemoteBytesRead: %d\n", *dna.Beans[0].RemoteBytesRead)
 
-	// 远端写入数据量
-	// fmt.Println("dna.Beans[0].RemoteBytesWritten: ", dna.Beans[0].RemoteBytesWritten)
-	utils.Logger.Printf("dna.Beans[0].RemoteBytesWritten: %d\n", *dna.Beans[0].RemoteBytesWritten)
+	// // 远端写入数据量
+	// // fmt.Println("dna.Beans[0].RemoteBytesWritten: ", dna.Beans[0].RemoteBytesWritten)
+	// utils.Logger.Printf("dna.Beans[0].RemoteBytesWritten: %d\n", *dna.Beans[0].RemoteBytesWritten)
 
-	// 主机名
-	// fmt.Println("dna.Beans[0].TagHostname: ", dna.Beans[0].TagHostname)
-	utils.Logger.Printf("dna.Beans[0].TagHostname: %s\n", *dna.Beans[0].TagHostname)
+	// // 主机名
+	// // fmt.Println("dna.Beans[0].TagHostname: ", dna.Beans[0].TagHostname)
+	// utils.Logger.Printf("dna.Beans[0].TagHostname: %s\n", *dna.Beans[0].TagHostname)
 
 	return
 }
