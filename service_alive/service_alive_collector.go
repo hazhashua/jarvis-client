@@ -167,7 +167,7 @@ func GetAliveInfos() []DatsourceAlive {
 	netInfo := utils.NetInfoGet()
 	for ethName, ip := range netInfo.EthInfo {
 		if strings.Contains(ethName, "eth") || strings.Contains(ethName, "en") {
-			fmt.Printf("网络设备: %s  ip地址: %s", ethName, ip)
+			utils.Logger.Printf("网络设备: %s  ip地址: %s\n", ethName, ip)
 			localIp = ip
 		}
 	}
@@ -175,26 +175,22 @@ func GetAliveInfos() []DatsourceAlive {
 		var datasourceAlive DatsourceAlive
 		datasourceAlive.ServiceName = servicePort.ServiceName
 		datasourceAlive.ChildService = servicePort.ChildService
-		datasourceAlive.ClusterName = &utils.ClusterName
+		datasourceAlive.ClusterName = &utils.DbConfig.Cluster.Name
 		datasourceAlive.IP = servicePort.IP
 		datasourceAlive.Port = servicePort.Port
 		datasourceAlive.PortType = servicePort.PortType
-		fmt.Println("***: ", *servicePort.IP, servicePort.Port)
+		utils.Logger.Println("***: ", *servicePort.IP, servicePort.Port)
 		if *servicePort.ServiceName == "k8s" {
 			// 如果是k8s服务，则使用进程探活
 			// 如果不是本地的进程探测数据，则跳过
 			if *servicePort.IP == localIp {
-				fmt.Println("ip是本地地址...")
 				utils.Logger.Printf("ip是本地地址...")
 			} else {
-				fmt.Printf("待检测的ip地址: %s\n", *servicePort.IP)
-				fmt.Printf("本地ip地址: %s\n", localIp)
 				utils.Logger.Printf("待检测的ip地址: %s", *servicePort.IP)
 				utils.Logger.Printf("本地ip地址: %s", localIp)
 				// 测试时, 不跳过
 				// continue
 			}
-			fmt.Printf("执行服务进程检测: %s ...\n", *servicePort.ChildService)
 			utils.Logger.Printf("执行服务进程检测: %s ...\n", *servicePort.ChildService)
 			alive := IsProcessRunning(*servicePort.ChildService)
 			if alive == true {
@@ -214,8 +210,7 @@ func GetAliveInfos() []DatsourceAlive {
 				}
 			}
 		}
-		fmt.Println("datsourceAlive: ", datasourceAlive)
-
+		utils.Logger.Println("datsourceAlive: ", datasourceAlive)
 		dataSources = append(dataSources, datasourceAlive)
 		// CheckPorts(fmt.Sprintf("%s:%d", *servicePort.IP, servicePort.Port), "tcp")
 	}
@@ -232,15 +227,14 @@ func CheckPorts(ip_port string, port_type string) bool {
 	// 检测端口
 	conn, err := net.DialTimeout(port_type, ip_port, 1*time.Second)
 	if err != nil {
-		fmt.Println("err: ", err)
-		fmt.Println("["+now+"]", ip_port, "端口未开启(fail)!")
+		fmt.Printf("检测%s超时, [%v], ip_port, 端口未开启(fail), error: %s\n", ip_port, now, err.Error())
 	} else {
 		if conn != nil {
 			check = true
-			fmt.Println("["+now+"]", ip_port, "端口已开启(success)!")
+			utils.Logger.Println("["+now+"]", ip_port, "端口已开启(success)!")
 			conn.Close()
 		} else {
-			fmt.Println("["+now+"]", ip_port, "端口未开启(fail)!")
+			utils.Logger.Println("["+now+"]", ip_port, "端口未开启(fail)!")
 		}
 	}
 	return check

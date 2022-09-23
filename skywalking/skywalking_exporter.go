@@ -46,7 +46,7 @@ func ParseSkyWalkingConfig() *config.SkyWalkingConfig {
 	if bytes, err := ioutil.ReadFile("./skywalking/config.yaml"); err == nil {
 		yaml.Unmarshal(bytes, &skywalkingConfig)
 	} else {
-		fmt.Println("解析本地skywalking配置文件失败!")
+		utils.Logger.Println("解析本地skywalking配置文件失败!")
 	}
 	return &skywalkingConfig
 }
@@ -58,23 +58,22 @@ func NewSkywalkingExporter() *SkyWalkingExporter {
 	beforeOneM := now.Add(time.Duration(-1000000000 * 60 * 480))
 	year, month, day := beforeOneM.Date()
 	eventIndex := fmt.Sprintf("sw_events-%04d%02d%02d", year, month, day)
-	fmt.Printf("skywalking 采集当前时间: %04d-%02d-%02d %02d:%02d:%02d\n", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
+	utils.Logger.Printf("skywalking 采集当前时间: %04d-%02d-%02d %02d:%02d:%02d\n", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
 	skyEventDatas := make([]SkwEvent, 0)
 	var typ SkwEvent
 	events := GetAll(eventIndex, "_doc", typ)
 	if events == nil {
-		fmt.Println("没有查询到es数据...")
 		utils.Logger.Printf("没有查询到es数据...\n")
 		return nil
 	}
 	for _, event := range events {
 		switch ret := event.(type) {
 		case string:
-			fmt.Println("event.(type): ", ret)
+			utils.Logger.Println("event.(type): ", ret)
 		case SkwEvent:
 			typ := SkwEvent(ret)
 			skyEventDatas = append(skyEventDatas, typ)
-			fmt.Printf("event: %v \n", typ)
+			utils.Logger.Printf("event: %v \n", typ)
 		default:
 		}
 		eventInfo := prometheus.NewDesc("event_info", "描述事件的详细信息",
@@ -118,7 +117,7 @@ func (e *SkyWalkingExporter) Describe(ch chan<- *prometheus.Desc) {
 // 收集skywalking事件方法
 func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
 	if e = NewSkywalkingExporter(); e == nil {
-		utils.Logger.Println("es数据为空")
+		utils.Logger.Println("NewSkywalkingExporter()  es数据为空")
 		return
 	}
 
@@ -131,7 +130,7 @@ func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
 	})
 
 	for _, serviceData := range e.CpmDatas {
-		fmt.Println("......", serviceData.ServiceId, "*********", serviceData.EntityId, "*******", serviceData.TimeBucket)
+		utils.Logger.Println("serviceData: ", serviceData)
 	}
 
 	// skywalkingConfig := ParseSkyWalkingConfig()
@@ -139,8 +138,6 @@ func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
 	// 获取event数据
 	eventInfoDatas := e.SkyEventDatas
 	for idx, eventInfo := range e.EventInfos {
-		// "name", "type", "service_name", "start_time", "end_time", "message"
-		// se := SkyEvent(events[idx])
 		start := time.Unix(int64(eventInfoDatas[idx].StartTime/1000), 0).Format("2006-01-02 15:04:05")
 		end := time.Unix(int64(eventInfoDatas[idx].EndTime/1000), 0).Format("2006-01-02 15:04:05")
 		time_bucket := time.Unix(int64(eventInfoDatas[idx].StartTime/1000), 0).Format("200601021504")

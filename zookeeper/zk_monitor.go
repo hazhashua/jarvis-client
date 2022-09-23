@@ -16,7 +16,6 @@ func conn() *zk.Conn {
 
 	zookeeper_config, ok = (utils.ConfigStruct.ConfigData[config.ZOOKEEPER]).(config.ZookeepeConfig)
 	if ok == false {
-		fmt.Println("获取zookeeper config配置失败!")
 		utils.Logger.Println("获取zookeeper config配置失败!")
 		return nil
 	}
@@ -32,10 +31,9 @@ func conn() *zk.Conn {
 	conn, _, err := zk.Connect(hosts, time.Second*5)
 	defer conn.Close()
 	if err != nil {
-		fmt.Println(err)
+		utils.Logger.Println("zk connect fail  error: ", err.Error())
 		return nil
 	} else {
-		fmt.Println("连接成功! ")
 		return conn
 	}
 }

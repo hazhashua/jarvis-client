@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"fmt"
+	"metric_exporter/utils"
 	"regexp"
 	"strconv"
 	"strings"
@@ -39,7 +39,6 @@ func (e *Exporter) includeMetric(s string) bool {
 func (e *Exporter) parseAndRegisterConstMetric(ch chan<- prometheus.Metric, fieldKey, fieldValue string) {
 	orgMetricName := sanitizeMetricName(fieldKey)
 	metricName := orgMetricName
-	fmt.Println("in parseAndRegisterConstMetric, fieldKey: ", fieldKey, " fieldValue: ", fieldValue, "  metricName: ", metricName)
 	if newName, ok := e.metricMapGauges[metricName]; ok {
 		metricName = newName
 	} else {
@@ -77,7 +76,6 @@ func (e *Exporter) parseAndRegisterConstMetric(ch chan<- prometheus.Metric, fiel
 		metricName = "latest_fork_seconds"
 		val = val / 1e6
 	}
-	fmt.Println("开始注册metric desc :", metricName)
 	e.registerConstMetric(ch, metricName, val, t, e.redisCluster, e.redis_config.Cluster.Hosts[e.current_redis_idx], e.redis_config.Cluster.Ips[e.current_redis_idx])
 }
 
@@ -93,10 +91,10 @@ func (e *Exporter) registerConstMetric(ch chan<- prometheus.Metric, metric strin
 	}
 
 	if m, err := prometheus.NewConstMetric(descr, valType, val, labelValues...); err == nil {
-		fmt.Println("metric: ", metric, " 写入ch......")
+		utils.Logger.Println("metric: ", metric, " 写入管道")
 		ch <- m
 	} else {
-		fmt.Println("创建metric: ", metric, " 失败....", err.Error())
+		utils.Logger.Println("创建metric: ", metric, " 失败  error: %s", err.Error())
 	}
 }
 

@@ -62,7 +62,7 @@ func init() {
 		utils.Logger.Printf("client.ElasticsearchVersion(host) error: %s", err.Error())
 		panic(err)
 	}
-	fmt.Printf("Elasticsearch version %s\n", esversion)
+	utils.Logger.Printf("Elasticsearch version %s\n", esversion)
 
 }
 
@@ -150,7 +150,6 @@ func GetAll(index string, types string, typ interface{}) (results []interface{})
 	getRes, err := client.Search().Size(10000).Index(index).Type(types).Do(context.Background())
 	if err != nil {
 		// panic(err)
-		fmt.Println("查询es错误: ", err.Error())
 		utils.Logger.Printf("查询es错误: %s", err.Error())
 		return nil
 	}
@@ -185,7 +184,7 @@ type CpmInfo struct {
 // 抓取当天的service 和 endpoint cpm
 func GetCpmInfo(metricTable string) (cpmInfo []MyCpmInfo) {
 	if metricTable != "service_instance_cpm" && metricTable != "endpoint_cpm" {
-		fmt.Println("参数错误...")
+		utils.Logger.Println("GetCpmInfo 参数错误...")
 		return
 	}
 
@@ -193,7 +192,7 @@ func GetCpmInfo(metricTable string) (cpmInfo []MyCpmInfo) {
 	beforeOneM := time.Now().Add(time.Duration(-1000000000 * 60 * 485))
 	year, m, day := beforeOneM.Date()
 	index := fmt.Sprintf("sw_metrics-cpm-%04d%02d%02d", year, m, day)
-	fmt.Println("index: ", index)
+	utils.Logger.Printf("正在处理的index: %s", index)
 
 	// index = "sw_metrics-cpm-20220817"
 	// fmt.Println("index: ", index)
@@ -203,33 +202,30 @@ func GetCpmInfo(metricTable string) (cpmInfo []MyCpmInfo) {
 	//"service_instance_cpm"
 	termQuery := elastic.NewTermQuery("metric_table", metricTable)
 	timeint := year*10000*10000 + int(m)*10000*100 + day*10000 + beforeOneM.Hour()*100 + beforeOneM.Minute()
-	fmt.Println("timeint: ", timeint)
 	rangeQuery := elastic.NewRangeQuery("time_bucket").Gte(timeint)
 
 	boolQuery := elastic.NewBoolQuery().Must(termQuery, rangeQuery)
 
 	// queryStr := elastic.NewQueryStringQuery("metric_table:service_instance_cpm")
 	if searchRs, err := client.Search(index).Query(boolQuery).Size(10000).Do(context.Background()); err == nil {
-		fmt.Println("搜索到数据...", searchRs.Hits)
-
-		fmt.Println("hit数组长度为: ", searchRs.TotalHits())
+		utils.Logger.Println("hit数组长度为: ", searchRs.TotalHits())
 		if searchRs.TotalHits() <= 0 {
-			fmt.Println("hit数组长度<=0")
+			utils.Logger.Println("warnning: hit数组长度<=0")
 		}
 		for _, rs := range searchRs.Each(reflect.TypeOf(cpm)) {
 			cpmin := rs.(CpmInfo)
-			fmt.Println("遍历搜索到的数据...", " serviceid: ", cpmin.ServiceId)
+			// fmt.Println("遍历搜索到的数据...", " serviceid: ", cpmin.ServiceId)
 			// 转义service_id和entity_id信息
-			s := analysisItem(cpmin.ServiceId)
-			if len(s) == 2 || len(s) == 1 {
-				fmt.Println("解析后的service_id数据: ", s[0])
-			}
+			// s := analysisItem(cpmin.ServiceId)
+			// if len(s) == 2 || len(s) == 1 {
+			// 	fmt.Println("解析后的service_id数据: ", s[0])
+			// }
 			se := analysisItem(cpmin.EntityId)
 			if len(se) == 1 {
-				fmt.Println("解析后的service_id数据: ", se[0])
+				utils.Logger.Println("解析后的service_id数据: ", se[0])
 			} else if len(se) == 2 {
-				fmt.Println("解析后的service_id数据: ", se[0])
-				fmt.Println("解析后的实例或endpoint数据: ", se[1])
+				utils.Logger.Println("解析后的service_id数据: ", se[0])
+				utils.Logger.Println("解析后的实例或endpoint数据: ", se[1])
 			}
 
 			cpms = append(cpms, MyCpmInfo{
@@ -264,7 +260,6 @@ func GetCpmInfo(metricTable string) (cpmInfo []MyCpmInfo) {
 func analysisItem(item string) []string {
 	r := regexp.MustCompile("(.*)(\\.\\d+[_-]?)(.*)")
 	bbs := r.FindSubmatch([]byte(item))
-	fmt.Println("len(findsubmatch): ", len(bbs))
 	if len(bbs) == 2 || len(bbs) == 3 {
 		base641, _ := base64.StdEncoding.DecodeString(string(bbs[1]))
 		return []string{string(base641)}
@@ -272,11 +267,9 @@ func analysisItem(item string) []string {
 		// fmt.Println("match 2: ", string(bbs[2]), string(base642))
 	} else if len(bbs) == 4 {
 		base641, _ := base64.StdEncoding.DecodeString(string(bbs[1]))
-		fmt.Println("match 1: ", string(bbs[1]), string(base641))
-		// base642, _ := base64.StdEncoding.DecodeString(string(bbs[2]))
-		// fmt.Println("match 2: ", string(bbs[2]), string(base642))
+		// fmt.Println("match 1: ", string(bbs[1]), string(base641))
 		base643, _ := base64.StdEncoding.DecodeString(string(bbs[3]))
-		fmt.Println("match 3: ", string(bbs[3]), string(base643))
+		// fmt.Println("match 3: ", string(bbs[3]), string(base643))
 		return []string{string(base641), string(base643)}
 	}
 

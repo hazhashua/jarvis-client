@@ -3,7 +3,6 @@ package redis
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"metric_exporter/config"
 	"metric_exporter/utils"
@@ -75,7 +74,7 @@ func Parse_redis_config() *config.RedisConfig {
 	if bytes, err := ioutil.ReadFile("./redis/config.yaml"); err == nil {
 		err2 := yaml.Unmarshal(bytes, &redis_config)
 		if err2 != nil {
-			fmt.Println("unmarshal config file error: ", err2.Error())
+			utils.Logger.Println("unmarshal redis config file  error: ", err2.Error())
 		}
 	}
 	return redis_config
@@ -166,11 +165,12 @@ func RedisExporter() {
 
 	to, err := time.ParseDuration(*connectionTimeout)
 	if err != nil {
-		log.Fatalf("Couldn't parse connection timeout duration, err: %s", err)
+		log.Fatalf("Couldn't parse connection timeout duration, error: %s", err)
+		utils.Logger.Printf("connectionTimeout格式不正确")
 	}
 
-	fmt.Println("*redisPwd: ", *redisPwd)
-	fmt.Println("*redisPwdFile: ", *redisPwdFile)
+	// fmt.Println("*redisPwd: ", *redisPwd)
+	// fmt.Println("*redisPwdFile: ", *redisPwdFile)
 	passwordMap := make(map[string]string)
 	if *redisPwd == "" && *redisPwdFile != "" {
 		passwordMap, err = LoadPwdFile(*redisPwdFile)
@@ -235,7 +235,7 @@ func RedisExporter() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("redis exporter: ", exp)
+	utils.Logger.Println("redis exporter: ", exp)
 
 	// Verify that initial client keypair and CA are accepted
 	// if (*tlsClientCertFile != "") != (*tlsClientKeyFile != "") {

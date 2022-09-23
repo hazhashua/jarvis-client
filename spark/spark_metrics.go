@@ -53,7 +53,7 @@ func GetMetrics() []string {
 	sparkConfig, err := (utils.ConfigStruct.ConfigData[config.SPARK]).(config.SparkConfig)
 
 	if err != true {
-		fmt.Println("load spark configure failed!")
+		utils.Logger.Println("load spark configure failed!")
 		return []string{}
 	}
 
@@ -73,7 +73,6 @@ func GetMetrics() []string {
 		metric_url := fmt.Sprintf("%s:%d%s", url, sparkConfig.Workerhttp.Port, sparkConfig.Workerhttp.Path)
 		metric_response := utils.GetUrl(metric_url)
 		if metric_response == "" {
-			fmt.Println(fmt.Sprintf("%s worker metric指标获取失败", url))
 			utils.Logger.Printf("%s worker metric指标获取失败\n", url)
 		}
 
@@ -90,10 +89,9 @@ func GetMetrics() []string {
 	}
 
 	url_s := sparkConfig.Masterhttp.Ips
-	fmt.Println("url_s:", url_s)
+	utils.Logger.Println("sparkConfig.Masterhttp.Ips: ", url_s)
 	ports := sparkConfig.Applicationhttp.Ports
-	// ports = append(ports, sparkConfig.Workerhttp.Port)
-	fmt.Println("ports: ", ports)
+	utils.Logger.Println("parkConfig.Applicationhttp.Ports: ", ports)
 	// 抓取master的网页地址，获取active的地址
 	// 添加is_active_node指标
 	var active_node_index int
@@ -102,24 +100,24 @@ func GetMetrics() []string {
 			//获取driver进程的堆栈内存使用率
 			// master_metric_url := yamlConfig.Masterhttp.Ips[idx] + ":" + fmt.Sprintf("%d", yamlConfig.Masterhttp.Port) + yamlConfig.Masterhttp.Path
 			// fmt.Println("master_metric_url", master_metric_url)
-			metric_url := sparkConfig.Applicationhttp.Ips[idx] + ":" + fmt.Sprintf("%d", port) + sparkConfig.Applicationhttp.MainPath
-			fmt.Println("metric_url: ", metric_url)
 
-			metric_url = fmt.Sprintf(url+":%d%s", port, sparkConfig.Masterhttp.Path)
-			fmt.Println("metric_url: ", metric_url)
+			// metric_url := sparkConfig.Applicationhttp.Ips[idx] + ":" + fmt.Sprintf("%d", port) + sparkConfig.Applicationhttp.MainPath
+			// utils.Logger.Println("application_url: ", metric_url)
+
+			metric_url := fmt.Sprintf(url+":%d%s", port, sparkConfig.Applicationhttp.MainPath)
+			utils.Logger.Println("master_url: ", metric_url)
 
 			metric_response := utils.GetUrl(metric_url)
 			if metric_response == "" {
-				fmt.Println(fmt.Sprintf("机器:%s 上没有运行的程序", url))
+				utils.Logger.Println(fmt.Sprintf("机器:%s 上没有运行的程序", url))
 			}
 
 			// fmt.Println("driver_response: ", driver_response)
 			for _, line := range strings.Split(metric_response, "\n") {
 				if strings.Contains(line, "_driver_jvm_heap_usage_Value") {
-					fmt.Println("contains: ", line)
 					reg := regexp.MustCompile("metrics_(.*)_driver_jvm_heap_usage_Value.*")
 					app_name := reg.FindStringSubmatch(line)[1]
-					fmt.Println("app name: ", app_name)
+					utils.Logger.Println("app name: ", app_name)
 					arrs = append(arrs, "driver_jvm_heap_usage{type=\"gauges\", application_name=\""+app_name+"\", host=\""+url+"\" }\n")
 				}
 
@@ -134,32 +132,28 @@ func GetMetrics() []string {
 
 		//查询所有maser的状态
 		// res := utils.GetUrl(url + ":28080")
-		res := utils.GetUrl(url + ":8080")
+		res := utils.GetUrl(url + fmt.Sprintf(":%d", sparkConfig.Masterhttp.Port))
 		host_list := strings.Split(url, "/")
-		fmt.Println("host_list: ", host_list)
 		host := host_list[2]
 		is_active_node := strings.Contains(res, "<strong>Status:</strong> ALIVE")
-		fmt.Println("is_active_node: ", is_active_node)
+		utils.Logger.Printf("%s is active_node: %v\n", url, is_active_node)
 		is_standby_node := strings.Contains(res, "<strong>Status:</strong> STANDBY")
-		fmt.Println("is_standby_node: ", is_standby_node)
+		utils.Logger.Printf("%s is standby_node: %v\n", url, is_standby_node)
 
 		if is_active_node {
 			arrs = append(arrs, "is_active_master"+"{type=\"gauges\", host=\""+host+"\"} 1\n")
 			active_node_index = idx
 
 			// 获取完成的app数量
-			fmt.Println("active_url: ", url+fmt.Sprintf(":%d", sparkConfig.Masterhttp.Port))
-			// response := utils.GetUrl(urls[active_node_index] + ":28080")
+			utils.Logger.Println("active_url: ", url+fmt.Sprintf(":%d", sparkConfig.Masterhttp.Port))
 			response := utils.GetUrl(url_array[active_node_index] + ":8080")
 			reg := regexp.MustCompile("(\\d+) <a href=\"#completed-app\">Completed</a>")
 			match_strings := reg.FindStringSubmatch(response)
-			fmt.Println("match strings: ", match_strings[1])
-			// strconv.Itoa(match_strings[1])    int to string...
 			arrs = append(arrs, "master_finished_apps{type=\"gauges\", host=\""+host+"\"} "+match_strings[1]+"\n")
 
 			reg = regexp.MustCompile("(\\d+) <a href=\"#running-app\">Running</a>")
 			match_strings = reg.FindStringSubmatch(response)
-			fmt.Println("match strings: ", match_strings[1])
+			// fmt.Println("match strings: ", match_strings[1])
 			// strconv.Itoa(match_strings[1])    int to string...
 			arrs = append(arrs, "master_running_apps{type=\"gauges\", host=\""+host+"\"} "+match_strings[1]+"\n")
 		} else if is_standby_node {
@@ -167,17 +161,13 @@ func GetMetrics() []string {
 		} else {
 			continue
 		}
-		fmt.Println("url: ", url)
 	}
-	fmt.Println("active node index: ", active_node_index)
-
-	// 0 <a href="#completed-app">Completed</a>
-	// fmt.Println("match strings: ", match_strings)
+	// fmt.Println("active node index: ", active_node_index)
 
 	// 查询active http metric数据
 	response := utils.GetUrl(url_array[active_node_index] + fmt.Sprintf(":8080%s", sparkConfig.Masterhttp.Path))
 	if response == "" {
-		fmt.Println("active master的指标数据为空！！！！")
+		utils.Logger.Println("active master的指标数据为空！！！！")
 	}
 
 	regexp := regexp.MustCompile("[^{]*{(.*)}.*")
@@ -216,7 +206,7 @@ func GetMetrics() []string {
 		s := strings.ReplaceAll(line, ss[1], ss[1]+","+cluster)
 		print_metrics = append(print_metrics, s)
 	}
-	fmt.Println("prit_metrics: ", print_metrics)
+	utils.Logger.Println("prit_metrics: ", print_metrics)
 
 	// 解析active地址中的有用的metric信息
 	return print_metrics
@@ -227,16 +217,14 @@ func ParseSparkConf() (*config.SparkConfig, error) {
 	// var yamlConfig YamlConfig
 	dir, _ := os.Getwd()
 	confPath := dir + "/spark/config.yaml"
-	fmt.Println("confPath: ", confPath)
+	utils.Logger.Println("config Path: ", confPath)
 
 	data, _ := ioutil.ReadFile(confPath)
 	err := yaml.Unmarshal(data, config)
 	if err != nil {
-		fmt.Println("err: ", err)
+		utils.Logger.Println("Unmarshal spark conf  error: ", err)
 	}
-	fmt.Println("configStruct: ", config)
 
-	fmt.Println("yamlConfig data: ", config.Masterhttp.Ips, config.Masterhttp.Port, config.Masterhttp.Path)
-	fmt.Println("configStruct.IpList: ", config.Applicationhttp.ExecutorPath, config.Applicationhttp.Ips, config.Applicationhttp.Ports, config.Applicationhttp.MainPath)
+	utils.Logger.Println("yamlConfig data: ", config)
 	return config, nil
 }

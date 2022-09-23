@@ -90,8 +90,6 @@ type Options struct {
 
 // NewRedisExporter returns a new exporter of Redis metrics.
 func NewRedisExporter(redis_config config.RedisConfig, opts Options) (*Exporter, error) {
-	log.Debugf("NewRedisExporter options: %#v", opts)
-
 	ip := redis_config.Cluster.Ips[0]
 	// host := redis_config.Cluster.Hosts[0]
 	cluster := redis_config.Cluster.Name
@@ -437,10 +435,9 @@ func NewRedisExporter(redis_config config.RedisConfig, opts Options) (*Exporter,
 	} {
 		e.metricDescriptions[k] = newMetricDescr(opts.Namespace, k, desc.txt, desc.lbls)
 	}
-	fmt.Println("********************")
 	if e.options.MetricsPath == "" {
-		fmt.Println("set  e.options.MetricsPath.....")
 		e.options.MetricsPath = "/redis/metrics"
+		utils.Logger.Println("set  e.options.MetricsPath: ", e.options.MetricsPath)
 	}
 
 	e.mux = http.NewServeMux()
@@ -471,8 +468,6 @@ func NewRedisExporter(redis_config config.RedisConfig, opts Options) (*Exporter,
 	// e.mux.HandleFunc("/", e.indexHandler)
 	// e.mux.HandleFunc("/scrape", e.scrapeHandler)
 	// e.mux.HandleFunc("/health", e.healthHandler)
-
-	fmt.Println("after e.options.MetricsPath.....")
 	return e, nil
 }
 
@@ -508,7 +503,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.totalScrapes.Inc()
 
 	for idx, ip := range e.redis_config.Cluster.Ips {
-		fmt.Println("暴露第", idx, "个redis的监控数据")
+		// fmt.Println("暴露第", idx, "个redis的监控数据")
 		e.redisAddr = fmt.Sprintf("redis://%s:%d", ip, e.redis_config.Cluster.RedisPort)
 		e.current_redis_idx = idx
 		if e.redisAddr != "" {
@@ -660,20 +655,18 @@ func (e *Exporter) scrapeRedisHost(ch chan<- prometheus.Metric) error {
 	} else if dbCount == 0 {
 		// in non-cluster mode, if dbCount is zero then "CONFIG" failed to retrieve a valid
 		// number of databases and we use the Redis config default which is 16
-
 		dbCount = 16
 	}
 
 	log.Debugf("dbCount: %d", dbCount)
 	// 解析info all返回的数据
 	e.extractInfoMetrics(ch, infoAll, dbCount, *redis_config)
-
 	e.extractLatencyMetrics(ch, c)
 
 	if e.options.IsCluster {
 		clusterClient, err := e.connectToRedisCluster()
 		if err != nil {
-			log.Errorf("Couldn't connect to redis cluster")
+			utils.Logger.Printf("error: Couldn't connect to redis cluster")
 			return err
 		}
 		defer clusterClient.Close()

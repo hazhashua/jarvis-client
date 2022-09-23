@@ -55,11 +55,9 @@ func Parse_zookeeper_config() *ZookeeperConfig {
 	zk_config := new(ZookeeperConfig)
 	err = yaml.Unmarshal(bytes, zk_config)
 	if err != nil {
-		fmt.Println("err: ", err.Error())
+		utils.Logger.Println("Unmarshal 解析zookeeper配置失败   error: ", err.Error())
 	}
-	fmt.Print(zk_config.Cluster.Name)
-	fmt.Println(zk_config.Cluster.Hosts)
-	fmt.Println(zk_config.Cluster.ClientPort)
+	utils.Logger.Println(zk_config)
 	return zk_config
 }
 
@@ -100,9 +98,8 @@ func ZookeeperExporter() {
 	for _, host := range zk_config.Cluster.Hosts {
 		hosts = append(hosts, fmt.Sprintf("%s:%s", host, zk_config.Cluster.ClientPort))
 	}
-
-	log.Printf("info: zookeeper hosts: %v", hosts)
-	log.Printf("info: serving metrics at %s%s", *listen, *location)
+	utils.Logger.Printf("info: zookeeper hosts: %v\n", hosts)
+	utils.Logger.Printf("info: serving metrics at %s%s\n", *listen, *location)
 	serveMetrics(&Options{
 		Cluster:    *zkcluster,
 		Timeout:    *timeout,
@@ -138,12 +135,12 @@ func dial(host string, timeout time.Duration, clientCert *tls.Certificate) (net.
 func getMetrics(options *Options) map[string]string {
 	metrics := map[string]string{}
 	timeout := time.Duration(options.Timeout) * time.Second
-	fmt.Println("options.Hosts: ", options.Hosts)
+	// fmt.Println("options.Hosts: ", options.Hosts)
 
 	for _, h := range options.Hosts {
 		tcpaddr, err := net.ResolveTCPAddr("tcp", h)
 		if err != nil {
-			log.Printf("warning: cannot resolve zk hostname '%s': %s", h, err)
+			utils.Logger.Printf("warning: cannot resolve zk hostname '%s': %s", h, err)
 			continue
 		}
 
@@ -153,7 +150,7 @@ func getMetrics(options *Options) map[string]string {
 
 		conn, err := dial(tcpaddr.String(), timeout, options.ClientCert)
 		if err != nil {
-			log.Printf("warning: cannot connect to %s: %v", h, err)
+			utils.Logger.Printf("warning: cannot connect to %s: %v", h, err)
 			metrics[zkUp] = "0"
 			continue
 		}
@@ -173,7 +170,7 @@ func getMetrics(options *Options) map[string]string {
 		// 'mntr' command isn't allowed in zk config, log as a warning
 		if strings.Contains(lines[0], cmdNotExecutedSffx) {
 			metrics[zkUp] = "0"
-			log.Printf(commandNotAllowedTmpl, "mntr", hostLabel)
+			utils.Logger.Printf(commandNotAllowedTmpl, "mntr", hostLabel)
 			continue
 		}
 
@@ -214,7 +211,7 @@ func getMetrics(options *Options) map[string]string {
 				}
 
 				if !isDigit(value) {
-					log.Printf("warning: skipping metric %q which holds not-digit value: %q", key, value)
+					utils.Logger.Printf("warning: skipping metric %q which holds not-digit value: %q\n", key, value)
 					continue
 				}
 
@@ -258,12 +255,12 @@ func sendZookeeperCmd(conn net.Conn, host, cmd string) string {
 	defer conn.Close()
 	_, err := conn.Write([]byte(cmd))
 	if err != nil {
-		log.Printf("warning: failed to send '%s' to '%s': %s", cmd, host, err)
+		utils.Logger.Printf("warning: failed to send '%s' to '%s': %s", cmd, host, err)
 	}
 
 	res, err := ioutil.ReadAll(conn)
 	if err != nil {
-		log.Printf("warning: failed read '%s' response from '%s': %s", cmd, host, err)
+		utils.Logger.Printf("warning: failed read '%s' response from '%s': %s", cmd, host, err)
 	}
 	return string(res)
 }
@@ -271,9 +268,7 @@ func sendZookeeperCmd(conn net.Conn, host, cmd string) string {
 // serve zk metrics at chosen address and url
 func serveMetrics(options *Options) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		// metric1:[...], metric2:[...]
 		metrics := getMetrics(options)
-
 		keys := make([]string, 0)
 		for k := range metrics {
 			keys = append(keys, k)
