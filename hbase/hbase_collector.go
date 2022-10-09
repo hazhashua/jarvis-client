@@ -199,8 +199,8 @@ func QueryMetric() *hbaseData {
 	query_url := fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=Server")
 	utils.Logger.Printf("query_url: %s", query_url)
 
-	active_no, jmx_http_url := initUrl()
-	if active_no == -1 {
+	active_master_index, jmx_http_url := initUrl()
+	if active_master_index == -1 {
 		utils.Logger.Printf("initUrl() return -1\n")
 		// 没有找到active master, 返回
 		return &hbaseData{
@@ -216,9 +216,9 @@ func QueryMetric() *hbaseData {
 	// hbase_config := ParseHbaseConfig()
 	hbase_config := (utils.ConfigStruct.ConfigData[config.HBASE]).(config.HbaseConfigure)
 
-	host := hbase_config.Cluster.Hosts[active_no]
+	host := hbase_config.Cluster.Hosts[active_master_index]
 	cluster := hbase_config.Cluster.ClusterName
-	ip := hbase_config.Cluster.Names[active_no]
+	ip := hbase_config.Cluster.Names[active_master_index]
 	hmaster_data.cluster = &cluster
 	hmaster_data.host = &host
 	hmaster_data.ip = &ip
@@ -645,15 +645,18 @@ func NewHbaseCollector() *hbaseCollector {
 		// tableSize         int64
 		// regionServer      string
 		region_dynamic_metricL := make([]hbaseRegionDynamicMetric, 0)
-		for i := 0; i < len(hbasedatas.regionDatas[length].tableDatas); i++ {
-			var region_dynamic_metrics hbaseRegionDynamicMetric
-			region_dynamic_metrics.TableInfo = prometheus.NewDesc("table_info", "the table info on every regionservers",
-				[]string{"cluster", "namespace", "table_name", "region_count", "storefile_count", "read_request_count", "write_request_count", "table_size", "regionserver"},
-				prometheus.Labels{})
-			region_dynamic_metrics.TableInfoValType = prometheus.GaugeValue
-			region_dynamic_metricL = append(region_dynamic_metricL, region_dynamic_metrics)
+		// 集群状态正常时，创建table_info desc
+		if len(hbasedatas.regionDatas) > length {
+			for i := 0; i < len(hbasedatas.regionDatas[length].tableDatas); i++ {
+				var region_dynamic_metrics hbaseRegionDynamicMetric
+				region_dynamic_metrics.TableInfo = prometheus.NewDesc("table_info", "the table info on every regionservers",
+					[]string{"cluster", "namespace", "table_name", "region_count", "storefile_count", "read_request_count", "write_request_count", "table_size", "regionserver"},
+					prometheus.Labels{})
+				region_dynamic_metrics.TableInfoValType = prometheus.GaugeValue
+				region_dynamic_metricL = append(region_dynamic_metricL, region_dynamic_metrics)
+			}
+			region_dynamicss = append(region_dynamicss, region_dynamic_metricL)
 		}
-		region_dynamicss = append(region_dynamicss, region_dynamic_metricL)
 
 	}
 
