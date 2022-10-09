@@ -713,7 +713,7 @@ func NewHbaseCollector() *hbaseCollector {
 //Each and every collector must implement the Describe function.
 //It essentially writes all descriptors to the prometheus desc channel.
 func (collector *hbaseCollector) Describe(ch chan<- *prometheus.Desc) {
-	for _, metric := range collector.regionMetrics {
+	for idx, metric := range collector.regionMetrics {
 		ch <- metric.BlockCacheCountHitPercent
 		ch <- metric.BlockCacheExpressHitPercent
 		ch <- metric.NumActiveHandler
@@ -733,6 +733,11 @@ func (collector *hbaseCollector) Describe(ch chan<- *prometheus.Desc) {
 		ch <- metric.SlowIncrementCount
 		ch <- metric.FSReadTimeMax
 		ch <- metric.FSWriteTimeMax
+		if len(collector.regionDynamicMetrics) > idx {
+			for _, metric := range collector.regionDynamicMetrics[idx] {
+				ch <- metric.TableInfo
+			}
+		}
 	}
 	ch <- collector.masterMetrics.NumRegionServers
 	ch <- collector.masterMetrics.NumDeadRegionServers
