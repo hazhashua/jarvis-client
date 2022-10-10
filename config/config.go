@@ -12,6 +12,19 @@ const (
 	SKYWALKING   string = "skywalking"
 	SPARK        string = "spark"
 	ZOOKEEPER    string = "zookeeper"
+
+	HADOOP_METRICPATH       string = "/hadoop/metrics"
+	HBASE_METRICPATH        string = "/hbase/metrics"
+	HIVE_METRICPATH         string = "/hive/metrics"
+	KAFKA_METRICPATH        string = "/kafka/metrics"
+	MICROSERVICE_METRICPATH string = "/micro_service/metrics"
+	MYSQL_METRICPATH        string = "/mysql/metrics"
+	NODE_METRICPATH         string = "/node/metrics"
+	REDIS_METRICPATH        string = "/redis/metrics"
+	SKYWALKING_METRICPATH   string = "/skywalking/metrics"
+	SPARK_METRICPATH        string = "/spark/metrics"
+	ZOOKEEPER_METRICPATH    string = "/zookeeper/metrics"
+	ALIVE_METRICPATH        string = "/alive/metrics"
 )
 
 type K8sConfig struct {
