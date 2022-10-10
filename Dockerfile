@@ -23,6 +23,13 @@ WORKDIR /opt
 # 复制打包的 Go 文件到系统用户可执行程序目录下
 COPY --from=golang /opt/collector /opt
 
-# 容器启动时运行的命令
-ENTRYPOINT ["/opt/collector", "-model" ]
-CMD [ "config" ]
+# 给我们要传的参数一个初始值
+# ENV MODELS="all"      
+
+# 启动命令 获取config配置
+ENTRYPOINT ["/opt/collector", "-model", "config" ]
+# CMD  ${MODELS}
+
+# 启动命令 全部模块启动
+# ENTRYPOINT ["/opt/collector", "-model", "all" ]
+
