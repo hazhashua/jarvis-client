@@ -36,7 +36,7 @@ type RpcActivityForPort9867Bean struct {
 	RPCProcessingTimeNumOps          *int64   `json:"RpcProcessingTimeNumOps,omitempty"`
 	RPCProcessingTimeAvgTime         *int64   `json:"RpcProcessingTimeAvgTime,omitempty"`
 	DeferredRPCProcessingTimeNumOps  *int64   `json:"DeferredRpcProcessingTimeNumOps,omitempty"`
-	DeferredRPCProcessingTimeAvgTime *int64   `json:"DeferredRpcProcessingTimeAvgTime,omitempty"`
+	DeferredRPCProcessingTimeAvgTime *float32 `json:"DeferredRpcProcessingTimeAvgTime,omitempty"`
 	RPCAuthenticationFailures        *int64   `json:"RpcAuthenticationFailures,omitempty"`
 	RPCAuthenticationSuccesses       *int64   `json:"RpcAuthenticationSuccesses,omitempty"`
 	RPCAuthorizationFailures         *int64   `json:"RpcAuthorizationFailures,omitempty"`

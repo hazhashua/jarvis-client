@@ -62,30 +62,30 @@ type NameNodeActivityBean struct {
 	SyncsAvgTime                      *float64    `json:"SyncsAvgTime,omitempty"`
 	TransactionsBatchedInSync         *int64      `json:"TransactionsBatchedInSync,omitempty"`
 	StorageBlockReportNumOps          *int64      `json:"StorageBlockReportNumOps,omitempty"`
-	StorageBlockReportAvgTime         *int64      `json:"StorageBlockReportAvgTime,omitempty"`
+	StorageBlockReportAvgTime         *float32    `json:"StorageBlockReportAvgTime,omitempty"`
 	CacheReportNumOps                 *int64      `json:"CacheReportNumOps,omitempty"`
-	CacheReportAvgTime                *int64      `json:"CacheReportAvgTime,omitempty"`
+	CacheReportAvgTime                *float32    `json:"CacheReportAvgTime,omitempty"`
 	GenerateEDEKTimeNumOps            *int64      `json:"GenerateEDEKTimeNumOps,omitempty"`
-	GenerateEDEKTimeAvgTime           *int64      `json:"GenerateEDEKTimeAvgTime,omitempty"`
+	GenerateEDEKTimeAvgTime           *float32    `json:"GenerateEDEKTimeAvgTime,omitempty"`
 	WarmUpEDEKTimeNumOps              *int64      `json:"WarmUpEDEKTimeNumOps,omitempty"`
-	WarmUpEDEKTimeAvgTime             *int64      `json:"WarmUpEDEKTimeAvgTime,omitempty"`
+	WarmUpEDEKTimeAvgTime             *float32    `json:"WarmUpEDEKTimeAvgTime,omitempty"`
 	ResourceCheckTimeNumOps           *int64      `json:"ResourceCheckTimeNumOps,omitempty"`
 	ResourceCheckTimeAvgTime          *float64    `json:"ResourceCheckTimeAvgTime,omitempty"`
 	SafeModeTime                      *int64      `json:"SafeModeTime,omitempty"`
 	FSImageLoadTime                   *int64      `json:"FsImageLoadTime,omitempty"`
 	EditLogTailTimeNumOps             *int64      `json:"EditLogTailTimeNumOps,omitempty"`
-	EditLogTailTimeAvgTime            *int64      `json:"EditLogTailTimeAvgTime,omitempty"`
+	EditLogTailTimeAvgTime            *float32    `json:"EditLogTailTimeAvgTime,omitempty"`
 	EditLogFetchTimeNumOps            *int64      `json:"EditLogFetchTimeNumOps,omitempty"`
 	EditLogFetchTimeAvgTime           *float64    `json:"EditLogFetchTimeAvgTime,omitempty"`
 	NumEditLogLoadedNumOps            *int64      `json:"NumEditLogLoadedNumOps,omitempty"`
-	NumEditLogLoadedAvgCount          *int64      `json:"NumEditLogLoadedAvgCount,omitempty"`
+	NumEditLogLoadedAvgCount          *float32    `json:"NumEditLogLoadedAvgCount,omitempty"`
 	EditLogTailIntervalNumOps         *int64      `json:"EditLogTailIntervalNumOps,omitempty"`
-	EditLogTailIntervalAvgTime        *int64      `json:"EditLogTailIntervalAvgTime,omitempty"`
+	EditLogTailIntervalAvgTime        *float32    `json:"EditLogTailIntervalAvgTime,omitempty"`
 	GetEditNumOps                     *int64      `json:"GetEditNumOps,omitempty"`
-	GetEditAvgTime                    *int64      `json:"GetEditAvgTime,omitempty"`
+	GetEditAvgTime                    *float32    `json:"GetEditAvgTime,omitempty"`
 	GetImageNumOps                    *int64      `json:"GetImageNumOps,omitempty"`
-	GetImageAvgTime                   *int64      `json:"GetImageAvgTime,omitempty"`
+	GetImageAvgTime                   *float32    `json:"GetImageAvgTime,omitempty"`
 	PutImageNumOps                    *int64      `json:"PutImageNumOps,omitempty"`
-	PutImageAvgTime                   *int64      `json:"PutImageAvgTime,omitempty"`
+	PutImageAvgTime                   *float32    `json:"PutImageAvgTime,omitempty"`
 	TotalFileOps                      *int64      `json:"TotalFileOps,omitempty"`
 }

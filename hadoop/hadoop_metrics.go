@@ -34,7 +34,7 @@ func GetAppInfo(yarnUrl string) (apps_submitted *int64, apps_running *int64, app
 	utils.Logger.Printf("request url: %s", url)
 	res := utils.GetUrl(url)
 	// fmt.Println("url response: ", res)
-	utils.Logger.Printf("url:%s  response: %s\n", url, res)
+	// utils.Logger.Printf("url:%s  response: %s\n", url, res)
 	app_info := []byte(res)
 	rma, err := UnmarshalResourceManagerApp(app_info)
 	if err != nil {
@@ -154,14 +154,22 @@ func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (num_active_nms *int
 	if err != nil {
 		utils.Logger.Printf("UnmarshalClusterMetrics(cluster_metrics_bytes) error:%s\n", err.Error())
 	}
-	num_active_nms = cm.Beans[0].NumActiveNMS
-	// utils.Logger.Printf("cm.Beans[0].NumActiveNMS: %d\n", *cm.Beans[0].NumActiveNMS)
-	num_lost_nms = cm.Beans[0].NumLostNMS
-	// utils.Logger.Printf("cm.Beans[0].NumLostNMS: %d\n", *cm.Beans[0].NumLostNMS)
-	num_shutdown_nms = cm.Beans[0].NumShutdownNMS
-	// utils.Logger.Printf("cm.Beans[0].NumShutdownNMS: %d\n", *cm.Beans[0].NumShutdownNMS)
-	num_unhealthy_nms = cm.Beans[0].NumUnhealthyNMS
-	// utils.Logger.Printf("cm.Beans[0].NumUnhealthyNMS: %d\n", *cm.Beans[0].NumUnhealthyNMS)
+	if len(cm.Beans) == 0 {
+		*num_active_nms = -1
+		*num_lost_nms = -1
+		*num_shutdown_nms = -1
+		*num_unhealthy_nms = -1
+	} else {
+		num_active_nms = cm.Beans[0].NumActiveNMS
+		// utils.Logger.Printf("cm.Beans[0].NumActiveNMS: %d\n", *cm.Beans[0].NumActiveNMS)
+		num_lost_nms = cm.Beans[0].NumLostNMS
+		// utils.Logger.Printf("cm.Beans[0].NumLostNMS: %d\n", *cm.Beans[0].NumLostNMS)
+		num_shutdown_nms = cm.Beans[0].NumShutdownNMS
+		// utils.Logger.Printf("cm.Beans[0].NumShutdownNMS: %d\n", *cm.Beans[0].NumShutdownNMS)
+		num_unhealthy_nms = cm.Beans[0].NumUnhealthyNMS
+		// utils.Logger.Printf("cm.Beans[0].NumUnhealthyNMS: %d\n", *cm.Beans[0].NumUnhealthyNMS)
+
+	}
 
 	//获取datanode存活数据
 	for idx, url := range namenodeUrls {

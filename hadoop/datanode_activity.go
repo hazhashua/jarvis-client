@@ -54,12 +54,12 @@ type DataNodeActivityBean struct {
 	RAMDiskBlocksEvicted                       *int64      `json:"RamDiskBlocksEvicted,omitempty"`
 	RAMDiskBlocksEvictedWithoutRead            *int64      `json:"RamDiskBlocksEvictedWithoutRead,omitempty"`
 	RAMDiskBlocksEvictionWindowMSNumOps        *int64      `json:"RamDiskBlocksEvictionWindowMsNumOps,omitempty"`
-	RAMDiskBlocksEvictionWindowMSAvgTime       *int64      `json:"RamDiskBlocksEvictionWindowMsAvgTime,omitempty"`
+	RAMDiskBlocksEvictionWindowMSAvgTime       *float32    `json:"RamDiskBlocksEvictionWindowMsAvgTime,omitempty"`
 	RAMDiskBlocksLazyPersisted                 *int64      `json:"RamDiskBlocksLazyPersisted,omitempty"`
 	RAMDiskBlocksDeletedBeforeLazyPersisted    *int64      `json:"RamDiskBlocksDeletedBeforeLazyPersisted,omitempty"`
 	RAMDiskBytesLazyPersisted                  *int64      `json:"RamDiskBytesLazyPersisted,omitempty"`
 	RAMDiskBlocksLazyPersistWindowMSNumOps     *int64      `json:"RamDiskBlocksLazyPersistWindowMsNumOps,omitempty"`
-	RAMDiskBlocksLazyPersistWindowMSAvgTime    *int64      `json:"RamDiskBlocksLazyPersistWindowMsAvgTime,omitempty"`
+	RAMDiskBlocksLazyPersistWindowMSAvgTime    *float32    `json:"RamDiskBlocksLazyPersistWindowMsAvgTime,omitempty"`
 	FsyncCount                                 *int64      `json:"FsyncCount,omitempty"`
 	VolumeFailures                             *int64      `json:"VolumeFailures,omitempty"`
 	DatanodeNetworkErrors                      *int64      `json:"DatanodeNetworkErrors,omitempty"`
@@ -69,29 +69,29 @@ type DataNodeActivityBean struct {
 	WriteBlockOpNumOps                         *int64      `json:"WriteBlockOpNumOps,omitempty"`
 	WriteBlockOpAvgTime                        *float64    `json:"WriteBlockOpAvgTime,omitempty"`
 	BlockChecksumOpNumOps                      *int64      `json:"BlockChecksumOpNumOps,omitempty"`
-	BlockChecksumOpAvgTime                     *int64      `json:"BlockChecksumOpAvgTime,omitempty"`
+	BlockChecksumOpAvgTime                     *float32    `json:"BlockChecksumOpAvgTime,omitempty"`
 	CopyBlockOpNumOps                          *int64      `json:"CopyBlockOpNumOps,omitempty"`
-	CopyBlockOpAvgTime                         *int64      `json:"CopyBlockOpAvgTime,omitempty"`
+	CopyBlockOpAvgTime                         *float32    `json:"CopyBlockOpAvgTime,omitempty"`
 	ReplaceBlockOpNumOps                       *int64      `json:"ReplaceBlockOpNumOps,omitempty"`
-	ReplaceBlockOpAvgTime                      *int64      `json:"ReplaceBlockOpAvgTime,omitempty"`
+	ReplaceBlockOpAvgTime                      *float32    `json:"ReplaceBlockOpAvgTime,omitempty"`
 	HeartbeatsNumOps                           *int64      `json:"HeartbeatsNumOps,omitempty"`
 	HeartbeatsAvgTime                          *float64    `json:"HeartbeatsAvgTime,omitempty"`
 	HeartbeatsTotalNumOps                      *int64      `json:"HeartbeatsTotalNumOps,omitempty"`
 	HeartbeatsTotalAvgTime                     *float64    `json:"HeartbeatsTotalAvgTime,omitempty"`
 	LifelinesNumOps                            *int64      `json:"LifelinesNumOps,omitempty"`
-	LifelinesAvgTime                           *int64      `json:"LifelinesAvgTime,omitempty"`
+	LifelinesAvgTime                           *float32    `json:"LifelinesAvgTime,omitempty"`
 	BlockReportsNumOps                         *int64      `json:"BlockReportsNumOps,omitempty"`
-	BlockReportsAvgTime                        *int64      `json:"BlockReportsAvgTime,omitempty"`
+	BlockReportsAvgTime                        *float32    `json:"BlockReportsAvgTime,omitempty"`
 	IncrementalBlockReportsNumOps              *int64      `json:"IncrementalBlockReportsNumOps,omitempty"`
 	IncrementalBlockReportsAvgTime             *float64    `json:"IncrementalBlockReportsAvgTime,omitempty"`
 	CacheReportsNumOps                         *int64      `json:"CacheReportsNumOps,omitempty"`
-	CacheReportsAvgTime                        *int64      `json:"CacheReportsAvgTime,omitempty"`
+	CacheReportsAvgTime                        *float32    `json:"CacheReportsAvgTime,omitempty"`
 	PacketACKRoundTripTimeNanosNumOps          *int64      `json:"PacketAckRoundTripTimeNanosNumOps,omitempty"`
 	PacketACKRoundTripTimeNanosAvgTime         *float64    `json:"PacketAckRoundTripTimeNanosAvgTime,omitempty"`
 	FlushNanosNumOps                           *int64      `json:"FlushNanosNumOps,omitempty"`
 	FlushNanosAvgTime                          *float64    `json:"FlushNanosAvgTime,omitempty"`
 	FsyncNanosNumOps                           *int64      `json:"FsyncNanosNumOps,omitempty"`
-	FsyncNanosAvgTime                          *int64      `json:"FsyncNanosAvgTime,omitempty"`
+	FsyncNanosAvgTime                          *float32    `json:"FsyncNanosAvgTime,omitempty"`
 	SendDataPacketBlockedOnNetworkNanosNumOps  *int64      `json:"SendDataPacketBlockedOnNetworkNanosNumOps,omitempty"`
 	SendDataPacketBlockedOnNetworkNanosAvgTime *float64    `json:"SendDataPacketBlockedOnNetworkNanosAvgTime,omitempty"`
 	SendDataPacketTransferNanosNumOps          *int64      `json:"SendDataPacketTransferNanosNumOps,omitempty"`
