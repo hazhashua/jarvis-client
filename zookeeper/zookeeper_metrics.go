@@ -68,7 +68,7 @@ func ZookeeperExporter() {
 	// var hosts_str string
 	// hosts_str = strings.Join(zk_config.cluster.Hosts, " ")
 
-	location := flag.String("location", "/zookeeper/metrics", "metrics location")
+	location := flag.String("location", config.ZOOKEEPER_METRICPATH, "metrics location")
 	listen := flag.String("listen", "0.0.0.0:38080", "address to listen on")
 	timeout := flag.Int64("timeout", 30, "timeout for connection to zk servers, in seconds")
 	// zkhosts := flag.String("zk-hosts", hosts_str, "‘ ‘ separated list of zk servers, e.g. '10.0.0.1 10.0.0.2 10.0.0.3'")

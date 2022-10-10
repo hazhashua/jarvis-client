@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"metric_exporter/config"
 	"metric_exporter/hadoop"
 	"metric_exporter/hbase"
 	"metric_exporter/hive"
@@ -14,6 +15,7 @@ import (
 	"metric_exporter/service_alive"
 	"metric_exporter/skywalking"
 	"metric_exporter/spark"
+	"metric_exporter/utils"
 	_ "metric_exporter/utils"
 	"metric_exporter/zookeeper"
 	"net/http"
@@ -93,28 +95,28 @@ func exportAll() {
 	microServiceR := prometheus.NewRegistry()
 	microServiceR.MustRegister(microServiceExporter)
 	microServiceHandler := promhttp.HandlerFor(microServiceR, promhttp.HandlerOpts{})
-	http.Handle("/micro_service/metrics", microServiceHandler)
+	http.Handle(config.MICROSERVICE_METRICPATH, microServiceHandler)
 
 	// 激活服务存活exporter
 	serviceCollector := service_alive.NewServiceAliveCollector()
 	r := prometheus.NewRegistry()
 	r.MustRegister(serviceCollector)
 	handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
-	http.Handle("/alive/metrics", handler)
+	http.Handle(config.ALIVE_METRICPATH, handler)
 
 	// 激活hbase exporter
 	hbaseCollector := hbase.NewHbaseCollector()
 	hbaseR := prometheus.NewRegistry()
 	hbaseR.MustRegister(hbaseCollector)
 	hbaseHandler := promhttp.HandlerFor(hbaseR, promhttp.HandlerOpts{})
-	http.Handle("/hbase/metrics", hbaseHandler)
+	http.Handle(config.HBASE_METRICPATH, hbaseHandler)
 
 	// 激活spark exporter
 	// 数组传入所有的master和standby地址
 	// 查询spark的metric信息，默认为查询测试集群
 	print_metrics := spark.GetMetrics()
 	sparkHandler := spark.SparkHandler{Metrics: print_metrics}
-	http.Handle("/spark/metrics", sparkHandler)
+	http.Handle(config.SPARK_METRICPATH, sparkHandler)
 	fmt.Println("命令行的参数有", len(os.Args))
 
 	// 激活kafka exporter
@@ -122,14 +124,14 @@ func exportAll() {
 	kafka_r := prometheus.NewRegistry()
 	kafka_r.MustRegister(kafka_collector)
 	kafka_handler := promhttp.HandlerFor(kafka_r, promhttp.HandlerOpts{})
-	http.Handle("/kafka/metrics", kafka_handler)
+	http.Handle(config.KAFKA_METRICPATH, kafka_handler)
 
 	// 激活hadoop exporter
 	hadoop_exporter := hadoop.NewHadoopCollector()
 	hadoop_r := prometheus.NewRegistry()
 	hadoop_r.MustRegister(hadoop_exporter)
 	hadoop_handler := promhttp.HandlerFor(hadoop_r, promhttp.HandlerOpts{})
-	http.Handle("/hadoop/metrics", hadoop_handler)
+	http.Handle(config.HADOOP_METRICPATH, hadoop_handler)
 
 	// 激活redis exporter
 	redis.RedisExporter()
@@ -147,28 +149,28 @@ func exportAll() {
 	fmt.Println("hive_exporter is nil ", hive_exporter == nil)
 	hive_r.MustRegister(hive_exporter)
 	hive_handler := promhttp.HandlerFor(hive_r, promhttp.HandlerOpts{})
-	http.Handle("/hive/metrics", hive_handler)
+	http.Handle(config.HIVE_METRICPATH, hive_handler)
 
 	// 激活mysql exporter
 	mysql_exporter := mysql.NewMysqlExporter()
 	mysql_r := prometheus.NewRegistry()
 	mysql_r.MustRegister(mysql_exporter)
 	mysql_handler := promhttp.HandlerFor(mysql_r, promhttp.HandlerOpts{})
-	http.Handle("/mysql/metrics", mysql_handler)
+	http.Handle(config.MYSQL_METRICPATH, mysql_handler)
 
 	// 激活物理机指标采集脚本
 	node_exporter := nodeexporter.NewNodeExporter()
 	node_r := prometheus.NewRegistry()
 	node_r.MustRegister(node_exporter)
 	node_handler := promhttp.HandlerFor(node_r, promhttp.HandlerOpts{})
-	http.Handle("/node/metrics", node_handler)
+	http.Handle(config.NODE_METRICPATH, node_handler)
 
 	// 激活skywalking exporter
 	skywalking_exporter := skywalking.NewSkywalkingExporter()
 	skywalking_r := prometheus.NewRegistry()
 	skywalking_r.MustRegister(skywalking_exporter)
 	skywalking_handler := promhttp.HandlerFor(skywalking_r, promhttp.HandlerOpts{})
-	http.Handle("/skywalking/metrics", skywalking_handler)
+	http.Handle(config.SKYWALKING_METRICPATH, skywalking_handler)
 }
 
 func main() {
@@ -301,6 +303,42 @@ func main() {
 					zookeeper.ZookeeperExporter()
 					modelStart[model] = true
 				}
+			case "config":
+				http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+					fmt.Println("执行配置函数")
+					pyaml := utils.LoadYaml()
+					configs := pyaml.ScrapeConfigs
+					// 读取数据库配置
+					dss := utils.PgDataStoreQuery(utils.Db)
+					for _, ds := range dss {
+						name := ds.DataName
+						path := ds.Path
+						ip := ds.Ip
+						configs = append(configs, struct {
+							JobName       string "yaml:\"job_name,omitempty\" mapstructure:\"job_name\""
+							MetricsPath   string "yaml:\"metrics_path,omitempty\" mapstructure:\"metrics_path\""
+							StaticConfigs []struct {
+								Targets []string "yaml:\"targets,omitempty\""
+							} "yaml:\"static_configs\" mapstructure:\"static_configs\""
+						}{
+							JobName:     name,
+							MetricsPath: path,
+							StaticConfigs: []struct {
+								Targets []string "yaml:\"targets,omitempty\""
+							}{
+								{
+									Targets: []string{ip},
+								},
+							},
+						})
+
+					}
+					pyaml.Global.ScrapeInterval = "15s"
+					pyaml.ScrapeConfigs = configs
+					// 基于数据库配置数据,生成新的yaml文件
+					yamlBytes := utils.GenerateYamlFile(pyaml, "./prometheus_auto.yml")
+					w.Write(yamlBytes)
+				})
 			default:
 				fmt.Println("unknown model...")
 			}
@@ -343,6 +381,16 @@ func main() {
 	// }
 
 	// utils.Migirate()
+
+	// // 测试文件传输
+	// var sc *utils.SftpClient
+	// var err error
+	// if sc, err = utils.NewSessionWithPassword("192.168.10.220", 22, "root", "pwd@123"); err != nil {
+	// 	fmt.Println("ssh 创建连接失败! ")
+	// }
+	// if err = sc.ScopyRmoteFile("/root/collector", "collector_test"); err != nil {
+	// 	fmt.Println("拷贝远程文件到本地, 失败!")
+	// }
 
 	log.Info("Beginning to serve on port :38080")
 	log.Fatal(http.ListenAndServe(":38080", nil))

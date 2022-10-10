@@ -91,7 +91,7 @@ func (e *Exporter) registerConstMetric(ch chan<- prometheus.Metric, metric strin
 	}
 
 	if m, err := prometheus.NewConstMetric(descr, valType, val, labelValues...); err == nil {
-		utils.Logger.Println("metric: ", metric, " 写入管道")
+		// utils.Logger.Println("metric: ", metric, " 写入管道")
 		ch <- m
 	} else {
 		utils.Logger.Println("创建metric: ", metric, " 失败  error: %s", err.Error())
