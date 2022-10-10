@@ -56,6 +56,8 @@ type MachineExporter struct {
 	processNum           int
 	physicalMetrics      PhysicalDesc
 	physicalMetricsData  *ProcessInfo
+	netInfoData          *utils.NetInfo
+	cpuData              *CpuInfo
 	virtualMetrics       VirtualDesc
 }
 
@@ -138,6 +140,8 @@ func NewNodeExporter() *MachineExporter {
 		physicalMetrics.processInfoValType[i] = prometheus.GaugeValue
 	}
 
+	cpuInfo := CpuUsageGet()
+	netInfo := utils.NetInfoGet()
 	var virtualMetrics VirtualDesc
 	return &MachineExporter{
 		physicalDiskNum:      deviceNum,
@@ -146,6 +150,8 @@ func NewNodeExporter() *MachineExporter {
 		physicalMetrics:      physicalMetrics,
 		physicalMetricsData:  processInfos,
 		physicalNetDeviceNum: netDeviceNum,
+		cpuData:              cpuInfo,
+		netInfoData:          netInfo,
 		virtualMetrics:       virtualMetrics,
 	}
 }
