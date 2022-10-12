@@ -115,10 +115,12 @@ func GetMetrics() []string {
 			// fmt.Println("driver_response: ", driver_response)
 			for _, line := range strings.Split(metric_response, "\n") {
 				if strings.Contains(line, "_driver_jvm_heap_usage_Value") {
-					reg := regexp.MustCompile("metrics_(.*)_driver_jvm_heap_usage_Value.*")
+					reg := regexp.MustCompile("metrics_(.*)_driver_jvm_heap_usage_Value(.*)")
 					app_name := reg.FindStringSubmatch(line)[1]
+					valueS := reg.FindStringSubmatch(line)[2]
+					value := strings.Split(valueS, " ")[1]
 					utils.Logger.Println("app name: ", app_name)
-					arrs = append(arrs, "driver_jvm_heap_usage{type=\"gauges\", application_name=\""+app_name+"\", host=\""+url+"\" }\n")
+					arrs = append(arrs, "driver_jvm_heap_usage{type=\"gauges\", application_name=\""+app_name+"\", host=\""+url+"\" } "+value+"\n")
 				}
 
 				// if strings.Contains(line, "metrics_jvm_heap_usage_Value") {
