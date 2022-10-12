@@ -33,6 +33,19 @@ type dataGather struct {
 	UpdateTime   time.Time
 }
 
+type DataStroe struct {
+	Id         int
+	DataName   string
+	Ip         string
+	Remarks    string
+	DataType   string
+	CreateTime time.Time
+	UpdateTime time.Time
+	Path       string
+}
+
+type Data_store_configure_default DataStroe
+
 type gatherName struct {
 	Id   int64
 	Name string
@@ -89,8 +102,30 @@ func PgServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 				JOIN public.gather_name gn 
 				ON dgc.service_type=gn.id `
 	db.Raw(sql).Scan(&sps)
-
 	return sps
+}
+
+// 查询exporter地址数据
+func PgDataStoreQuery(db *gorm.DB) []DataStroe {
+	dss := make([]DataStroe, 0)
+	sql := ` SELECT dsc.id as id,
+			 dsc.data_name as dataname,
+			 dsc.ip as ip,
+			 dsc.remarks as remarks,
+			 dsc.data_type as datatype,
+			 dsc.create_name as create_name,
+			 dsc.create_time as create_time,
+			 dsc.update_time as update_time,
+			 dsc.path as path
+			 FROM PUBLIC.data_store_configure dsc`
+	db.Raw(sql).Scan(&dss)
+	return dss
+
+}
+
+// 数据写入data_store_cofigure_default表
+func PgDataStoreInsert(db *gorm.DB, datas *Data_store_configure_default) {
+	db = db.Create(datas)
 }
 
 // 查询基础服务存活数据的个数

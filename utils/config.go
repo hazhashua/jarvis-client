@@ -27,9 +27,10 @@ import (
 //   datasourceinfo:
 //     schema: cluster
 
-func ParseDbConfig() *config.DbConfig {
-	if bytes, err := ioutil.ReadFile("./config.yaml"); err == nil {
-		var dbconfig config.DbConfig
+func ParseDbConfig() *config.DbConfigure {
+	if bytes, err := ioutil.ReadFile("/etc/config.yaml"); err == nil {
+		var dbconfig config.DbConfigure
+		// fmt.Print(dbconfig.Cluster.HttpPort)
 		yaml.Unmarshal(bytes, &dbconfig)
 		return &dbconfig
 
@@ -285,7 +286,7 @@ func init() {
 
 // 全局Db对象
 var Db *gorm.DB
-var DbConfig *config.DbConfig
+var DbConfig *config.DbConfigure
 
 func init() {
 	config := ParseDbConfig()
@@ -497,7 +498,7 @@ func init() {
 				mysqlConf := config.MysqlConfig{}
 				mysqlConf.Cluster.Name = DbConfig.Cluster.Name
 				for _, data := range datas {
-					if *data.ChildService == "mysql" {
+					if *data.ChildService == "mysqld" {
 						mysqlConf.Cluster.Ips = append(mysqlConf.Cluster.Ips, *data.IP)
 						mysqlConf.Cluster.Port = int(data.Port.Int64)
 						mysqlConf.Cluster.Username = *data.Username

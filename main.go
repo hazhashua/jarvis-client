@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"metric_exporter/config"
@@ -21,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -86,6 +88,38 @@ func parseArgs() string {
 	// 解析命令行参数
 	flag.Parse()
 	return *modelPtr
+}
+
+// 注册 exporter地址数据 到数据库
+func registerEndpoint(dataName string, port int, metricPath string) {
+	ds := new(utils.Data_store_configure_default)
+	ds.DataName = dataName
+	ni := utils.NetInfoGet()
+	ds.Ip = fmt.Sprintf("%s:%d", ni.Ip, utils.DbConfig.Cluster.HttpPort)
+	ds.CreateTime = time.Now()
+	ds.UpdateTime = time.Now()
+	ds.Path = config.MetricPathMap[dataName]
+	var dss []utils.Data_store_configure_default
+	utils.Db.Where("data_name=?", dataName).Find(&dss)
+	if len(dss) == 0 {
+		// 数据库没有数据插入
+		var id []sql.NullInt32
+		utils.Db.Raw("select max(id) as id from data_store_configure_defaults").Pluck("id", &id)
+		if id[0].Valid {
+			ds.Id = int(id[0].Int32) + 1
+		} else {
+			ds.Id = 1
+		}
+		utils.PgDataStoreInsert(utils.Db, ds)
+	} else {
+		// 数据库有数据执行更新
+		utils.Db.Select("id").Where("data_name=?", dataName).Take(&dss)
+		ds.Id = dss[0].Id
+		fmt.Println("更新数据: ", ds)
+		utils.Logger.Printf("更新数据: %v\n", ds)
+		utils.Db.Save(ds)
+	}
+
 }
 
 // 暴露所有的服务指标数据
@@ -180,6 +214,9 @@ func main() {
 	modelV := parseArgs()
 	if modelV == "all" {
 		exportAll()
+		for dataName, path := range config.MetricPathMap {
+			registerEndpoint(dataName, utils.DbConfig.Cluster.HttpPort, path)
+		}
 	} else {
 		//只导出关心指标的数据
 		models := strings.Split(modelV, ",")
@@ -192,8 +229,9 @@ func main() {
 					hadoop_r := prometheus.NewRegistry()
 					hadoop_r.MustRegister(hadoop_exporter)
 					hadoop_handler := promhttp.HandlerFor(hadoop_r, promhttp.HandlerOpts{})
-					http.Handle("/hadoop/metrics", hadoop_handler)
+					http.Handle(config.HADOOP_METRICPATH, hadoop_handler)
 					modelStart[model] = true
+					registerEndpoint(config.HADOOP, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.HADOOP])
 				}
 			case "hbase":
 				if modelStart[model] == false {
@@ -202,8 +240,10 @@ func main() {
 					hbaseR := prometheus.NewRegistry()
 					hbaseR.MustRegister(hbaseCollector)
 					hbaseHandler := promhttp.HandlerFor(hbaseR, promhttp.HandlerOpts{})
-					http.Handle("/hbase/metrics", hbaseHandler)
+					http.Handle(config.HBASE_METRICPATH, hbaseHandler)
 					modelStart[model] = true
+					registerEndpoint(config.HBASE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.HBASE])
+
 				}
 
 			case "hive":
@@ -217,8 +257,10 @@ func main() {
 					fmt.Println("hive_exporter is nil ", hive_exporter == nil)
 					hive_r.MustRegister(hive_exporter)
 					hive_handler := promhttp.HandlerFor(hive_r, promhttp.HandlerOpts{})
-					http.Handle("/hive/metrics", hive_handler)
+					http.Handle(config.HIVE_METRICPATH, hive_handler)
 					modelStart[model] = true
+					registerEndpoint(config.HIVE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.HIVE])
+
 				}
 			case "kafka":
 				if modelStart[model] == false {
@@ -227,8 +269,10 @@ func main() {
 					kafka_r := prometheus.NewRegistry()
 					kafka_r.MustRegister(kafka_collector)
 					kafka_handler := promhttp.HandlerFor(kafka_r, promhttp.HandlerOpts{})
-					http.Handle("/kafka/metrics", kafka_handler)
+					http.Handle(config.KAFKA_METRICPATH, kafka_handler)
 					modelStart[model] = true
+					registerEndpoint(config.KAFKA, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.KAFKA])
+
 				}
 			case "micro_service":
 				if modelStart[model] == false {
@@ -237,8 +281,10 @@ func main() {
 					microServiceR := prometheus.NewRegistry()
 					microServiceR.MustRegister(microServiceExporter)
 					microServiceHandler := promhttp.HandlerFor(microServiceR, promhttp.HandlerOpts{})
-					http.Handle("/micro_service/metrics", microServiceHandler)
+					http.Handle(config.MICROSERVICE_METRICPATH, microServiceHandler)
 					modelStart[model] = true
+					registerEndpoint(config.MICROSERVICE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.MICROSERVICE])
+
 				}
 			case "mysql":
 				if modelStart[model] == false {
@@ -247,8 +293,10 @@ func main() {
 					mysql_r := prometheus.NewRegistry()
 					mysql_r.MustRegister(mysql_exporter)
 					mysql_handler := promhttp.HandlerFor(mysql_r, promhttp.HandlerOpts{})
-					http.Handle("/mysql/metrics", mysql_handler)
+					http.Handle(config.MYSQL_METRICPATH, mysql_handler)
 					modelStart[model] = true
+					registerEndpoint(config.MYSQL, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.MYSQL])
+
 				}
 			case "node":
 				if modelStart[model] == false {
@@ -257,14 +305,18 @@ func main() {
 					node_r := prometheus.NewRegistry()
 					node_r.MustRegister(node_exporter)
 					node_handler := promhttp.HandlerFor(node_r, promhttp.HandlerOpts{})
-					http.Handle("/node/metrics", node_handler)
+					http.Handle(config.NODE_METRICPATH, node_handler)
 					modelStart[model] = true
+					registerEndpoint(config.NODE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.NODE])
+
 				}
 			case "redis":
 				if modelStart[model] == false {
 					// 激活redis exporter
 					redis.RedisExporter()
 					modelStart[model] = true
+					registerEndpoint(config.REDIS, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.REDIS])
+
 				}
 			case "alive":
 				if modelStart[model] == false {
@@ -273,8 +325,10 @@ func main() {
 					r := prometheus.NewRegistry()
 					r.MustRegister(serviceCollector)
 					handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
-					http.Handle("/alive/metrics", handler)
+					http.Handle(config.ALIVE_METRICPATH, handler)
 					modelStart[model] = true
+					registerEndpoint(config.ALIVE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.ALIVE])
+
 				}
 			case "skywalking":
 				if modelStart[model] == false {
@@ -283,8 +337,10 @@ func main() {
 					skywalking_r := prometheus.NewRegistry()
 					skywalking_r.MustRegister(skywalking_exporter)
 					skywalking_handler := promhttp.HandlerFor(skywalking_r, promhttp.HandlerOpts{})
-					http.Handle("/skywalking/metrics", skywalking_handler)
+					http.Handle(config.SKYWALKING_METRICPATH, skywalking_handler)
 					modelStart[model] = true
+					registerEndpoint(config.SKYWALKING, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.SKYWALKING])
+
 				}
 			case "spark":
 				if modelStart[model] == false {
@@ -293,15 +349,19 @@ func main() {
 					// 查询spark的metric信息，默认为查询测试集群
 					print_metrics := spark.GetMetrics()
 					sparkHandler := spark.SparkHandler{Metrics: print_metrics}
-					http.Handle("/spark/metrics", sparkHandler)
+					http.Handle(config.SPARK_METRICPATH, sparkHandler)
 					fmt.Println("命令行的参数有", len(os.Args))
 					modelStart[model] = true
+					registerEndpoint(config.SPARK, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.SPARK])
+
 				}
 			case "zookeeper":
 				if modelStart[model] == false {
 					// 激活zookeeper exporter
 					zookeeper.ZookeeperExporter()
 					modelStart[model] = true
+					registerEndpoint(config.ZOOKEEPER, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.ZOOKEEPER])
+
 				}
 			case "config":
 				http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
@@ -392,7 +452,7 @@ func main() {
 	// 	fmt.Println("拷贝远程文件到本地, 失败!")
 	// }
 
-	log.Info("Beginning to serve on port :38080")
-	log.Fatal(http.ListenAndServe(":38080", nil))
+	log.Info(fmt.Sprintf("Beginning to serve on port :%d", utils.DbConfig.Cluster.HttpPort))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", utils.DbConfig.Cluster.HttpPort), nil))
 
 }

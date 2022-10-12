@@ -12,6 +12,7 @@ const (
 	SKYWALKING   string = "skywalking"
 	SPARK        string = "spark"
 	ZOOKEEPER    string = "zookeeper"
+	ALIVE        string = "alive"
 
 	HADOOP_METRICPATH       string = "/hadoop/metrics"
 	HBASE_METRICPATH        string = "/hbase/metrics"
@@ -26,6 +27,21 @@ const (
 	ZOOKEEPER_METRICPATH    string = "/zookeeper/metrics"
 	ALIVE_METRICPATH        string = "/alive/metrics"
 )
+
+var MetricPathMap = map[string]string{
+	HADOOP:       HADOOP_METRICPATH,
+	HBASE:        HBASE_METRICPATH,
+	HIVE:         HIVE_METRICPATH,
+	KAFKA:        KAFKA_METRICPATH,
+	MICROSERVICE: MICROSERVICE_METRICPATH,
+	MYSQL:        MYSQL_METRICPATH,
+	NODE:         NODE_METRICPATH,
+	REDIS:        REDIS_METRICPATH,
+	SKYWALKING:   SKYWALKING_METRICPATH,
+	SPARK:        SPARK_METRICPATH,
+	ZOOKEEPER:    ZOOKEEPER_METRICPATH,
+	ALIVE:        ALIVE_METRICPATH,
+}
 
 type K8sConfig struct {
 	ServiceURL      string `yaml:"serviceUrl,omitempty"`
@@ -208,7 +224,7 @@ type ZookeepeConfig struct {
 }
 
 // 存储utils工具包, 数据库源地址配置数据
-type DbConfig struct {
+type DbConfigure struct {
 	Cluster struct {
 		Name  string
 		Mysql struct {
@@ -226,5 +242,6 @@ type DbConfig struct {
 				Schema string
 			}
 		}
+		HttpPort int
 	}
 }

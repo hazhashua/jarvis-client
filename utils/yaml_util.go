@@ -18,7 +18,7 @@ import (
 
 type prometheusYaml struct {
 	Global struct {
-		ScrapeInterval     string `yaml:"scrape_interval" mapstructure:"evaluation_interval" `
+		ScrapeInterval     string `yaml:"scrape_interval" mapstructure:"scrape_interval" `
 		EvaluationInterval string `yaml:"evaluation_interval" mapstructure:"evaluation_interval"`
 	}
 
@@ -35,6 +35,16 @@ type prometheusYaml struct {
 	} `yaml:"scrape_configs" mapstructure:"scrape_configs"`
 }
 
+type ExporterConfig struct {
+	JobName       string `yaml:"job_name,omitempty" mapstructure:"job_name"`
+	MetricsPath   string `yaml:"metrics_path,omitempty" mapstructure:"metrics_path"`
+	StaticConfigs []struct {
+		// Ts struct {
+		Targets []string `yaml:"targets,omitempty"`
+		// }
+	} `yaml:"static_configs" mapstructure:"static_configs"`
+}
+
 // 生成prometheus配置文件
 func LoadYaml() prometheusYaml {
 	var pyaml prometheusYaml
@@ -47,7 +57,7 @@ func LoadYaml() prometheusYaml {
 }
 
 // yaml对象生成yaml文件
-func GenerateYamlFile(pyaml prometheusYaml, absoluteFile string) {
+func GenerateYamlFile(pyaml prometheusYaml, absoluteFile string) []byte {
 	fmt.Println("pyaml: ", pyaml, pyaml.Global)
 	var bytes []byte
 	var err error
@@ -55,7 +65,10 @@ func GenerateYamlFile(pyaml prometheusYaml, absoluteFile string) {
 		Logger.Printf("解析yaml对象失败")
 	}
 	if err = ioutil.WriteFile(absoluteFile, bytes, fs.ModeAppend); err != nil {
-		return
+		return nil
 	}
+
 	Logger.Println("yaml写入文件中成功！")
+	return bytes
+
 }
