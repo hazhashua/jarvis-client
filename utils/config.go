@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 // mysql:
@@ -300,7 +301,11 @@ func init() {
 	// }
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Cluster.Postgres.Ip, config.Cluster.Postgres.Username, config.Cluster.Postgres.Password, config.Cluster.Postgres.Port)
 	var err error
-	if Db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}); err == nil {
+	if Db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+	}); err == nil {
 		Logger.Println("*************************connect to db success")
 	} else {
 		Logger.Println("*************************connect to db error")
