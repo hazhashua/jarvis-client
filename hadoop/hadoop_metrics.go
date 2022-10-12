@@ -41,16 +41,19 @@ func GetAppInfo(yarnUrl string) (apps_submitted *int64, apps_running *int64, app
 		// fmt.Println("parse data error!", err.Error())
 		utils.Logger.Printf("UnmarshalResourceManagerApp error error:%s\n", err.Error())
 	}
-	apps_submitted = rma.Beans[0].AppsSubmitted
-	apps_running = rma.Beans[0].AppsRunning
-	apps_pending = rma.Beans[0].AppsPending
-	apps_killed = rma.Beans[0].AppsKilled
-	apps_failed = rma.Beans[0].AppsFailed
-	apps_completed = rma.Beans[0].AppsCompleted
-	running_0 = rma.Beans[0].Running0
-	running_60 = rma.Beans[0].Running60
-	running_300 = rma.Beans[0].Running300
-	running_1440 = rma.Beans[0].Running1440
+	if len(rma.Beans) > 0 {
+		apps_submitted = rma.Beans[0].AppsSubmitted
+		apps_running = rma.Beans[0].AppsRunning
+		apps_pending = rma.Beans[0].AppsPending
+		apps_killed = rma.Beans[0].AppsKilled
+		apps_failed = rma.Beans[0].AppsFailed
+		apps_completed = rma.Beans[0].AppsCompleted
+		running_0 = rma.Beans[0].Running0
+		running_60 = rma.Beans[0].Running60
+		running_300 = rma.Beans[0].Running300
+		running_1440 = rma.Beans[0].Running1440
+	}
+
 	// utils.Logger.Printf("rma.Beans[0].AppsSubmitted: %d\n", *rma.Beans[0].AppsSubmitted)
 	// utils.Logger.Printf("rma.Beans[0].AppsRunning: %d\n", *rma.Beans[0].AppsRunning)
 	// utils.Logger.Printf("rma.Beans[0].AppsPending: %d\n", *rma.Beans[0].AppsPending)
@@ -77,10 +80,12 @@ func GetJvmMetricsInfo(http_url string) (mem_non_heap_usedm float64, mem_non_hea
 	// fmt.Println(jvm_metrics.Beans[0].MemNonHeapCommittedM)
 	// fmt.Println(jvm_metrics.Beans[0].MemHeapUsedM)
 	// fmt.Println(jvm_metrics.Beans[0].MemHeapCommittedM)
-	mem_non_heap_usedm = *jvm_metrics.Beans[0].MemNonHeapUsedM
-	mem_non_heap_committedm = *jvm_metrics.Beans[0].MemNonHeapCommittedM
-	mem_heap_usedm = *jvm_metrics.Beans[0].MemHeapUsedM
-	mem_heap_committedm = *jvm_metrics.Beans[0].MemHeapCommittedM
+	if len(jvm_metrics.Beans) > 0 {
+		mem_non_heap_usedm = *jvm_metrics.Beans[0].MemNonHeapUsedM
+		mem_non_heap_committedm = *jvm_metrics.Beans[0].MemNonHeapCommittedM
+		mem_heap_usedm = *jvm_metrics.Beans[0].MemHeapUsedM
+		mem_heap_committedm = *jvm_metrics.Beans[0].MemHeapCommittedM
+	}
 
 	return
 }
@@ -155,9 +160,13 @@ func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (num_active_nms *int
 		utils.Logger.Printf("UnmarshalClusterMetrics(cluster_metrics_bytes) error:%s\n", err.Error())
 	}
 	if len(cm.Beans) == 0 {
+		num_active_nms = new(int64)
 		*num_active_nms = -1
+		num_lost_nms = new(int64)
 		*num_lost_nms = -1
+		num_shutdown_nms = new(int64)
 		*num_shutdown_nms = -1
+		num_unhealthy_nms = new(int64)
 		*num_unhealthy_nms = -1
 	} else {
 		num_active_nms = cm.Beans[0].NumActiveNMS

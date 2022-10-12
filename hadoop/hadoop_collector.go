@@ -486,7 +486,7 @@ func (collector *HadoopCollector) Describe(ch chan<- *prometheus.Desc) {
 //Collect implements required collect function for all promehteus collectors
 func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
-	// collector = NewHadoopCollector()
+	collector = NewHadoopCollector()
 	// hadoop_config := Parse_hadoop_config()
 	hadoop_config, _ := (utils.ConfigStruct.ConfigData[config.HADOOP]).(config.HadoopConfigure)
 	utils.Logger.Printf("hadoop_config: %v\n", hadoop_config)
@@ -580,15 +580,18 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	apps_submitted, apps_running, apps_pending, apps_killed, apps_failed, apps_completed, running_0, running_60, running_300, _ := GetAppInfo(yarn_url)
 
 	// 基于队列的个数给空间赋值
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsSubmitted[0], collector.hadoopMetrics.AppsSubmittedValType, float64(*apps_submitted), hadoop_config.Cluster.Name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsRunning[0], collector.hadoopMetrics.AppsRunningValType, float64(*apps_running), hadoop_config.Cluster.Name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsCompleted[0], collector.hadoopMetrics.AppsCompletedValType, float64(*apps_completed), hadoop_config.Cluster.Name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsPending[0], collector.hadoopMetrics.AppsPendinValType, float64(*apps_pending), hadoop_config.Cluster.Name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsKilled[0], collector.hadoopMetrics.AppsKilledValType, float64(*apps_killed), hadoop_config.Cluster.Name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsFailed[0], collector.hadoopMetrics.AppsFailedValType, float64(*apps_failed), hadoop_config.Cluster.Name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running0[0], collector.hadoopMetrics.Running0ValType, float64(*running_0), hadoop_config.Cluster.Name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running60[0], collector.hadoopMetrics.Running60ValType, float64(*running_60), hadoop_config.Cluster.Name, queue_name)
-	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running300[0], collector.hadoopMetrics.Running300ValType, float64(*running_300), hadoop_config.Cluster.Name, queue_name)
+	if len(collector.hadoopMetrics.AppsRunning) > 0 && apps_submitted != nil {
+		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsSubmitted[0], collector.hadoopMetrics.AppsSubmittedValType, float64(*apps_submitted), hadoop_config.Cluster.Name, queue_name)
+		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsRunning[0], collector.hadoopMetrics.AppsRunningValType, float64(*apps_running), hadoop_config.Cluster.Name, queue_name)
+		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsCompleted[0], collector.hadoopMetrics.AppsCompletedValType, float64(*apps_completed), hadoop_config.Cluster.Name, queue_name)
+		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsPending[0], collector.hadoopMetrics.AppsPendinValType, float64(*apps_pending), hadoop_config.Cluster.Name, queue_name)
+		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsKilled[0], collector.hadoopMetrics.AppsKilledValType, float64(*apps_killed), hadoop_config.Cluster.Name, queue_name)
+		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.AppsFailed[0], collector.hadoopMetrics.AppsFailedValType, float64(*apps_failed), hadoop_config.Cluster.Name, queue_name)
+		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running0[0], collector.hadoopMetrics.Running0ValType, float64(*running_0), hadoop_config.Cluster.Name, queue_name)
+		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running60[0], collector.hadoopMetrics.Running60ValType, float64(*running_60), hadoop_config.Cluster.Name, queue_name)
+		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.Running300[0], collector.hadoopMetrics.Running300ValType, float64(*running_300), hadoop_config.Cluster.Name, queue_name)
+
+	}
 
 	namenode_url := fmt.Sprintf("http://%s:%d/jmx", hadoop_config.Cluster.Namenodes[0], hadoop_config.Cluster.NamenodeHttpPort)
 	nondfs_gb, capacity_total_gb, capacity_remaining_gb, capacity_used_gb, blocks_total, corrupt_blocks, pending_deletion_blocks, pending_replication_blocks, files_total, tag_ha_state := GetDFSInfo(namenode_url)
