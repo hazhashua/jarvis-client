@@ -221,7 +221,7 @@ func main() {
 		models := strings.Split(modelV, ",")
 		for _, model := range models {
 			switch model {
-			case "hadoop":
+			case config.HADOOP:
 				if modelStart[model] == false {
 					// 激活hadoop exporter
 					hadoop_exporter := hadoop.NewHadoopCollector()
@@ -232,7 +232,7 @@ func main() {
 					modelStart[model] = true
 					registerEndpoint(config.HADOOP, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.HADOOP])
 				}
-			case "hbase":
+			case config.HBASE:
 				if modelStart[model] == false {
 					// 激活hbase exporter
 					hbaseCollector := hbase.NewHbaseCollector()
@@ -245,7 +245,7 @@ func main() {
 
 				}
 
-			case "hive":
+			case config.HIVE:
 				if modelStart[model] == false {
 					hive_exporter := hive.NewHiveExporter()
 					if hive_exporter == nil {
@@ -261,7 +261,7 @@ func main() {
 					registerEndpoint(config.HIVE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.HIVE])
 
 				}
-			case "kafka":
+			case config.KAFKA:
 				if modelStart[model] == false {
 					// 激活kafka exporter
 					kafka_collector := kafka.NewKafkaCollector()
@@ -273,7 +273,7 @@ func main() {
 					registerEndpoint(config.KAFKA, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.KAFKA])
 
 				}
-			case "micro_service":
+			case config.MICROSERVICE:
 				if modelStart[model] == false {
 					// 激活微服务exporter
 					microServiceExporter := micro_service.NewMicroServiceExporter()
@@ -285,7 +285,7 @@ func main() {
 					registerEndpoint(config.MICROSERVICE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.MICROSERVICE])
 
 				}
-			case "mysql":
+			case config.MYSQL:
 				if modelStart[model] == false {
 					// 激活mysql exporter
 					mysql_exporter := mysql.NewMysqlExporter()
@@ -297,7 +297,7 @@ func main() {
 					registerEndpoint(config.MYSQL, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.MYSQL])
 
 				}
-			case "node":
+			case config.NODE:
 				if modelStart[model] == false {
 					// 激活物理机指标采集脚本
 					node_exporter := nodeexporter.NewNodeExporter()
@@ -309,7 +309,7 @@ func main() {
 					registerEndpoint(config.NODE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.NODE])
 
 				}
-			case "redis":
+			case config.REDIS:
 				if modelStart[model] == false {
 					// 激活redis exporter
 					redis.RedisExporter()
@@ -317,7 +317,7 @@ func main() {
 					registerEndpoint(config.REDIS, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.REDIS])
 
 				}
-			case "alive":
+			case config.ALIVE:
 				if modelStart[model] == false {
 					// 激活服务存活exporter
 					serviceCollector := service_alive.NewServiceAliveCollector()
@@ -329,7 +329,7 @@ func main() {
 					registerEndpoint(config.ALIVE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.ALIVE])
 
 				}
-			case "skywalking":
+			case config.SKYWALKING:
 				if modelStart[model] == false {
 					// 激活skywalking exporter
 					skywalking_exporter := skywalking.NewSkywalkingExporter()
@@ -341,7 +341,7 @@ func main() {
 					registerEndpoint(config.SKYWALKING, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.SKYWALKING])
 
 				}
-			case "spark":
+			case config.SPARK:
 				if modelStart[model] == false {
 					// 激活spark exporter
 					// 数组传入所有的master和standby地址
@@ -354,7 +354,7 @@ func main() {
 					registerEndpoint(config.SPARK, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.SPARK])
 
 				}
-			case "zookeeper":
+			case config.ZOOKEEPER:
 				if modelStart[model] == false {
 					// 激活zookeeper exporter
 					zookeeper.ZookeeperExporter()
