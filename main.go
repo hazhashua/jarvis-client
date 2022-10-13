@@ -104,7 +104,7 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 	if len(dss) == 0 {
 		// 数据库没有数据插入
 		var id []sql.NullInt32
-		utils.Db.Raw("select max(id) as id from data_store_configure_defaults").Pluck("id", &id)
+		utils.Db.Raw(fmt.Sprintf("select max(id) as id from public.%s_default", utils.DbConfig.Cluster.Postgres.ExportTable)).Pluck("id", &id)
 		if id[0].Valid {
 			ds.Id = int(id[0].Int32) + 1
 		} else {
@@ -115,7 +115,6 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 		// 数据库有数据执行更新
 		utils.Db.Select("id").Where("data_name=?", dataName).Take(&dss)
 		ds.Id = dss[0].Id
-		fmt.Println("更新数据: ", ds)
 		utils.Logger.Printf("更新数据: %v\n", ds)
 		utils.Db.Save(ds)
 	}
@@ -365,11 +364,10 @@ func main() {
 				}
 			case "config":
 				http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
-					fmt.Println("执行配置函数")
 					pyaml := utils.LoadYaml()
 					configs := pyaml.ScrapeConfigs
 					// 读取数据库配置
-					dss := utils.PgDataStoreQuery(utils.Db)
+					dss := utils.PgDataStoreQuery(utils.Db, utils.DbConfig.Cluster.Postgres.ExportTable)
 					for _, ds := range dss {
 						name := ds.DataName
 						path := ds.Path
