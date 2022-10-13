@@ -13,6 +13,7 @@ WORKDIR /opt
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '-w -s' -o collector
 RUN chmod a+x /opt/collector
 
+
 FROM scratch
 
 # 暴露服务端口
@@ -22,6 +23,8 @@ WORKDIR /opt
 
 # 复制打包的 Go 文件到系统用户可执行程序目录下
 COPY --from=golang /opt/collector /opt
+COPY --from=golang /opt/prometheus_template.yml /etc/
+COPY --from=golang /opt/config.yaml /etc/   
 
 # 给我们要传的参数一个初始值
 # ENV MODELS="all"      
