@@ -48,7 +48,7 @@ type ExporterConfig struct {
 // 生成prometheus配置文件
 func LoadYaml() prometheusYaml {
 	var pyaml prometheusYaml
-	bytes, _ := ioutil.ReadFile("./prometheus.yml")
+	bytes, _ := ioutil.ReadFile("/etc/prometheus.yml")
 	var err2 error
 	if err2 = yaml.Unmarshal(bytes, &pyaml); err2 != nil {
 		Logger.Println("解析yaml文件失败!", err2.Error())
