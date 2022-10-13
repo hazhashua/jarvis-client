@@ -124,7 +124,6 @@ func PgDataStoreQuery(db *gorm.DB, table string) []Data_store_configure_default 
 	// 使用gorm语法
 	db.Find(&dss)
 	return dss
-
 }
 
 // 数据写入data_store_cofigure_default表
