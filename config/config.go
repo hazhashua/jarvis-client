@@ -241,6 +241,11 @@ type DbConfigure struct {
 			DatasourceInfo struct {
 				Schema string
 			}
+
+			GatherTable       string // gather_name
+			GatherDetailTable string // data_gather_configure
+			ExportTable       string // data_store_configure
+
 		}
 		HttpPort int
 	}
