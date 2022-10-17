@@ -95,7 +95,7 @@ func MemUsageGet() *Memory {
 		available:   vms.Available,
 		cached:      vms.Cached,
 		free:        vms.Free,
-		usedPercent: vms.UsedPercent,
+		usedPercent: vms.UsedPercent / 100.0,
 	}
 }
 
