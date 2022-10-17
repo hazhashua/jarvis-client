@@ -50,7 +50,7 @@ func CpuUsageGet() *CpuInfo {
 
 	return &CpuInfo{
 		cores: cores,
-		usage: f[0],
+		usage: f[0] / 100.0,
 	}
 
 }
