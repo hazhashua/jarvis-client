@@ -147,10 +147,10 @@ func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (num_active_nms *int
 		if response != "" {
 			break
 		}
+		utils.Logger.Printf("访问地址失败: %s\n", request_url)
 		if idx == len(yarnUrls)-1 {
-			utils.Logger.Println("len(yarnUrls)-1: 访问地址失败")
-			panic("访问地址失败！")
-
+			utils.Logger.Println("yarn url 访问全失败")
+			return
 		}
 	}
 	// utils.Logger.Println("response: ", response)
