@@ -502,7 +502,13 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 		namenode_urls = append(namenode_urls, fmt.Sprintf("http://%s:%d/jmx", namenode_ip, hadoop_config.Cluster.NamenodeHttpPort))
 	}
 
-	num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total := GetAliveInfo(yarn_urls, namenode_urls)
+	ok, num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total := GetAliveInfo(yarn_urls, namenode_urls)
+
+	if !ok {
+		// 未获取到jmx数据，赋默认值
+		*num_active_nms, *num_lost_nms, *num_shutdown_nms, *num_unhealthy_nms, *num_live_datanodes, *num_dead_datanodes, *num_decom_livedatanodes, *num_decom_missioningdatanodes, *num_decommissioning_datanodes, *blocks_total, *files_total = -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+	}
+
 	// fmt.Println(num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
 	utils.Logger.Printf("num_active_nms:%d  num_lost_nms:%d  num_shutdown_nms:%d  num_unhealthy_nms:%d  num_live_datanodes:%d  num_dead_datanodes:%d  num_decom_livedatanodes:%d  num_decom_missioningdatanodes:%d  num_decommissioning_datanodes:%d  blocks_total:%d  files_total:%d \n", num_active_nms, num_lost_nms, num_shutdown_nms, num_unhealthy_nms, num_live_datanodes, num_dead_datanodes, num_decom_livedatanodes, num_decom_missioningdatanodes, num_decommissioning_datanodes, blocks_total, files_total)
 
