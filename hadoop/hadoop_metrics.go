@@ -134,7 +134,7 @@ func GetDFSInfo(namenoeUrl string) (nondfs_gb *float64, capacity_total_gb *float
 }
 
 // 抓取存活数据
-func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (num_active_nms *int64, num_lost_nms *int64,
+func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (ok bool, num_active_nms *int64, num_lost_nms *int64,
 	num_shutdown_nms *int64, num_unhealthy_nms *int64, num_live_datanodes *int64,
 	num_dead_datanodes *int64, num_decom_livedatanodes *int64, num_decom_missioningdatanodes *int64,
 	num_decommissioning_datanodes *int64, blocks_total *int64, files_total *int64) {
