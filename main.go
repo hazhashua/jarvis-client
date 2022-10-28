@@ -21,9 +21,11 @@ import (
 	"metric_exporter/zookeeper"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/minms/shutdown"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -121,6 +123,54 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 
 }
 
+// 注册config endpoint
+func registerConfigEndpoint() {
+	http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+		pyaml := utils.LoadYaml()
+		configs := pyaml.ScrapeConfigs
+		// 读取数据库配置
+		dss := utils.PgDataStoreQuery(utils.Db, utils.DbConfig.Cluster.Postgres.ExportTable)
+		for _, ds := range dss {
+			name := ds.DataName
+			var ip, path string
+			reg, err := regexp.Compile("http://([^/]*)(.*)")
+			if err == nil {
+				pathInfo := reg.FindStringSubmatch(ds.Path)
+				if len(pathInfo) > 2 {
+					path = pathInfo[2]
+					ip = pathInfo[1]
+					fmt.Printf("path: %s  ip: %s", path, ip)
+				} else {
+					fmt.Println("解析路径错误! ", ds.Path, pathInfo)
+				}
+			}
+			configs = append(configs, struct {
+				JobName       string "yaml:\"job_name,omitempty\" mapstructure:\"job_name\""
+				MetricsPath   string "yaml:\"metrics_path,omitempty\" mapstructure:\"metrics_path\""
+				StaticConfigs []struct {
+					Targets []string "yaml:\"targets,omitempty\""
+				} "yaml:\"static_configs\" mapstructure:\"static_configs\""
+			}{
+				JobName:     name,
+				MetricsPath: path,
+				StaticConfigs: []struct {
+					Targets []string "yaml:\"targets,omitempty\""
+				}{
+					{
+						Targets: []string{ip},
+					},
+				},
+			})
+
+		}
+		pyaml.Global.ScrapeInterval = "15s"
+		pyaml.ScrapeConfigs = configs
+		// 基于数据库配置数据,生成新的yaml文件
+		yamlBytes := utils.GenerateYamlFile(pyaml, "./prometheus_auto.yml")
+		w.Write(yamlBytes)
+	})
+}
+
 // 暴露所有的服务指标数据
 func exportAll() {
 	// 激活微服务exporter
@@ -204,6 +254,9 @@ func exportAll() {
 	skywalking_r.MustRegister(skywalking_exporter)
 	skywalking_handler := promhttp.HandlerFor(skywalking_r, promhttp.HandlerOpts{})
 	http.Handle(config.SKYWALKING_METRICPATH, skywalking_handler)
+
+	// 默认注册config endpoint
+	registerConfigEndpoint()
 }
 
 func main() {
@@ -363,40 +416,8 @@ func main() {
 
 				}
 			case "config":
-				http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
-					pyaml := utils.LoadYaml()
-					configs := pyaml.ScrapeConfigs
-					// 读取数据库配置
-					dss := utils.PgDataStoreQuery(utils.Db, utils.DbConfig.Cluster.Postgres.ExportTable)
-					for _, ds := range dss {
-						name := ds.DataName
-						path := ds.Path
-						ip := ds.Ip
-						configs = append(configs, struct {
-							JobName       string "yaml:\"job_name,omitempty\" mapstructure:\"job_name\""
-							MetricsPath   string "yaml:\"metrics_path,omitempty\" mapstructure:\"metrics_path\""
-							StaticConfigs []struct {
-								Targets []string "yaml:\"targets,omitempty\""
-							} "yaml:\"static_configs\" mapstructure:\"static_configs\""
-						}{
-							JobName:     name,
-							MetricsPath: path,
-							StaticConfigs: []struct {
-								Targets []string "yaml:\"targets,omitempty\""
-							}{
-								{
-									Targets: []string{ip},
-								},
-							},
-						})
-
-					}
-					pyaml.Global.ScrapeInterval = "15s"
-					pyaml.ScrapeConfigs = configs
-					// 基于数据库配置数据,生成新的yaml文件
-					yamlBytes := utils.GenerateYamlFile(pyaml, "./prometheus_auto.yml")
-					w.Write(yamlBytes)
-				})
+				// 注册config endpoint
+				registerConfigEndpoint()
 			default:
 				fmt.Println("unknown model...")
 			}
@@ -450,7 +471,59 @@ func main() {
 	// 	fmt.Println("拷贝远程文件到本地, 失败!")
 	// }
 
-	log.Info(fmt.Sprintf("Beginning to serve on port :%d", utils.DbConfig.Cluster.HttpPort))
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", utils.DbConfig.Cluster.HttpPort), nil))
+	go graceExit()
 
+	log.Info(fmt.Sprintf("Beginning to serve on port :%d", utils.DbConfig.Cluster.HttpPort))
+	// log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", utils.DbConfig.Cluster.HttpPort), nil))
+	http.ListenAndServe(fmt.Sprintf(":%d", utils.DbConfig.Cluster.HttpPort), nil)
+
+	// 	// handler
+	//     handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	//         time.Sleep(2 * time.Second)
+	//         fmt.Fprintln(w, "hello")
+	//     })
+
+	//     // server
+	//     srv := http.Server{
+	//         Addr:    *addr,
+	//         Handler: handler,
+	//     }
+
+	//     // make sure idle connections returned
+	//     processed := make(chan struct{})
+	//     go func() {
+	//         c := make(chan os.Signal, 1)
+	//         signal.Notify(c, os.Interrupt)
+	//         <-c
+
+	//         ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	//         defer cancel()
+	//         if err := srv.Shutdown(ctx); nil != err {
+	//             log.Fatalf("server shutdown failed, err: %v
+	// ", err)
+	//         }
+	//         log.Println("server gracefully shutdown")
+
+	//         close(processed)
+	//     }()
+
+	//     // serve
+	//     err := srv.ListenAndServe()
+	//     if http.ErrServerClosed != err {
+	//         log.Fatalf("server not gracefully shutdown, err :%v
+	// ", err)
+	//     }
+
+	//     // waiting for goroutine above processed
+	//     <-processed
+
+}
+
+func graceExit() {
+	shutdown.WaitTerminationSignal(func() {
+		//异常终止, 删除exporter注册地址
+		utils.PgDataStoreRemove(utils.Db)
+		utils.Logger.Printf("程序异常退出，清除exporter暴露地址！")
+		os.Exit(1)
+	})
 }
