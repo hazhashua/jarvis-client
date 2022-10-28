@@ -286,8 +286,7 @@ func GetClient() (sarama.Client, sarama.Config) {
 	if len(kafka_config.Cluster.Hosts) > 0 {
 		kafka_host = kafka_config.Cluster.Hosts[0]
 	}
-	// fmt.Println("kafka_host: ", kafka_host)
-	client, err := sarama.NewClient([]string{kafka_host + ":9092"}, config)
+	client, err := sarama.NewClient([]string{kafka_host + fmt.Sprintf(":%d", kafka_config.Cluster.Port)}, config)
 	if err != nil {
 		utils.Logger.Printf("try create client err :%s\n", err.Error())
 		return nil, *config
