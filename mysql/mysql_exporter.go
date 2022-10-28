@@ -27,11 +27,15 @@ type MysqlExporter struct {
 
 func NewMysqlExporter() *MysqlExporter {
 	// 查询当前db的个数
-	dbNum := utils.ValueQuery("select count(schema_name) from information_schema.schemata")
+	boolv, dbNum := utils.ValueQuery("select count(schema_name) from information_schema.schemata")
 
 	//查询当前table的个数
-	tableNum := utils.ValueQuery("select count(table_name) from information_schema.tables")
+	boolv, tableNum := utils.ValueQuery("select count(table_name) from information_schema.tables")
 
+	if !boolv {
+		utils.Logger.Printf("连接mysql失败, mysql exporter启动失败")
+		return nil
+	}
 	tableInfoDescriptions := make([]*prometheus.Desc, tableNum)
 	dbInfoDescriptions := make([]*prometheus.Desc, dbNum)
 	for idx := 0; idx < dbNum; idx++ {
@@ -92,6 +96,10 @@ func (e *MysqlExporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	// 实现exporter的collector方法
 	e = NewMysqlExporter()
+	if e == nil {
+		utils.Logger.Printf("mysql exporter数据为空！")
+		return
+	}
 	// mysqlConfig := Parse_mysql_config()
 	mysqlConfig, _ := (utils.ConfigStruct.ConfigData[config.MYSQL]).(config.MysqlConfig)
 	utils.Logger.Printf("mysqlConfig:%v\n", mysqlConfig)
@@ -103,9 +111,13 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 		DefaultDB: mysqlConfig.Cluster.DefaultDB, // "information_schema",
 	}
 	utils.Logger.Printf("mysqlConnector: %v\n", mysqlConnector)
-	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1, mysqlConfig.Cluster.Name, mysqlConnector.Host)
 	// 查询mysql连接信息
-	variables := utils.ConnectionQuery(mysqlConnector)
+	bool1, variables := utils.ConnectionQuery(mysqlConnector)
+	if !bool1 {
+		utils.Logger.Printf("查询连接信息失败！")
+		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1, mysqlConfig.Cluster.Name, mysqlConnector.Host)
+		return
+	}
 	for _, variable := range variables {
 		// variable.VariableName
 		if variable.VariableName == "max_connections" {
@@ -126,14 +138,14 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	// ch <- prometheus.MustNewConstMetric(collector.kafkaMetrics.BrokerNum, collector.kafkaMetrics.BrokerNumValueType, float64(total_brokers), kafka_config.Cluster.Name)
 
 	connections := make(map[string]int)
-	variables = utils.QpsAndSlowSqlQuery(mysqlConnector)
+	bool1, variables = utils.QpsAndSlowSqlQuery(mysqlConnector)
 	for _, variable := range variables {
 		connections[variable.VariableName] = variable.Value
 	}
 	ch <- prometheus.MustNewConstMetric(e.executeQuerys, prometheus.CounterValue, float64(connections["Queries"]), mysqlConfig.Cluster.Name, mysqlConnector.Host)
 	ch <- prometheus.MustNewConstMetric(e.querySlowTotal, prometheus.CounterValue, float64(connections["Slow_queries"]), mysqlConfig.Cluster.Name, mysqlConnector.Host)
 
-	statuses := utils.TpsQuery(mysqlConnector)
+	bool1, statuses := utils.TpsQuery(mysqlConnector)
 	for _, status := range statuses {
 		// fmt.Println("status.ExecutedGtidSet: ", status.ExecutedGtidSet)
 		length := len(strings.Split(status.ExecutedGtidSet, "-"))
