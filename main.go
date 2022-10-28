@@ -94,19 +94,19 @@ func parseArgs() string {
 
 // 注册 exporter地址数据 到数据库
 func registerEndpoint(dataName string, port int, metricPath string) {
-	ds := new(utils.Data_store_configure_cype)
+	ds := new(utils.Data_store_configure)
 	ds.DataName = dataName
 	ni := utils.NetInfoGet()
 	ds.Ip = fmt.Sprintf("%s:%d", ni.Ip, utils.DbConfig.Cluster.HttpPort)
 	ds.CreateTime = time.Now()
 	ds.UpdateTime = time.Now()
 	ds.Path = config.MetricPathMap[dataName]
-	var dss []utils.Data_store_configure_cype
+	var dss []utils.Data_store_configure
 	utils.Db.Where("data_name=?", dataName).Find(&dss)
 	if len(dss) == 0 {
 		// 数据库没有数据插入
 		var id []sql.NullInt32
-		utils.Db.Raw(fmt.Sprintf("select max(id) as id from public.%s_default", utils.DbConfig.Cluster.Postgres.ExportTable)).Pluck("id", &id)
+		utils.Db.Raw(fmt.Sprintf("select max(id) as id from public.%s", utils.DbConfig.Cluster.Postgres.ExportTable)).Pluck("id", &id)
 		if id[0].Valid {
 			ds.Id = int(id[0].Int32) + 1
 		} else {
@@ -526,4 +526,9 @@ func graceExit() {
 		utils.Logger.Printf("程序异常退出，清除exporter暴露地址！")
 		os.Exit(1)
 	})
+}
+
+// 定时刷新配置的源路径
+func autoRefreshSourceConfig() {
+
 }
