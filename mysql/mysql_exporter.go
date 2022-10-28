@@ -115,7 +115,7 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	bool1, variables := utils.ConnectionQuery(mysqlConnector)
 	if !bool1 {
 		utils.Logger.Printf("查询连接信息失败！")
-		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1, mysqlConfig.Cluster.Name, mysqlConnector.Host)
+		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0, mysqlConfig.Cluster.Name, mysqlConnector.Host)
 		return
 	}
 	for _, variable := range variables {
