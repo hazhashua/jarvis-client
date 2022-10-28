@@ -44,7 +44,7 @@ type MysqlConnect struct {
 // 	Swap(int, int)
 // }
 
-func ValueQuery(sqlstr string) int {
+func ValueQuery(sqlstr string) (bool, int) {
 	// dsn := "test:@tcp(localhost:3306)/test?charset=utf8&parseTime=true"
 	//      root:pwd@123@tcp(127.0.0.1:3306)/test
 	config := ParseDbConfig()
@@ -66,10 +66,14 @@ func ValueQuery(sqlstr string) int {
 	}
 	stmt, err2 := db.Prepare(sqlstr)
 	defer stmt.Close()
-	painc_err(err2)
+	if !painc_err(err2) {
+		return false, -1
+	}
 	res, err := stmt.Query()
 	defer res.Close()
-	painc_err(err)
+	if !painc_err(err2) {
+		return false, -1
+	}
 	var count_value int
 	for res.Next() {
 		// var datasource_alive DatsourceAlive
@@ -79,7 +83,7 @@ func ValueQuery(sqlstr string) int {
 		fmt.Println("count is ", count_value)
 	}
 	db.Close()
-	return count_value
+	return true, count_value
 }
 
 func ReflectNewByValue(target interface{}) *reflect.Value {
@@ -212,16 +216,20 @@ type Variable struct {
 	Value        int    `json:"value"`
 }
 
-func ExecuteVariableQuery(db *sql.DB, sqlStr string, columns []string, types []string) []Variable {
+func ExecuteVariableQuery(db *sql.DB, sqlStr string, columns []string, types []string) (bool, []Variable) {
 	if &sqlStr == nil || sqlStr == "" {
-		return nil
+		return false, nil
 	}
 	stmt, err2 := db.Prepare(sqlStr)
+	if !painc_err(err2) {
+		return false, nil
+	}
 	defer stmt.Close()
-	painc_err(err2)
 	res, err := stmt.Query()
 	defer res.Close()
-	painc_err(err)
+	if !painc_err(err) {
+		return false, nil
+	}
 	variables := make([]Variable, 0)
 	for res.Next() {
 		variable := new(Variable)
@@ -233,19 +241,23 @@ func ExecuteVariableQuery(db *sql.DB, sqlStr string, columns []string, types []s
 		}
 		variables = append(variables, *variable)
 	}
-	return variables
+	return true, variables
 }
 
-func ExecuteStatusQuery(db *sql.DB, sqlStr string, columns []string, types []string) []Status {
+func ExecuteStatusQuery(db *sql.DB, sqlStr string, columns []string, types []string) (bool, []Status) {
 	if &sqlStr == nil || sqlStr == "" {
-		return nil
+		return false, nil
 	}
 	stmt, err2 := db.Prepare(sqlStr)
 	defer stmt.Close()
-	painc_err(err2)
+	if !painc_err(err2) {
+		return false, nil
+	}
 	res, err := stmt.Query()
 	defer res.Close()
-	painc_err(err)
+	if !painc_err(err) {
+		return false, nil
+	}
 	statuses := make([]Status, 0)
 	for res.Next() {
 		status := new(Status)
@@ -257,10 +269,10 @@ func ExecuteStatusQuery(db *sql.DB, sqlStr string, columns []string, types []str
 		}
 		statuses = append(statuses, *status)
 	}
-	return statuses
+	return true, statuses
 }
 
-func Query(sqlstr string) []ServicePort {
+func Query(sqlstr string) (bool, []ServicePort) {
 	/*
 		查询服务和端口信息
 	*/
@@ -287,10 +299,14 @@ func Query(sqlstr string) []ServicePort {
 	}
 	stmt, err2 := db.Prepare(sqlstr)
 	defer stmt.Close()
-	painc_err(err2)
+	if !painc_err(err2) {
+		return false, nil
+	}
 	res, err := stmt.Query()
 	defer res.Close()
-	painc_err(err)
+	if !painc_err(err) {
+		return false, nil
+	}
 	service_port_slice := make([]ServicePort, 0)
 	for res.Next() {
 		// var datasource_alive DatsourceAlive
@@ -303,7 +319,7 @@ func Query(sqlstr string) []ServicePort {
 	}
 	db.Close()
 	fmt.Println("service_port table length: ", len(service_port_slice))
-	return service_port_slice
+	return true, service_port_slice
 }
 
 func Insert(servicePort ServicePort) bool {
@@ -334,8 +350,7 @@ func Serilize() bool {
 	}
 	// fmt.Println("************", string(serilize_data), "************")
 	err2 := ioutil.WriteFile("./port_info.txt", serilize_data[:len(serilize_data)-1], 0666) //写入文件(字节数组)
-	painc_err(err2)
-	return true
+	return painc_err(err2)
 }
 
 func ReSerialize() []ServicePort {
@@ -363,10 +378,12 @@ func ReSerialize() []ServicePort {
 
 }
 
-func painc_err(err error) {
+func painc_err(err error) bool {
 	if err != nil {
-		panic(err)
+		Logger.Printf("%s \n", err)
+		return false
 	}
+	return true
 }
 
 func GetConnection(mysql_connection MysqlConnect) *sql.DB {
@@ -417,7 +434,7 @@ func TableQuery(mysqlConnector MysqlConnect) []TableTable {
 
 }
 
-func ConnectionQuery(mysqlConnector MysqlConnect) []Variable {
+func ConnectionQuery(mysqlConnector MysqlConnect) (bool, []Variable) {
 
 	maxconnectionQuery := "SHOW VARIABLES LIKE 'MAX_CONNECTIONS'"
 	userconnectionQuery := "SHOW VARIABLES LIKE 'MAX_USER_CONNECTIONS'"
@@ -427,33 +444,41 @@ func ConnectionQuery(mysqlConnector MysqlConnect) []Variable {
 	types := []string{"string", "int"}
 
 	db := GetConnection(mysqlConnector)
-	variables := ExecuteVariableQuery(db, maxconnectionQuery, columns, types)
+	bool1, variables := ExecuteVariableQuery(db, maxconnectionQuery, columns, types)
 
-	variablesUser := ExecuteVariableQuery(db, userconnectionQuery, columns, types)
+	bool2, variablesUser := ExecuteVariableQuery(db, userconnectionQuery, columns, types)
 
-	variablesCurrent := ExecuteVariableQuery(db, currentConnectionQuery, columns, types)
+	bool3, variablesCurrent := ExecuteVariableQuery(db, currentConnectionQuery, columns, types)
 
-	variables = append(variables, variablesUser[0])
-	variables = append(variables, variablesCurrent[0])
-	db.Close()
-	return variables
+	if !bool1 || !bool2 || !bool3 {
+		return false, nil
+	} else {
+		variables = append(variables, variablesUser[0])
+		variables = append(variables, variablesCurrent[0])
+		db.Close()
+		return true, variables
+
+	}
 }
 
-func QpsAndSlowSqlQuery(mysqlConnector MysqlConnect) []Variable {
+func QpsAndSlowSqlQuery(mysqlConnector MysqlConnect) (bool, []Variable) {
 	qpsQuery := "SHOW GLOBAL STATUS LIKE 'Queries'"
 	slowSqlQuery := "SHOW GLOBAL status like '%que%'"
 	columns := []string{"variable_name", "value"}
 	types := []string{"string", "int"}
 	db := GetConnection(mysqlConnector)
-	variables := ExecuteVariableQuery(db, qpsQuery, columns, types)
-	variablesSlow := ExecuteVariableQuery(db, slowSqlQuery, columns, types)
+	bool1, variables := ExecuteVariableQuery(db, qpsQuery, columns, types)
+	bool2, variablesSlow := ExecuteVariableQuery(db, slowSqlQuery, columns, types)
+	if bool1 || bool2 {
+		return false, nil
+	}
 	for _, variable := range variablesSlow {
 		if variable.VariableName == "Slow_queries" {
 			variables = append(variables, variable)
 		}
 	}
 	db.Close()
-	return variables
+	return true, variables
 }
 
 type Status struct {
@@ -464,16 +489,16 @@ type Status struct {
 	ExecutedGtidSet string `json:"executed_gtid_set"`
 }
 
-func TpsQuery(mysqlConnector MysqlConnect) []Status {
+func TpsQuery(mysqlConnector MysqlConnect) (bool, []Status) {
 	tpsSql := "show master STATUS"
 
 	columns := []string{"file", "position", "binlog_do_db", "binlog_ignore_db", "executed_gtid_set"}
 	types := []string{"string", "int", "string", "string", "string"}
 
 	db := GetConnection(mysqlConnector)
-	statuses := ExecuteStatusQuery(db, tpsSql, columns, types)
+	bool, statuses := ExecuteStatusQuery(db, tpsSql, columns, types)
 	db.Close()
 
-	return statuses
+	return bool, statuses
 
 }
