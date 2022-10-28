@@ -46,6 +46,8 @@ type DataStroe struct {
 }
 
 type Data_store_configure_default DataStroe
+type Data_store_configure_cype DataStroe
+type Data_store_configure DataStroe
 
 type gatherName struct {
 	Id   int64
@@ -107,8 +109,11 @@ func PgServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 }
 
 // 查询exporter地址数据
-func PgDataStoreQuery(db *gorm.DB, table string) []Data_store_configure_default {
-	dss := make([]Data_store_configure_default, 0)
+//func PgDataStoreQuery(db *gorm.DB, table string) []Data_store_configure_default {
+//	dss := make([]Data_store_configure_default, 0)
+
+func PgDataStoreQuery(db *gorm.DB, table string) []Data_store_configure {
+	dss := make([]Data_store_configure, 0)
 	// sql := fmt.Sprintf(` SELECT dsc.id as id,
 	// 		dsc.data_name as dataname,
 	// 		dsc.ip as ip,
@@ -127,12 +132,12 @@ func PgDataStoreQuery(db *gorm.DB, table string) []Data_store_configure_default 
 }
 
 // 数据写入data_store_cofigure_default表
-func PgDataStoreInsert(db *gorm.DB, datas *Data_store_configure_default) {
+func PgDataStoreInsert(db *gorm.DB, datas *Data_store_configure) {
 	db = db.Create(datas)
 }
 
 func PgDataStoreRemove(db *gorm.DB) {
-	db.Where("1=1").Delete(&Data_store_configure_default{})
+	db.Where("1=1").Delete(&Data_store_configure{})
 }
 
 // 查询基础服务存活数据的个数
@@ -170,7 +175,7 @@ func Migirate() {
 	// tx := db.Begin()
 	// tx.Exec("use public")
 	// tx.Commit()
-	servicePorts := Query("")
+	_, servicePorts := Query("")
 	gatherNames := make([]gatherName, 0)
 	dataGathers := make([]dataGather, 0)
 	lastName := ""

@@ -393,7 +393,7 @@ func GetConnection(mysql_connection MysqlConnect) *sql.DB {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		fmt.Println("mysql打开连接失败......")
-		panic(err)
+		return nil
 	}
 	// See "Important settings" section.
 	db.SetConnMaxLifetime(time.Minute * 3)

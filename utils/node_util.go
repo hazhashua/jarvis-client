@@ -49,8 +49,13 @@ func NetInfoGet() *NetInfo {
 			ips := strings.Split(v.Addr, "/")
 			Logger.Printf("interface名称: %s\n", interfaceStat.Name)
 			if ips[0] != "127.0.0.1" && len(strings.Split(ips[0], ".")) == 4 {
-				interfaceInfo[interfaceStat.Name] = ips[0]
-				netInfo.Ip = ips[0]
+				if _, empty := interfaceInfo[interfaceStat.Name]; !empty {
+					interfaceInfo[interfaceStat.Name] = ips[0]
+				}
+				if netInfo.Ip == "" {
+					netInfo.Ip = ips[0]
+				}
+
 			}
 		}
 	}

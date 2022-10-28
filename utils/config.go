@@ -657,6 +657,7 @@ func getSourceAddr() map[string][]ServicePort {
 			sps[*sp.ServiceName] = make([]ServicePort, 0)
 		}
 		sps[*sp.ServiceName] = append(sps[*sp.ServiceName], sp)
+		fmt.Println("*sp.ServiceName: ", *sp.ServiceName, "serviceport: ", *sp.ChildService, *sp.IP, sp.Port.Valid, sp.Port.Int64)
 	}
 
 	// 提前hadoop相关源数据信息
