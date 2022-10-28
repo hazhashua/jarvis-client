@@ -94,14 +94,14 @@ func parseArgs() string {
 
 // 注册 exporter地址数据 到数据库
 func registerEndpoint(dataName string, port int, metricPath string) {
-	ds := new(utils.Data_store_configure_default)
+	ds := new(utils.Data_store_configure_cype)
 	ds.DataName = dataName
 	ni := utils.NetInfoGet()
 	ds.Ip = fmt.Sprintf("%s:%d", ni.Ip, utils.DbConfig.Cluster.HttpPort)
 	ds.CreateTime = time.Now()
 	ds.UpdateTime = time.Now()
 	ds.Path = config.MetricPathMap[dataName]
-	var dss []utils.Data_store_configure_default
+	var dss []utils.Data_store_configure_cype
 	utils.Db.Where("data_name=?", dataName).Find(&dss)
 	if len(dss) == 0 {
 		// 数据库没有数据插入
