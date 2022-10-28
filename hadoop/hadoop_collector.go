@@ -506,6 +506,17 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
 	if !ok {
 		// 未获取到jmx数据，赋默认值
+		num_active_nms = new(int64)
+		num_lost_nms = new(int64)
+		num_shutdown_nms = new(int64)
+		num_unhealthy_nms = new(int64)
+		num_live_datanodes = new(int64)
+		num_dead_datanodes = new(int64)
+		num_decom_livedatanodes = new(int64)
+		num_decom_missioningdatanodes = new(int64)
+		num_decommissioning_datanodes = new(int64)
+		blocks_total = new(int64)
+		files_total = new(int64)
 		*num_active_nms, *num_lost_nms, *num_shutdown_nms, *num_unhealthy_nms, *num_live_datanodes, *num_dead_datanodes, *num_decom_livedatanodes, *num_decom_missioningdatanodes, *num_decommissioning_datanodes, *blocks_total, *files_total = -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 	}
 
