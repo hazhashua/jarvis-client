@@ -228,6 +228,8 @@ func QueryMetric() *hbaseData {
 		hmaster_data.numRegionServers = *mm.Beans[0].NumRegionServers
 		hmaster_data.numDeadRegionServers = *mm.Beans[0].NumDeadRegionServers
 		utils.Logger.Printf("hmaster_data.numRegionServers: %d \t hmaster_data.numDeadRegionServers: %d \n", *mm.Beans[0].NumRegionServers, *mm.Beans[0].NumDeadRegionServers)
+	} else {
+		utils.Logger.Printf("UnmarshalMasterMain(body) error: %s", unmarshalErr.Error())
 	}
 
 	query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=AssignmentManager")
@@ -273,26 +275,39 @@ func QueryMetric() *hbaseData {
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		// utils.Logger.Printf("response body: %s", string(body))
 		if region_ipc, unmarshalErr := UnmarshalRegionserverIPC(body); unmarshalErr == nil {
-			region_data.numActiveHandler = *region_ipc.Beans[0].NumActiveHandler
-			region_data.receivedBytes = *region_ipc.Beans[0].ReceivedBytes
-			region_data.sentBytes = *region_ipc.Beans[0].SentBytes
-			region_data.numOpenConnections = *region_ipc.Beans[0].NumOpenConnections
-			region_data.authenticationFailures = *region_ipc.Beans[0].AuthenticationFailures
-			region_data.authenticationSuccesses = *region_ipc.Beans[0].AuthenticationSuccesses
+			utils.Logger.Printf("region_ipc: %v\n", region_ipc)
+			if len(region_ipc.Beans) != 0 {
+				region_data.numActiveHandler = *region_ipc.Beans[0].NumActiveHandler
+				region_data.receivedBytes = *region_ipc.Beans[0].ReceivedBytes
+				region_data.sentBytes = *region_ipc.Beans[0].SentBytes
+				region_data.numOpenConnections = *region_ipc.Beans[0].NumOpenConnections
+				region_data.authenticationFailures = *region_ipc.Beans[0].AuthenticationFailures
+				region_data.authenticationSuccesses = *region_ipc.Beans[0].AuthenticationSuccesses
 
-			// fmt.Println("NumActiveHandler: ", *region_ipc.Beans[0].NumActiveHandler)
-			// // 接收的数据量
-			// fmt.Println("ReceivedBytes: ", *region_ipc.Beans[0].ReceivedBytes)
-			// // 发送的数据量
-			// fmt.Println("SentBytes: ", *region_ipc.Beans[0].SentBytes)
-			// // 打开的ipc连接数
-			// fmt.Println("NumOpenConnections: ", *region_ipc.Beans[0].NumOpenConnections)
-			// // rpc认证失败次数
-			// fmt.Println("AuthenticationFailures: ", *region_ipc.Beans[0].AuthenticationFailures)
-			// // rpc认证成功次数
-			// fmt.Println("AuthenticationSuccesses: ", *region_ipc.Beans[0].AuthenticationSuccesses)
+				// fmt.Println("NumActiveHandler: ", *region_ipc.Beans[0].NumActiveHandler)
+				// // 接收的数据量
+				// fmt.Println("ReceivedBytes: ", *region_ipc.Beans[0].ReceivedBytes)
+				// // 发送的数据量
+				// fmt.Println("SentBytes: ", *region_ipc.Beans[0].SentBytes)
+				// // 打开的ipc连接数
+				// fmt.Println("NumOpenConnections: ", *region_ipc.Beans[0].NumOpenConnections)
+				// // rpc认证失败次数
+				// fmt.Println("AuthenticationFailures: ", *region_ipc.Beans[0].AuthenticationFailures)
+				// // rpc认证成功次数
+				// fmt.Println("AuthenticationSuccesses: ", *region_ipc.Beans[0].AuthenticationSuccesses)
 
-			utils.Logger.Printf("NumActiveHandler: %d\t ReceivedBytes: %d\t SentBytes: %d\t NumOpenConnections: %d\t AuthenticationFailures: %d\t AuthenticationSuccesses: %d\n", *region_ipc.Beans[0].NumActiveHandler, *region_ipc.Beans[0].ReceivedBytes, *region_ipc.Beans[0].SentBytes, *region_ipc.Beans[0].NumOpenConnections, *region_ipc.Beans[0].AuthenticationFailures, *region_ipc.Beans[0].AuthenticationSuccesses)
+				utils.Logger.Printf("NumActiveHandler: %d\t ReceivedBytes: %d\t SentBytes: %d\t NumOpenConnections: %d\t AuthenticationFailures: %d\t AuthenticationSuccesses: %d\n", *region_ipc.Beans[0].NumActiveHandler, *region_ipc.Beans[0].ReceivedBytes, *region_ipc.Beans[0].SentBytes, *region_ipc.Beans[0].NumOpenConnections, *region_ipc.Beans[0].AuthenticationFailures, *region_ipc.Beans[0].AuthenticationSuccesses)
+
+			} else {
+				region_data.numActiveHandler = -1
+				region_data.receivedBytes = -1
+				region_data.sentBytes = -1
+				region_data.numOpenConnections = -1
+				region_data.authenticationFailures = -1
+				region_data.authenticationSuccesses = -1
+				utils.Logger.Printf("NumActiveHandler: -1\t ReceivedBytes: -1\t SentBytes: -1\t NumOpenConnections: -1\t AuthenticationFailures: -1\t AuthenticationSuccesses: -1\n")
+
+			}
 		}
 
 		//Hadoop:service=HBase,name=RegionServer,sub=Server
@@ -355,19 +370,24 @@ func QueryMetric() *hbaseData {
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=IO")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		if region_io, unmarshalErr := UnmarshalRegionserverIO(body); unmarshalErr == nil {
-			region_data.fsReadTimeMax = *region_io.Beans[0].FSReadTimeMax
-			region_data.fsWriteTimeMax = *region_io.Beans[0].FSWriteTimeMax
-			// // 文件系统最大读时间
-			// fmt.Println(*region_io.Beans[0].FSReadTimeMax)
-			// // 文件系统最大写时间
-			// fmt.Println(*region_io.Beans[0].FSWriteTimeMax)
+			if len(region_io.Beans) > 0 {
+				region_data.fsReadTimeMax = *region_io.Beans[0].FSReadTimeMax
+				region_data.fsWriteTimeMax = *region_io.Beans[0].FSWriteTimeMax
+				// // 文件系统最大读时间
+				// fmt.Println(*region_io.Beans[0].FSReadTimeMax)
+				// // 文件系统最大写时间
+				// fmt.Println(*region_io.Beans[0].FSWriteTimeMax)
+			} else {
+				region_data.fsReadTimeMax = -1
+				region_data.fsWriteTimeMax = -1
+			}
+
 		}
 
 		// 解析hbase table相关的数据
 		// Hadoop:service=HBase,name=RegionServer,sub=Tables
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=Tables")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
-		fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 		if region_tables, unmarshalErr := UnmarshalTables(body); unmarshalErr == nil {
 			if len(region_tables.Beans) != 0 {
 				tds := make(map[string]*tableData, 0)
