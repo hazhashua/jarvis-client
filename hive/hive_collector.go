@@ -65,7 +65,10 @@ func NewHiveExporter() *HiveExporter {
 		metricDescriptions[metric] = prometheus.NewDesc(prometheus.BuildFQName("", "", metric), desc.txt, desc.lbls, nil)
 	}
 	dbs := GetDbs()
-	db_num := len(dbs)
+	var db_num int
+	if dbs != nil {
+		db_num = len(dbs)
+	}
 	dbInfoDescriptions := make([]*prometheus.Desc, db_num)
 
 	// DbId         int     `json:"DB_ID"`
@@ -93,16 +96,22 @@ func NewHiveExporter() *HiveExporter {
 		DefaultDB: "hive",
 	}
 	db_tables := QueryDetailTbls(mysql_connection)
-	tableInfoDescriptions := make([]*prometheus.Desc, len(db_tables))
-
-	for idx := 0; idx < len(db_tables); idx++ {
-		tableInfoDescriptions[idx] = prometheus.NewDesc(
-			prometheus.BuildFQName("", "", "table_info"),
-			"show the table detail info",
-			[]string{"db_name", "table_name", "is_external", "is_partitioned", "num_files", "total_size", "cluster", "exporter_host", "exporter_ip"},
-			nil,
-		)
+	var tableInfoDescriptions []*prometheus.Desc
+	if db_tables != nil {
+		tableInfoDescriptions = make([]*prometheus.Desc, len(db_tables))
 	}
+
+	if db_tables != nil {
+		for idx := 0; idx < len(db_tables); idx++ {
+			tableInfoDescriptions[idx] = prometheus.NewDesc(
+				prometheus.BuildFQName("", "", "table_info"),
+				"show the table detail info",
+				[]string{"db_name", "table_name", "is_external", "is_partitioned", "num_files", "total_size", "cluster", "exporter_host", "exporter_ip"},
+				nil,
+			)
+		}
+	}
+
 	return &HiveExporter{
 		hiveConfig:            hiveConfig,
 		hiveCluster:           hiveCluster,
@@ -137,6 +146,11 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 	// db_num := len(dbs)
 
 	exporter = NewHiveExporter()
+
+	if exporter.dbDatas == nil {
+		utils.Logger.Printf("查询元数据库为空！")
+		return
+	}
 	// hive_config := Parse_hive_config()
 	hive_config := (utils.ConfigStruct.ConfigData[config.HIVE]).(config.HiveConfig)
 	mysql_connection := utils.MysqlConnect{

@@ -86,9 +86,12 @@ func GetDbs() []DB {
 
 	db := utils.GetConnection(mysql_connection)
 	sqlstr := "SELECT * FROM DBS"
-	stmt, _ := db.Prepare(sqlstr)
+	stmt, err := db.Prepare(sqlstr)
+	if err != nil {
+		return nil
+	}
 	defer stmt.Close()
-	res, _ := stmt.Query()
+	res, err := stmt.Query()
 	defer res.Close()
 	dbs := make([]DB, 0)
 	for res.Next() {
@@ -201,6 +204,9 @@ func QueryPartitionTbls(mysql_connection utils.MysqlConnect) []DBTable {
 // 查询表详细信息
 func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTable {
 	db := utils.GetConnection(mysql_connection)
+	if db == nil {
+		return nil
+	}
 	// 查询所有表及其是不是分区表
 	sqlstr := `select  name, tbl_name, tbl_type, tbl_id, 
 	IF(param_key is not null, SUBSTRING_INDEX(param_key,',', 1),'') key1,  cast(IF(param_value is not null, SUBSTRING_INDEX(param_value, ',', 1), '') as decimal) value1 , 
@@ -218,9 +224,15 @@ func QueryDetailTbls(mysql_connection utils.MysqlConnect) []DBTable {
 		ON dbs.db_id=tbls.db_id  
 		GROUP BY dbs.name, tbls.tbl_name, tbls.tbl_type, prts.tbl_id 
 	) tmp`
-	stmt, _ := db.Prepare(sqlstr)
+	stmt, err := db.Prepare(sqlstr)
+	if err != nil {
+		return nil
+	}
 	defer stmt.Close()
-	res, _ := stmt.Query()
+	res, err := stmt.Query()
+	if err != nil {
+		return nil
+	}
 	defer res.Close()
 	var db_tables []DBTable
 	for res.Next() {
