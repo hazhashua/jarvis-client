@@ -90,7 +90,7 @@ func GetJvmMetricsInfo(http_url string) (mem_non_heap_usedm float64, mem_non_hea
 	return
 }
 
-func GetDFSInfo(namenoeUrl string) (nondfs_gb *float64, capacity_total_gb *float64, capacity_remaining_gb *float64,
+func GetDFSInfo(namenoeUrl string) (isOk bool, nondfs_gb *float64, capacity_total_gb *float64, capacity_remaining_gb *float64,
 	capacity_used_gb *float64, blocks_total *int64, corrupt_blocks *int64,
 	pending_deletion_blocks *int64, pending_replication_blocks *int64,
 	files_total *int64, tag_ha_state *string) {
@@ -102,8 +102,9 @@ func GetDFSInfo(namenoeUrl string) (nondfs_gb *float64, capacity_total_gb *float
 	fs_namesystem, err := UnmarshalFSNamesystem(fs_namesystem_bytes)
 	if err != nil {
 		utils.Logger.Printf("UnmarshalFSNamesystem(fs_namesystem_bytes) error:%s\n", err.Error())
+		return
 	}
-
+	isOk = true
 	nondfs_gbv := float64(*fs_namesystem.Beans[0].CapacityUsedNonDFS) / float64(1024.0) / 1024 / 1024
 	nondfs_gb = &nondfs_gbv
 	capacity_total_gb = fs_namesystem.Beans[0].CapacityTotalGB
@@ -197,26 +198,29 @@ func GetAliveInfo(yarnUrls []string, namenodeUrls []string) (ok bool, num_active
 	if err2 != nil {
 		utils.Logger.Printf("UnmarshalFSNamesystemState(fsnamesystem_state_bytes) error: %s", err2.Error())
 		// fmt.Println("error: ", err2.Error())
-	}
-	num_live_datanodes = fs.Beans[0].NumLiveDataNodes
-	// utils.Logger.Printf("fs.Beans[0].NumLiveDataNodes: %d\n", *fs.Beans[0].NumLiveDataNodes)
-	num_dead_datanodes = fs.Beans[0].NumDeadDataNodes
-	// utils.Logger.Printf("fs.Beans[0].NumDeadDataNodes: %d\n", *fs.Beans[0].NumDeadDataNodes)
-	num_decom_livedatanodes = fs.Beans[0].NumDecomLiveDataNodes
-	// utils.Logger.Printf("fs.Beans[0].NumDecomLiveDataNodes: %d\n", *fs.Beans[0].NumDecomLiveDataNodes)
-	num_decom_missioningdatanodes = fs.Beans[0].NumDecommissioningDataNodes
-	// utils.Logger.Printf("fs.Beans[0].NumDecommissioningDataNodes: %d\n", *fs.Beans[0].NumDecommissioningDataNodes)
-	//hdfs 总块数
-	blocks_total = fs.Beans[0].BlocksTotal
-	// utils.Logger.Printf("fs.Beans[0].BlocksTotal: %d", *fs.Beans[0].BlocksTotal)
-	files_total = fs.Beans[0].FilesTotal
-	// utils.Logger.Printf("fs.Beans[0].FilesTotal: %d\n", *fs.Beans[0].FilesTotal)
+		return
+	} else {
+		ok = true
+		num_live_datanodes = fs.Beans[0].NumLiveDataNodes
+		// utils.Logger.Printf("fs.Beans[0].NumLiveDataNodes: %d\n", *fs.Beans[0].NumLiveDataNodes)
+		num_dead_datanodes = fs.Beans[0].NumDeadDataNodes
+		// utils.Logger.Printf("fs.Beans[0].NumDeadDataNodes: %d\n", *fs.Beans[0].NumDeadDataNodes)
+		num_decom_livedatanodes = fs.Beans[0].NumDecomLiveDataNodes
+		// utils.Logger.Printf("fs.Beans[0].NumDecomLiveDataNodes: %d\n", *fs.Beans[0].NumDecomLiveDataNodes)
+		num_decom_missioningdatanodes = fs.Beans[0].NumDecommissioningDataNodes
+		// utils.Logger.Printf("fs.Beans[0].NumDecommissioningDataNodes: %d\n", *fs.Beans[0].NumDecommissioningDataNodes)
+		//hdfs 总块数
+		blocks_total = fs.Beans[0].BlocksTotal
+		// utils.Logger.Printf("fs.Beans[0].BlocksTotal: %d", *fs.Beans[0].BlocksTotal)
+		files_total = fs.Beans[0].FilesTotal
+		// utils.Logger.Printf("fs.Beans[0].FilesTotal: %d\n", *fs.Beans[0].FilesTotal)
 
-	return
+		return
+	}
 
 }
 
-func GetNameNodeRPCInfo(namenode_url string) (call_queue_length *int64, rpc_slow_calls *int64,
+func GetNameNodeRPCInfo(namenode_url string) (isOk bool, call_queue_length *int64, rpc_slow_calls *int64,
 	num_open_connections *int64, num_dropped_connections *int64, rpc_authentication_successes *int64,
 	rpc_authentication_failures *int64, sent_bytes *int64, received_bytes *int64,
 	call_queuetime_avgtime *float64, tag_hostname *string, tag_port *string) {
@@ -228,8 +232,9 @@ func GetNameNodeRPCInfo(namenode_url string) (call_queue_length *int64, rpc_slow
 	if err != nil {
 		// fmt.Println("error: ", err.Error())
 		utils.Logger.Printf("UnmarshalRPCActivityForPort8020(rpc_activity_bytes): %s", err.Error())
+		return
 	}
-
+	isOk = true
 	call_queue_length = rfp.Beans[0].CallQueueLength
 	rpc_slow_calls = rfp.Beans[0].RPCSlowCalls
 	num_open_connections = rfp.Beans[0].NumOpenConnections
@@ -277,7 +282,7 @@ func GetDataNodeRPCInfo(datanode_url string) {
 }
 
 // 获取namenode上的各种操作数
-func GetNameNodeOps(namenode_url string) (fileinfo_ops *int64, createfile_ops *int64, getlisting_ops *int64, deletefile_ops *int64) {
+func GetNameNodeOps(namenode_url string) (isOk bool, fileinfo_ops *int64, createfile_ops *int64, getlisting_ops *int64, deletefile_ops *int64) {
 	url := namenode_url + "?qry=Hadoop:service=NameNode,name=NameNodeActivity"
 	response := utils.GetUrl(url)
 	namenode_activity_byte := []byte(response)
@@ -285,7 +290,9 @@ func GetNameNodeOps(namenode_url string) (fileinfo_ops *int64, createfile_ops *i
 	if err != nil {
 		// fmt.Println("error: ", err.Error())
 		utils.Logger.Printf("UnmarshalNameNodeActivity(namenode_activity_byte) error:%s\n", err.Error())
+		return
 	}
+	isOk = true
 	fileinfo_ops = nna.Beans[0].CreateFileOps
 	createfile_ops = nna.Beans[0].CreateFileOps
 	getlisting_ops = nna.Beans[0].GetListingOps
@@ -302,7 +309,7 @@ func GetNameNodeOps(namenode_url string) (fileinfo_ops *int64, createfile_ops *i
 }
 
 // 获取datanode上的数据读写信息
-func GetDataNodeInfo(datanode_url string) (bytes_read *int64, bytes_written *int64,
+func GetDataNodeInfo(datanode_url string) (isOk bool, bytes_read *int64, bytes_written *int64,
 	remote_bytes_read *int64, remote_bytes_written *int64,
 	heartbeats_numops *int64, heartbeats_avgtime *float64, tag_hostname *string) {
 	url := datanode_url + "?qry=Hadoop:service=DataNode,name=DataNodeActivity-*"
@@ -312,8 +319,9 @@ func GetDataNodeInfo(datanode_url string) (bytes_read *int64, bytes_written *int
 	if err != nil {
 		// fmt.Println("error: ", err.Error())
 		utils.Logger.Printf("UnmarshalDataNodeActivity(datanode_activity_byte): %s\n", err.Error())
+		return
 	}
-
+	isOk = true
 	bytes_read = dna.Beans[0].BytesRead
 	bytes_written = dna.Beans[0].BytesWritten
 	heartbeats_numops = dna.Beans[0].HeartbeatsNumOps

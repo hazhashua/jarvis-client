@@ -546,6 +546,7 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for idx, namenode := range hadoop_config.Cluster.Namenodes {
 		urls = append(urls, fmt.Sprintf("http://%s:%d/jmx?qry=Hadoop:service=NameNode,name=JvmMetrics", namenode, hadoop_config.Cluster.NamenodeHttpPort))
+		utils.Logger.Printf("namenode url: %s\n", fmt.Sprintf("http://%s:%d/jmx?qry=Hadoop:service=NameNode,name=JvmMetrics", namenode, hadoop_config.Cluster.NamenodeHttpPort))
 		host_list = append(host_list, hadoop_config.Cluster.NamenodeHosts[idx])
 		ip_list = append(ip_list, namenode)
 		port_list = append(port_list, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeHttpPort))
@@ -554,6 +555,7 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	for idx, datanode := range hadoop_config.Cluster.Datanodes {
 		urls = append(urls, fmt.Sprintf("http://%s:%d/jmx?qry=Hadoop:service=DataNode,name=JvmMetrics", datanode, hadoop_config.Cluster.DatanodeHttpPort))
+		utils.Logger.Printf("datanode url: %s\n", append(urls, fmt.Sprintf("http://%s:%d/jmx?qry=Hadoop:service=DataNode,name=JvmMetrics", datanode, hadoop_config.Cluster.DatanodeHttpPort)))
 		host_list = append(host_list, hadoop_config.Cluster.DatanodeHosts[idx])
 		ip_list = append(ip_list, datanode)
 		port_list = append(port_list, fmt.Sprintf("%d", hadoop_config.Cluster.DatanodeHttpPort))
@@ -611,21 +613,45 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	namenode_url := fmt.Sprintf("http://%s:%d/jmx", hadoop_config.Cluster.Namenodes[0], hadoop_config.Cluster.NamenodeHttpPort)
-	nondfs_gb, capacity_total_gb, capacity_remaining_gb, capacity_used_gb, blocks_total, corrupt_blocks, pending_deletion_blocks, pending_replication_blocks, files_total, tag_ha_state := GetDFSInfo(namenode_url)
-	fmt.Println("nondfs_gb: ", *nondfs_gb)
-	fmt.Println("capacity_total_gb: ", *capacity_total_gb)
-	fmt.Println("capacity_remaining_gb: ", *capacity_remaining_gb)
-	fmt.Println("capacity_used_gb: ", *capacity_used_gb)
-	fmt.Println("blocks_total: ", *blocks_total)
-	fmt.Println("corrupt_blocks: ", *corrupt_blocks)
-	fmt.Println("pending_deletion_blocks: ", *pending_deletion_blocks)
-	fmt.Println("pending_replication_blocks: ", *pending_replication_blocks)
-	fmt.Println("files_total: ", *files_total)
-	fmt.Println("tag_ha_state: ", *tag_ha_state)
-	utils.Logger.Printf("nondfs_gb:%f, capacity_total_gb:%f, capacity_remaining_gb:%f, capacity_used_gb:%f, blocks_total:%d, corrupt_blocks:%d, pending_deletion_blocks:%d, pending_replication_blocks:%d files_total:%d  tag_ha_state:%s\n",
-		*nondfs_gb, *capacity_total_gb, *capacity_remaining_gb, *capacity_used_gb,
-		*blocks_total, *corrupt_blocks, *pending_deletion_blocks, *pending_replication_blocks,
-		*files_total, *tag_ha_state)
+	nondfs_gb := new(float64)
+	capacity_total_gb := new(float64)
+	capacity_remaining_gb := new(float64)
+	capacity_used_gb := new(float64)
+	// var blocks_total *int64
+	corrupt_blocks := new(int64)
+	pending_deletion_blocks := new(int64)
+	pending_replication_blocks := new(int64)
+	// var files_total *int64
+	tag_ha_state := new(string)
+	var isOk bool
+	isOk, _, _, _, _, _, _, _, _, _, _ = GetDFSInfo(namenode_url)
+	if isOk {
+		isOk, nondfs_gb, capacity_total_gb, capacity_remaining_gb, capacity_used_gb, blocks_total, corrupt_blocks, pending_deletion_blocks, pending_replication_blocks, files_total, tag_ha_state = GetDFSInfo(namenode_url)
+		fmt.Println("nondfs_gb: ", *nondfs_gb)
+		fmt.Println("capacity_total_gb: ", *capacity_total_gb)
+		fmt.Println("capacity_remaining_gb: ", *capacity_remaining_gb)
+		fmt.Println("capacity_used_gb: ", *capacity_used_gb)
+		fmt.Println("blocks_total: ", *blocks_total)
+		fmt.Println("corrupt_blocks: ", *corrupt_blocks)
+		fmt.Println("pending_deletion_blocks: ", *pending_deletion_blocks)
+		fmt.Println("pending_replication_blocks: ", *pending_replication_blocks)
+		fmt.Println("files_total: ", *files_total)
+		fmt.Println("tag_ha_state: ", *tag_ha_state)
+		utils.Logger.Printf("nondfs_gb:%f, capacity_total_gb:%f, capacity_remaining_gb:%f, capacity_used_gb:%f, blocks_total:%d, corrupt_blocks:%d, pending_deletion_blocks:%d, pending_replication_blocks:%d files_total:%d  tag_ha_state:%s\n",
+			*nondfs_gb, *capacity_total_gb, *capacity_remaining_gb, *capacity_used_gb,
+			*blocks_total, *corrupt_blocks, *pending_deletion_blocks, *pending_replication_blocks,
+			*files_total, *tag_ha_state)
+	} else {
+		*capacity_total_gb = -1
+		*capacity_remaining_gb = -1
+		*capacity_used_gb = -1
+		*blocks_total = -1
+		*corrupt_blocks = -1
+		*pending_deletion_blocks = -1
+		*pending_replication_blocks = -1
+		*files_total = -1
+		*tag_ha_state = ""
+	}
 
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityNonDFSGB, collector.hadoopMetrics.CapacityNonDFSGBValType, float64(*nondfs_gb), hadoop_config.Cluster.Name)
 	ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.CapacityTotalGB, collector.hadoopMetrics.CapacityTotalGBValType, float64(*capacity_total_gb), hadoop_config.Cluster.Name)
@@ -637,7 +663,19 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	// "cluster", "host", "ip", "port", "service_name"
 	for idx, namenode := range hadoop_config.Cluster.Namenodes {
 		namenode_url := fmt.Sprintf("http://%s:%d/jmx", namenode, hadoop_config.Cluster.NamenodeHttpPort)
-		fileinfo_ops, createfile_ops, getlisting_ops, deletefile_ops := GetNameNodeOps(namenode_url)
+		var deletefile_ops *int64
+		var fileinfo_ops *int64
+		var createfile_ops *int64
+		var getlisting_ops *int64
+		isOk, _, _, _, _ := GetNameNodeOps(namenode_url)
+		if isOk {
+			isOk, fileinfo_ops, createfile_ops, getlisting_ops, deletefile_ops = GetNameNodeOps(namenode_url)
+		} else {
+			fileinfo_ops = new(int64)
+			createfile_ops = new(int64)
+			getlisting_ops = new(int64)
+			deletefile_ops = new(int64)
+		}
 		ch <- prometheus.MustNewConstMetric(collector.hadoopMetrics.FileInfoOps[idx],
 			collector.hadoopMetrics.FileInfoOpsValType, float64(*fileinfo_ops),
 			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
@@ -658,7 +696,7 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 			hadoop_config.Cluster.Name, hadoop_config.Cluster.NamenodeHosts[idx],
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
-		call_queue_length, rpc_slow_calls, num_open_connections, num_dropped_connections, rpc_authentication_successes, rpc_authentication_failures, sent_bytes, received_bytes, call_queuetime_avgtime, tag_hostname, tag_port := GetNameNodeRPCInfo(namenode_url)
+		isOk, call_queue_length, rpc_slow_calls, num_open_connections, num_dropped_connections, rpc_authentication_successes, rpc_authentication_failures, sent_bytes, received_bytes, call_queuetime_avgtime, tag_hostname, tag_port := GetNameNodeRPCInfo(namenode_url)
 		fmt.Printf("call_queue_length:%d\n  rpc_slow_calls:%d\n  num_open_connections:%d\n  num_dropped_connections:%d\n rpc_authentication_successes:%d\n  rpc_authentication_failures:%d\n  sent_bytes:%d\n  received_bytes:%d\n  call_queuetime_avgtime:%f\n  tag_hostname:%s\n  tag_port:%s \n",
 			*call_queue_length, *rpc_slow_calls, *num_open_connections, *num_dropped_connections,
 			*rpc_authentication_successes, *rpc_authentication_failures, *sent_bytes, *received_bytes,
@@ -707,9 +745,28 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	// HeartbeatsNum             []*prometheus.Desc
 	// HeartbeatsAvgTime         []*prometheus.Desc
 
+	bytes_read := new(int64)
+	bytes_written := new(int64)
+	remote_bytes_read := new(int64)
+	remote_bytes_written := new(int64)
+	heartbeats_numops := new(int64)
+	heartbeats_avgtime := new(float64)
+	tag_hostname := new(string)
+	// var isOk bool
 	for idx, datanode := range hadoop_config.Cluster.Datanodes {
 		datanode_url := fmt.Sprintf("http://%s:%d/jmx", datanode, hadoop_config.Cluster.DatanodeHttpPort)
-		bytes_read, bytes_written, remote_bytes_read, remote_bytes_written, heartbeats_numops, heartbeats_avgtime, tag_hostname := GetDataNodeInfo(datanode_url)
+		isOk, _, _, _, _, _, _, _ = GetDataNodeInfo(datanode_url)
+		if isOk {
+			isOk, bytes_read, bytes_written, remote_bytes_read, remote_bytes_written, heartbeats_numops, heartbeats_avgtime, tag_hostname = GetDataNodeInfo(datanode_url)
+		} else {
+			*bytes_read = -1
+			*bytes_written = -1
+			*remote_bytes_read = -1
+			*remote_bytes_written = -1
+			*heartbeats_numops = -1
+			*heartbeats_avgtime = -1
+			*tag_hostname = ""
+		}
 
 		fmt.Println(bytes_read, bytes_written, remote_bytes_read, remote_bytes_written, heartbeats_numops, heartbeats_avgtime, tag_hostname)
 		//"cluster", "host", "ip", "service_name"
