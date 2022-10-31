@@ -349,8 +349,13 @@ func Serilize() bool {
 		serilize_data = append(serilize_data, '\n')
 	}
 	// fmt.Println("************", string(serilize_data), "************")
-	err2 := ioutil.WriteFile("./port_info.txt", serilize_data[:len(serilize_data)-1], 0666) //写入文件(字节数组)
-	return painc_err(err2)
+	if len(serilize_data) != 0 {
+		err2 := ioutil.WriteFile("./port_info.txt", serilize_data[:len(serilize_data)-1], 0666) //写入文件(字节数组)
+		return painc_err(err2)
+	} else {
+		Logger.Printf("存活元数据查询结果为空!")
+		return false
+	}
 }
 
 func ReSerialize() []ServicePort {
