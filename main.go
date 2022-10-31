@@ -81,15 +81,16 @@ func subscribe(ch chan interface{}) {
 	fmt.Printf("启动%s ...", model)
 }
 
-func parseArgs() string {
+func parseArgs() (string, string) {
 
 	modelPtr := flag.String("model", "all", "the model to export")
+	modelExcudePtr := flag.String("exclude_model", "", "the model unexport")
 	flag.String("help", "", "please input the model below: \n\thadoop hbase hive kafka micro_service mysql node redis alive skywalking spark zookeeper \n use , split")
 	// fmt.Printf("*modelPtr: %s\n", *modelPtr)
 	// fmt.Printf("*helpPtr: %s\n", *helpPtr)
 	// 解析命令行参数
 	flag.Parse()
-	return *modelPtr
+	return *modelPtr, *modelExcudePtr
 }
 
 // 注册 exporter地址数据 到数据库
@@ -100,9 +101,22 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 	ds.Ip = fmt.Sprintf("%s:%d", ni.Ip, utils.DbConfig.Cluster.HttpPort)
 	ds.CreateTime = time.Now()
 	ds.UpdateTime = time.Now()
-	ds.Path = config.MetricPathMap[dataName]
+	ds.Path = fmt.Sprintf("http://%s%s", ds.Ip, config.MetricPathMap[dataName])
+	serviceDataType := make(map[string]int, 0)
+	if dataName == "spark" || dataName == "alive" || dataName == "mysql" || dataName == "zookeeper" || dataName == "hadoop" || dataName == "hbase" || dataName == "hive" || dataName == "kafka" || dataName == "redis" {
+		serviceDataType[dataName] = 3
+	} else if dataName == "apisix" {
+		serviceDataType[dataName] = 2
+	} else if dataName == "skywalking" {
+		serviceDataType[dataName] = 4
+	} else if dataName == "micro_service" {
+		serviceDataType[dataName] = 5
+	} else if dataName == "node_exporter" {
+		serviceDataType[dataName] = 1
+	}
+	ds.DataType = fmt.Sprintf("%d", serviceDataType[dataName])
 	var dss []utils.Data_store_configure
-	utils.Db.Where("data_name=?", dataName).Find(&dss)
+	utils.Db.Where("data_name=?", dataName).Where("ip=?", ds.Ip).Find(&dss)
 	if len(dss) == 0 {
 		// 数据库没有数据插入
 		var id []sql.NullInt32
@@ -115,7 +129,7 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 		utils.PgDataStoreInsert(utils.Db, ds)
 	} else {
 		// 数据库有数据执行更新
-		utils.Db.Select("id").Where("data_name=?", dataName).Take(&dss)
+		utils.Db.Select("id").Where("data_name=?", dataName).Where("ip=?", ds.Ip).Take(&dss)
 		ds.Id = dss[0].Id
 		utils.Logger.Printf("更新数据: %v\n", ds)
 		utils.Db.Save(ds)
@@ -164,6 +178,7 @@ func registerConfigEndpoint() {
 
 		}
 		pyaml.Global.ScrapeInterval = "15s"
+		pyaml.Global.EvaluationInterval = "30s"
 		pyaml.ScrapeConfigs = configs
 		// 基于数据库配置数据,生成新的yaml文件
 		yamlBytes := utils.GenerateYamlFile(pyaml, "./prometheus_auto.yml")
@@ -172,88 +187,114 @@ func registerConfigEndpoint() {
 }
 
 // 暴露所有的服务指标数据
-func exportAll() {
-	// 激活微服务exporter
-	microServiceExporter := micro_service.NewMicroServiceExporter()
-	microServiceR := prometheus.NewRegistry()
-	microServiceR.MustRegister(microServiceExporter)
-	microServiceHandler := promhttp.HandlerFor(microServiceR, promhttp.HandlerOpts{})
-	http.Handle(config.MICROSERVICE_METRICPATH, microServiceHandler)
-
-	// 激活服务存活exporter
-	serviceCollector := service_alive.NewServiceAliveCollector()
-	r := prometheus.NewRegistry()
-	r.MustRegister(serviceCollector)
-	handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
-	http.Handle(config.ALIVE_METRICPATH, handler)
-
-	// 激活hbase exporter
-	hbaseCollector := hbase.NewHbaseCollector()
-	hbaseR := prometheus.NewRegistry()
-	hbaseR.MustRegister(hbaseCollector)
-	hbaseHandler := promhttp.HandlerFor(hbaseR, promhttp.HandlerOpts{})
-	http.Handle(config.HBASE_METRICPATH, hbaseHandler)
-
-	// 激活spark exporter
-	// 数组传入所有的master和standby地址
-	// 查询spark的metric信息，默认为查询测试集群
-	print_metrics := spark.GetMetrics()
-	sparkHandler := spark.SparkHandler{Metrics: print_metrics}
-	http.Handle(config.SPARK_METRICPATH, sparkHandler)
-	fmt.Println("命令行的参数有", len(os.Args))
-
-	// 激活kafka exporter
-	kafka_collector := kafka.NewKafkaCollector()
-	kafka_r := prometheus.NewRegistry()
-	kafka_r.MustRegister(kafka_collector)
-	kafka_handler := promhttp.HandlerFor(kafka_r, promhttp.HandlerOpts{})
-	http.Handle(config.KAFKA_METRICPATH, kafka_handler)
-
-	// 激活hadoop exporter
-	hadoop_exporter := hadoop.NewHadoopCollector()
-	hadoop_r := prometheus.NewRegistry()
-	hadoop_r.MustRegister(hadoop_exporter)
-	hadoop_handler := promhttp.HandlerFor(hadoop_r, promhttp.HandlerOpts{})
-	http.Handle(config.HADOOP_METRICPATH, hadoop_handler)
-
-	// 激活redis exporter
-	redis.RedisExporter()
-
-	// 激活zookeeper exporter
-	zookeeper.ZookeeperExporter()
-	// zookeeper.Watch()
-
-	hive_exporter := hive.NewHiveExporter()
-	if hive_exporter == nil {
-		fmt.Println("hive_exporter is nil")
+func exportAll(allModels map[string]string) {
+	if _, ok := allModels[config.MICROSERVICE]; ok {
+		// 存在micro_service, 注册微服务endpoint
+		// 激活微服务exporter
+		microServiceExporter := micro_service.NewMicroServiceExporter()
+		microServiceR := prometheus.NewRegistry()
+		microServiceR.MustRegister(microServiceExporter)
+		microServiceHandler := promhttp.HandlerFor(microServiceR, promhttp.HandlerOpts{})
+		http.Handle(config.MICROSERVICE_METRICPATH, microServiceHandler)
 	}
-	fmt.Printf("hive_exporter: %v \n", hive_exporter)
-	hive_r := prometheus.NewRegistry()
-	fmt.Println("hive_exporter is nil ", hive_exporter == nil)
-	hive_r.MustRegister(hive_exporter)
-	hive_handler := promhttp.HandlerFor(hive_r, promhttp.HandlerOpts{})
-	http.Handle(config.HIVE_METRICPATH, hive_handler)
 
-	// 激活mysql exporter
-	mysql_exporter := mysql.NewMysqlExporter()
-	mysql_r := prometheus.NewRegistry()
-	mysql_r.MustRegister(mysql_exporter)
-	mysql_handler := promhttp.HandlerFor(mysql_r, promhttp.HandlerOpts{})
-	http.Handle(config.MYSQL_METRICPATH, mysql_handler)
+	if _, ok := allModels[config.ALIVE]; ok {
+		// 激活服务存活exporter
+		serviceCollector := service_alive.NewServiceAliveCollector()
+		r := prometheus.NewRegistry()
+		r.MustRegister(serviceCollector)
+		handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
+		http.Handle(config.ALIVE_METRICPATH, handler)
+	}
 
-	// 激活物理机指标采集脚本
-	node_exporter := nodeexporter.NewNodeExporter()
-	node_r := prometheus.NewRegistry()
-	node_r.MustRegister(node_exporter)
-	node_handler := promhttp.HandlerFor(node_r, promhttp.HandlerOpts{})
-	http.Handle(config.NODE_METRICPATH, node_handler)
+	if _, ok := allModels[config.HBASE]; ok {
+		// 激活hbase exporter
+		hbaseCollector := hbase.NewHbaseCollector()
+		hbaseR := prometheus.NewRegistry()
+		hbaseR.MustRegister(hbaseCollector)
+		hbaseHandler := promhttp.HandlerFor(hbaseR, promhttp.HandlerOpts{})
+		http.Handle(config.HBASE_METRICPATH, hbaseHandler)
+	}
 
-	// 激活skywalking exporter
-	skywalking_exporter := skywalking.NewSkywalkingExporter()
-	skywalking_r := prometheus.NewRegistry()
-	skywalking_r.MustRegister(skywalking_exporter)
-	skywalking_handler := promhttp.HandlerFor(skywalking_r, promhttp.HandlerOpts{})
-	http.Handle(config.SKYWALKING_METRICPATH, skywalking_handler)
+	if _, ok := allModels[config.SPARK]; ok {
+		// 激活spark exporter
+		// 数组传入所有的master和standby地址
+		// 查询spark的metric信息，默认为查询测试集群
+		print_metrics := spark.GetMetrics()
+		sparkHandler := spark.SparkHandler{Metrics: print_metrics}
+		http.Handle(config.SPARK_METRICPATH, sparkHandler)
+		fmt.Println("命令行的参数有", len(os.Args))
+	}
+
+	if _, ok := allModels[config.KAFKA]; ok {
+		// 激活kafka exporter
+		kafka_collector := kafka.NewKafkaCollector()
+		kafka_r := prometheus.NewRegistry()
+		kafka_r.MustRegister(kafka_collector)
+		kafka_handler := promhttp.HandlerFor(kafka_r, promhttp.HandlerOpts{})
+		http.Handle(config.KAFKA_METRICPATH, kafka_handler)
+	}
+
+	if _, ok := allModels[config.HADOOP]; ok {
+		// 激活hadoop exporter
+		hadoop_exporter := hadoop.NewHadoopCollector()
+		hadoop_r := prometheus.NewRegistry()
+		hadoop_r.MustRegister(hadoop_exporter)
+		hadoop_handler := promhttp.HandlerFor(hadoop_r, promhttp.HandlerOpts{})
+		http.Handle(config.HADOOP_METRICPATH, hadoop_handler)
+
+	}
+
+	if _, ok := allModels[config.REDIS]; ok {
+		// 激活redis exporter
+		redis.RedisExporter()
+	}
+
+	if _, ok := allModels[config.ZOOKEEPER]; ok {
+		// 激活zookeeper exporter
+		zookeeper.ZookeeperExporter()
+		// zookeeper.Watch()
+	}
+
+	if _, ok := allModels[config.HIVE]; ok {
+		hive_exporter := hive.NewHiveExporter()
+		if hive_exporter == nil {
+			fmt.Println("hive_exporter is nil")
+		}
+		fmt.Printf("hive_exporter: %v \n", hive_exporter)
+		hive_r := prometheus.NewRegistry()
+		fmt.Println("hive_exporter is nil ", hive_exporter == nil)
+		hive_r.MustRegister(hive_exporter)
+		hive_handler := promhttp.HandlerFor(hive_r, promhttp.HandlerOpts{})
+		http.Handle(config.HIVE_METRICPATH, hive_handler)
+	}
+
+	if _, ok := allModels[config.MYSQL]; ok {
+		// 激活mysql exporter
+		mysql_exporter := mysql.NewMysqlExporter()
+		mysql_r := prometheus.NewRegistry()
+		mysql_r.MustRegister(mysql_exporter)
+		mysql_handler := promhttp.HandlerFor(mysql_r, promhttp.HandlerOpts{})
+		http.Handle(config.MYSQL_METRICPATH, mysql_handler)
+	}
+
+	if _, ok := allModels[config.NODE]; ok {
+		// 激活物理机指标采集脚本
+		node_exporter := nodeexporter.NewNodeExporter()
+		node_r := prometheus.NewRegistry()
+		node_r.MustRegister(node_exporter)
+		node_handler := promhttp.HandlerFor(node_r, promhttp.HandlerOpts{})
+		http.Handle(config.NODE_METRICPATH, node_handler)
+	}
+
+	if _, ok := allModels[config.SKYWALKING]; ok {
+		// 激活skywalking exporter
+		skywalking_exporter := skywalking.NewSkywalkingExporter()
+		skywalking_r := prometheus.NewRegistry()
+		skywalking_r.MustRegister(skywalking_exporter)
+		skywalking_handler := promhttp.HandlerFor(skywalking_r, promhttp.HandlerOpts{})
+		http.Handle(config.SKYWALKING_METRICPATH, skywalking_handler)
+	}
 
 	// 默认注册config endpoint
 	registerConfigEndpoint()
@@ -263,13 +304,44 @@ func main() {
 
 	modelStart := make(map[string]bool, 0)
 
-	modelV := parseArgs()
-	if modelV == "all" {
-		exportAll()
+	modelV, excludeModelV := parseArgs()
+
+	if excludeModelV == "all" {
+		utils.Logger.Printf("所有的模块exporter都不启动,程序退出！\n")
+		return
+	} else if excludeModelV != "" {
+		utils.Logger.Printf("启动排除之外的所有exporter！\n")
+		// 启动exclude指定之外的所有exporter
+		excludeModels := strings.Split(excludeModelV, ",")
+		models := make(map[string]string)
+
+		for model, _ := range config.MetricPathMap {
+			models[model] = ""
+		}
+		for _, model := range excludeModels {
+			// 删除exclude的元素
+			delete(models, model)
+		}
+		utils.Logger.Printf("export models : %v", models)
+		exportAll(models)
+		for dataName, path := range config.MetricPathMap {
+			if _, ok := models[dataName]; ok {
+				utils.Logger.Printf("注册endpoint数据: %s %s\n", dataName, path)
+				registerEndpoint(dataName, utils.DbConfig.Cluster.HttpPort, path)
+			}
+		}
+	}
+
+	if modelV == "all" && excludeModelV == "" {
+		utils.Logger.Printf("启动全部exporter!\n")
+		exportAll(config.MetricPathMap)
 		for dataName, path := range config.MetricPathMap {
 			registerEndpoint(dataName, utils.DbConfig.Cluster.HttpPort, path)
 		}
-	} else {
+	}
+
+	if modelV != "" && excludeModelV == "" {
+		utils.Logger.Printf("启动指定设置的exporter！\n")
 		//只导出关心指标的数据
 		models := strings.Split(modelV, ",")
 		for _, model := range models {
@@ -379,6 +451,7 @@ func main() {
 					handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
 					http.Handle(config.ALIVE_METRICPATH, handler)
 					modelStart[model] = true
+					utils.Logger.Printf("注册alive endpoint到数据库！")
 					registerEndpoint(config.ALIVE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.ALIVE])
 
 				}
