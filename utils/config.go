@@ -312,6 +312,327 @@ func init() {
 	}
 }
 
+func reloadConfigFromDB(reloadType string, toReloadModel string) (conf configStruct) {
+	maps := getSourceAddr()
+	Logger.Printf("从数据库加载的配置: %v\n", maps)
+
+	// 加载数据库中的全部数据源相关配置
+	for model, datas := range maps {
+
+		if reloadType != "all" && toReloadModel != model {
+			Logger.Printf("不是待重载模块: %s 且不是全部重载, 跳过...", model)
+			continue
+		}
+
+		switch model {
+		case config.HADOOP:
+			// cluster:
+			// name: bigdata-dev-cluster
+			// services:
+			// 	- 192.168.10.220:8088
+			// 	- 192.168.10.220:50070
+			// 	- 192.168.10.220:8020
+			// 	- 192.168.10.221:8020
+			// 	- 192.168.10.222:8020
+			// servicenum: 5
+			// namenodes:
+			// 	- 192.168.10.220
+			// 	- 192.168.10.221
+			// 	- 192.168.10.222
+			// namenodehosts:
+			// 	- bigdata-dev01
+			// 	- bigdata-dev02
+			// 	- bigdata-dev03
+			// namenodehttpport: 50070
+			// namenoderpcport: 8020
+			// datanodes:
+			// 	- 192.168.10.220
+			// 	- 192.168.10.221
+			// 	- 192.168.10.222
+			// datanodehosts:
+			// 	- bigdata-dev01
+			// 	- bigdata-dev02
+			// 	- bigdata-dev03
+			// datanodehttpport: 9864
+			// datanoderpcport: 9867
+			// resourcemanagers:
+			// 	- 192.168.10.220
+			// 	- 192.168.10.221
+			// 	- 192.168.10.222
+			// resourcemanagerhosts:
+			// 	- bigdata-dev01
+			// 	- bigdata-dev02
+			// 	- bigdata-dev03
+			// resourcemanagerurl: http://192.168.10.220:8088/jmx
+			// resourcemanagerhost: bigdata-dev01
+			// resourcemanagerhttpport: 8088
+			hc := config.HadoopConfigure{}
+			hc.Cluster.Name = DbConfig.Cluster.Name
+			for _, data := range datas {
+				if *data.ChildService == "resourcemanager" {
+					hc.Cluster.ResourceManagerHosts = append(hc.Cluster.ResourceManagerHosts, "")
+					hc.Cluster.ResourceManagers = append(hc.Cluster.ResourceManagers, *data.IP)
+					hc.Cluster.ResourcemanagerHttpPort = int(data.Port.Int64)
+					hc.Cluster.ResourceManagerUrl = fmt.Sprintf("http://%s:%d/jmx", *data.IP, data.Port.Int64)
+				}
+				if *data.ChildService == "namenode" {
+					hc.Cluster.NamenodeHttpPort = int(data.Port.Int64)
+					hc.Cluster.NamenodeHosts = append(hc.Cluster.NamenodeHosts, "")
+					hc.Cluster.Namenodes = append(hc.Cluster.Namenodes, *data.IP)
+				}
+				if *data.ChildService == "datanode" {
+					hc.Cluster.DatanodeHosts = append(hc.Cluster.DatanodeHosts, "")
+					hc.Cluster.Datanodes = append(hc.Cluster.Datanodes, *data.IP)
+					hc.Cluster.DatanodeHttpPort = int(data.Port.Int64)
+				}
+			}
+			ConfigStruct.ConfigData[model] = hc
+		case config.HBASE:
+			// cluster:
+			// 	clustername: bigdata-dev-cluster
+			// 	masterjmxport: 16010
+			// 	regionserverjmxport: 16030
+			// 	hosts:
+			// 		- 192.168.10.220
+			// 		- 192.168.10.221
+			// 		- 192.168.10.222
+			// 	names:
+			// 		- bigdata-dev01
+			// 		- bigdata-dev02
+			// 		- bigdata-dev03
+			hbaseConf := config.HbaseConfigure{}
+			hbaseConf.Cluster.ClusterName = DbConfig.Cluster.Name
+			for _, data := range datas {
+				hbaseConf.Cluster.Names = append(hbaseConf.Cluster.Names, "")
+				if *data.ChildService == "hmaster" {
+					hbaseConf.Cluster.MasterJmxPort = fmt.Sprintf("%d", data.Port.Int64)
+					hbaseConf.Cluster.Hosts = append(hbaseConf.Cluster.Hosts, *data.IP)
+				}
+				if *data.ChildService == "regionserver" {
+					hbaseConf.Cluster.RegionserverJmxPort = fmt.Sprintf("%d", data.Port.Int64)
+				}
+			}
+			ConfigStruct.ConfigData[config.HBASE] = hbaseConf
+		case config.HIVE:
+			// cluster:
+			// 	name: bigdata-dev-cluster
+			// 	hosts:
+			// 		- 192.168.10.220
+			// 		- 192.168.10.221
+			// 		- 192.168.10.222
+			// 	rpcport: 10000
+			// 	mysql:
+			// 		host: 192.168.10.223
+			// 		port: 3306
+			// 		user: root
+			// 		password: pwd@123
+			// 	scrapehost: bigdata-dev01
+			// 	scrapeip: 192.168.10.220
+			hiveConf := config.HiveConfig{}
+			hiveConf.Cluster.Name = DbConfig.Cluster.Name
+			for _, data := range datas {
+				hiveConf.Cluster.Hosts = append(hiveConf.Cluster.Hosts, "")
+				if *data.ChildService == "metastore" {
+					hiveConf.Cluster.Mysql.Host = *data.IP
+					hiveConf.Cluster.Mysql.Port = int(data.Port.Int64)
+					hiveConf.Cluster.Mysql.User = *data.Username
+					hiveConf.Cluster.Mysql.Password = *data.Password
+				}
+			}
+			ConfigStruct.ConfigData[config.HIVE] = hiveConf
+		case config.KAFKA:
+			// cluster:
+			// 	name: bigdata-dev-cluster
+			// 	hosts:
+			// 		- 192.168.10.220
+			// 		- 192.168.10.221
+			// 		- 192.168.10.222
+			// 	port: 9092
+			// 	env: dev
+			kafkaConf := config.KafkaConfigure{}
+			kafkaConf.Cluster.Name = DbConfig.Cluster.Name
+			for _, data := range datas {
+				kafkaConf.Cluster.Hosts = append(kafkaConf.Cluster.Hosts, *data.IP)
+				kafkaConf.Cluster.Port = int(data.Port.Int64)
+			}
+			ConfigStruct.ConfigData[config.KAFKA] = kafkaConf
+		case config.MICROSERVICE:
+			// cluster:
+			// 	name: 测试kubernetes集群
+			// 	master:
+			// 		- 192.168.10.20
+			// 		- 192.168.10.21
+			// 		- 192.168.10.22
+			// 	nodes:
+			// 		- 192.168.10.20
+			// 		- 192.168.10.21
+			// 		- 192.168.10.22
+			// 		- 192.168.10.23
+			// 		- 192.168.10.24
+			// 		- 192.168.10.32
+			// 		- 192.168.10.63
+			// 		- 192.168.10.111
+			// 	apiserverport: 8080
+			k8syamlConf := config.K8sYamlConfig{}
+			k8syamlConf.Cluster.Name = DbConfig.Cluster.Name
+			for _, data := range datas {
+				fmt.Println("micro_service: ", data)
+				if *data.ChildService == "apiserver" {
+					k8syamlConf.Cluster.Master = append(k8syamlConf.Cluster.Master, *data.IP)
+					k8syamlConf.Cluster.ApiServerPort = fmt.Sprintf("%d", data.Port.Int64)
+				}
+			}
+			ConfigStruct.ConfigData[config.MICROSERVICE] = k8syamlConf
+		case config.MYSQL:
+
+			// cluster:
+			// 	name: bigdata-dev-cluster
+			// 	ips:
+			// 	- 192.168.10.70
+			// 	port: 3306
+			// 	username: root
+			// 	password: pwd@123
+			// 	defaultdb: information_schema
+			// 	role:
+			// 	- master
+
+			mysqlConf := config.MysqlConfig{}
+			mysqlConf.Cluster.Name = DbConfig.Cluster.Name
+			for _, data := range datas {
+				if *data.ChildService == "mysqld" {
+					mysqlConf.Cluster.Ips = append(mysqlConf.Cluster.Ips, *data.IP)
+					mysqlConf.Cluster.Port = int(data.Port.Int64)
+					mysqlConf.Cluster.Username = *data.Username
+					mysqlConf.Cluster.Password = *data.Password
+					mysqlConf.Cluster.DefaultDB = "information_schema"
+				}
+			}
+			ConfigStruct.ConfigData[config.MYSQL] = mysqlConf
+
+		case config.REDIS:
+			// cluster:
+			// 	name: bigdata-dev-cluster
+			// 	ips:
+			// 		- 192.168.10.107
+			// 		- 192.168.10.108
+			// 		- 192.168.10.109
+			// 	hosts:
+			// 		- redis-dev-1
+			// 		- redis-dev-2
+			// 		- redis-dev-3
+			// 	ippwds:
+			// 		- rhcloud@123.com
+			// 		- rhcloud@123.com
+			// 		- rhcloud@123.com
+			// 	scrapehost: redis-dev-1
+			// 	scrapeip: 192.168.10.107
+			// 	redisport: 6379
+			redisConf := config.RedisConfig{}
+			redisConf.Cluster.Name = DbConfig.Cluster.Name
+			for _, data := range datas {
+				if *data.ChildService == "redis" {
+					redisConf.Cluster.Hosts = append(redisConf.Cluster.Hosts, *data.IP)
+					redisConf.Cluster.Ips = append(redisConf.Cluster.Ips, *data.IP)
+					redisConf.Cluster.Ippwds = append(redisConf.Cluster.Ippwds, *data.Password)
+					redisConf.Cluster.RedisPort = int(data.Port.Int64)
+				}
+			}
+			ConfigStruct.ConfigData[config.REDIS] = redisConf
+
+		case config.SKYWALKING:
+			// cluster:
+			// 	name: bigdata-dev-cluster
+			// 	elasticsearch:
+			// 		ips:
+			// 		- 192.168.10.65
+			// 		port: 9200
+			swConf := config.SkyWalkingConfig{}
+			swConf.Cluster.Name = DbConfig.Cluster.Name
+			for _, data := range datas {
+				if *data.ChildService == "elasticsearch" {
+					swConf.Cluster.ElasticSearch.Ips = append(swConf.Cluster.ElasticSearch.Ips, *data.IP)
+					swConf.Cluster.ElasticSearch.Port = int(data.Port.Int64)
+				}
+			}
+			ConfigStruct.ConfigData[config.SKYWALKING] = swConf
+
+		case config.SPARK:
+			// cluster: bigdata-dev-cluster
+			// 	masterhttp:
+			// 	ips:
+			// 		- 192.168.10.220
+			// 		- 192.168.10.221
+			// 		- 192.168.10.222
+			// 	port: 8080
+			// 	path: /metrics/prometheus
+
+			// 	workerhttp:
+			// 	ips:
+			// 		- 192.168.10.220
+			// 		- 192.168.10.221
+			// 		- 192.168.10.222
+			// 	port: 8081
+			// 	path: /metrics/prometheus
+
+			// 	applicationhttp:
+			// 	ips:
+			// 		- 192.168.10.220
+			// 		- 192.168.10.221
+			// 		- 192.168.10.222
+			// 	ports:
+			// 		- 4040
+			// 		- 4041
+			// 		- 4042
+			// 	mainpath: /metrics/prometheus
+			// 	executorpath: /metrics/executors/prometheus
+			sparkConf := config.SparkConfig{}
+			sparkConf.Cluster = DbConfig.Cluster.Name
+			for _, data := range datas {
+				if *data.ChildService == "master" && *data.PortType == "http" {
+					sparkConf.Masterhttp.Ips = append(sparkConf.Masterhttp.Ips, *data.IP)
+					sparkConf.Masterhttp.Port = int(data.Port.Int64)
+					sparkConf.Masterhttp.Path = "/metrics/prometheus"
+
+					sparkConf.Applicationhttp.Ips = append(sparkConf.Applicationhttp.Ips, *data.IP)
+					sparkConf.Applicationhttp.Ports = []int{4040, 4041, 4042}
+					sparkConf.Applicationhttp.MainPath = "/metrics/prometheus"
+				}
+				if *data.ChildService == "worker" && *data.PortType == "http" {
+					sparkConf.Workerhttp.Ips = append(sparkConf.Workerhttp.Ips, *data.IP)
+					sparkConf.Workerhttp.Port = int(data.Port.Int64)
+					sparkConf.Workerhttp.Path = "/metrics/prometheus"
+				}
+			}
+			ConfigStruct.ConfigData[config.SPARK] = sparkConf
+
+		case config.ZOOKEEPER:
+			// cluster:
+			// 	name: bigdata-dev-cluster
+			// 	hosts:
+			// 		- 192.168.10.220
+			// 		- 192.168.10.221
+			// 		- 192.168.10.222
+			// 	clientport: 2181
+			zkConf := config.ZookeepeConfig{}
+			zkConf.Cluster.Name = DbConfig.Cluster.Name
+			for _, data := range datas {
+				if *data.ChildService == "zookeeper" {
+					zkConf.Cluster.Hosts = append(zkConf.Cluster.Hosts, *data.IP)
+					zkConf.Cluster.ClientPort = fmt.Sprintf("%d", data.Port.Int64)
+				}
+			}
+			ConfigStruct.ConfigData[config.ZOOKEEPER] = zkConf
+		}
+
+		if reloadType != "all" && toReloadModel == model {
+			//加载特定模块配置,加载完毕则直接退出循环
+			break
+		}
+
+	}
+	return ConfigStruct
+}
+
 // 初始化配置
 func init() {
 	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@")
@@ -323,312 +644,11 @@ func init() {
 		Logger.Println("执行完configure初始化...")
 	}
 
+	// db = utils.Db
+	datasource_count := PgCountQuery(Db, "")
 	// 从数据库加载配置
-	maps := getSourceAddr()
-	if len(maps) != 0 {
-		Logger.Printf("从数据库加载的配置: %v\n", maps)
-		for model, datas := range maps {
-			switch model {
-			case config.HADOOP:
-				// cluster:
-				// name: bigdata-dev-cluster
-				// services:
-				// 	- 192.168.10.220:8088
-				// 	- 192.168.10.220:50070
-				// 	- 192.168.10.220:8020
-				// 	- 192.168.10.221:8020
-				// 	- 192.168.10.222:8020
-				// servicenum: 5
-				// namenodes:
-				// 	- 192.168.10.220
-				// 	- 192.168.10.221
-				// 	- 192.168.10.222
-				// namenodehosts:
-				// 	- bigdata-dev01
-				// 	- bigdata-dev02
-				// 	- bigdata-dev03
-				// namenodehttpport: 50070
-				// namenoderpcport: 8020
-				// datanodes:
-				// 	- 192.168.10.220
-				// 	- 192.168.10.221
-				// 	- 192.168.10.222
-				// datanodehosts:
-				// 	- bigdata-dev01
-				// 	- bigdata-dev02
-				// 	- bigdata-dev03
-				// datanodehttpport: 9864
-				// datanoderpcport: 9867
-				// resourcemanagers:
-				// 	- 192.168.10.220
-				// 	- 192.168.10.221
-				// 	- 192.168.10.222
-				// resourcemanagerhosts:
-				// 	- bigdata-dev01
-				// 	- bigdata-dev02
-				// 	- bigdata-dev03
-				// resourcemanagerurl: http://192.168.10.220:8088/jmx
-				// resourcemanagerhost: bigdata-dev01
-				// resourcemanagerhttpport: 8088
-				hc := config.HadoopConfigure{}
-				hc.Cluster.Name = DbConfig.Cluster.Name
-				for _, data := range datas {
-					if *data.ChildService == "resourcemanager" {
-						hc.Cluster.ResourceManagerHosts = append(hc.Cluster.ResourceManagerHosts, "")
-						hc.Cluster.ResourceManagers = append(hc.Cluster.ResourceManagers, *data.IP)
-						hc.Cluster.ResourcemanagerHttpPort = int(data.Port.Int64)
-						hc.Cluster.ResourceManagerUrl = fmt.Sprintf("http://%s:%d/jmx", *data.IP, data.Port.Int64)
-					}
-					if *data.ChildService == "namenode" {
-						hc.Cluster.NamenodeHttpPort = int(data.Port.Int64)
-						hc.Cluster.NamenodeHosts = append(hc.Cluster.NamenodeHosts, "")
-						hc.Cluster.Namenodes = append(hc.Cluster.Namenodes, *data.IP)
-					}
-					if *data.ChildService == "datanode" {
-						hc.Cluster.DatanodeHosts = append(hc.Cluster.DatanodeHosts, "")
-						hc.Cluster.Datanodes = append(hc.Cluster.Datanodes, *data.IP)
-						hc.Cluster.DatanodeHttpPort = int(data.Port.Int64)
-					}
-				}
-				ConfigStruct.ConfigData[model] = hc
-			case config.HBASE:
-				// cluster:
-				// 	clustername: bigdata-dev-cluster
-				// 	masterjmxport: 16010
-				// 	regionserverjmxport: 16030
-				// 	hosts:
-				// 		- 192.168.10.220
-				// 		- 192.168.10.221
-				// 		- 192.168.10.222
-				// 	names:
-				// 		- bigdata-dev01
-				// 		- bigdata-dev02
-				// 		- bigdata-dev03
-				hbaseConf := config.HbaseConfigure{}
-				hbaseConf.Cluster.ClusterName = DbConfig.Cluster.Name
-				for _, data := range datas {
-					hbaseConf.Cluster.Names = append(hbaseConf.Cluster.Names, "")
-					if *data.ChildService == "hmaster" {
-						hbaseConf.Cluster.MasterJmxPort = fmt.Sprintf("%d", data.Port.Int64)
-						hbaseConf.Cluster.Hosts = append(hbaseConf.Cluster.Hosts, *data.IP)
-					}
-					if *data.ChildService == "regionserver" {
-						hbaseConf.Cluster.RegionserverJmxPort = fmt.Sprintf("%d", data.Port.Int64)
-					}
-				}
-				ConfigStruct.ConfigData[config.HBASE] = hbaseConf
-			case config.HIVE:
-				// cluster:
-				// 	name: bigdata-dev-cluster
-				// 	hosts:
-				// 		- 192.168.10.220
-				// 		- 192.168.10.221
-				// 		- 192.168.10.222
-				// 	rpcport: 10000
-				// 	mysql:
-				// 		host: 192.168.10.223
-				// 		port: 3306
-				// 		user: root
-				// 		password: pwd@123
-				// 	scrapehost: bigdata-dev01
-				// 	scrapeip: 192.168.10.220
-				hiveConf := config.HiveConfig{}
-				hiveConf.Cluster.Name = DbConfig.Cluster.Name
-				for _, data := range datas {
-					hiveConf.Cluster.Hosts = append(hiveConf.Cluster.Hosts, "")
-					if *data.ChildService == "metastore" {
-						hiveConf.Cluster.Mysql.Host = *data.IP
-						hiveConf.Cluster.Mysql.Port = int(data.Port.Int64)
-						hiveConf.Cluster.Mysql.User = *data.Username
-						hiveConf.Cluster.Mysql.Password = *data.Password
-					}
-				}
-				ConfigStruct.ConfigData[config.HIVE] = hiveConf
-			case config.KAFKA:
-				// cluster:
-				// 	name: bigdata-dev-cluster
-				// 	hosts:
-				// 		- 192.168.10.220
-				// 		- 192.168.10.221
-				// 		- 192.168.10.222
-				// 	port: 9092
-				// 	env: dev
-				kafkaConf := config.KafkaConfigure{}
-				kafkaConf.Cluster.Name = DbConfig.Cluster.Name
-				for _, data := range datas {
-					kafkaConf.Cluster.Hosts = append(kafkaConf.Cluster.Hosts, *data.IP)
-					kafkaConf.Cluster.Port = int(data.Port.Int64)
-				}
-				ConfigStruct.ConfigData[config.KAFKA] = kafkaConf
-			case config.MICROSERVICE:
-				// cluster:
-				// 	name: 测试kubernetes集群
-				// 	master:
-				// 		- 192.168.10.20
-				// 		- 192.168.10.21
-				// 		- 192.168.10.22
-				// 	nodes:
-				// 		- 192.168.10.20
-				// 		- 192.168.10.21
-				// 		- 192.168.10.22
-				// 		- 192.168.10.23
-				// 		- 192.168.10.24
-				// 		- 192.168.10.32
-				// 		- 192.168.10.63
-				// 		- 192.168.10.111
-				// 	apiserverport: 8080
-				k8syamlConf := config.K8sYamlConfig{}
-				k8syamlConf.Cluster.Name = DbConfig.Cluster.Name
-				for _, data := range datas {
-					fmt.Println("micro_service: ", data)
-					if *data.ChildService == "apiserver" {
-						k8syamlConf.Cluster.Master = append(k8syamlConf.Cluster.Master, *data.IP)
-						k8syamlConf.Cluster.ApiServerPort = fmt.Sprintf("%d", data.Port.Int64)
-					}
-				}
-				ConfigStruct.ConfigData[config.MICROSERVICE] = k8syamlConf
-			case config.MYSQL:
-
-				// cluster:
-				// 	name: bigdata-dev-cluster
-				// 	ips:
-				// 	- 192.168.10.70
-				// 	port: 3306
-				// 	username: root
-				// 	password: pwd@123
-				// 	defaultdb: information_schema
-				// 	role:
-				// 	- master
-
-				mysqlConf := config.MysqlConfig{}
-				mysqlConf.Cluster.Name = DbConfig.Cluster.Name
-				for _, data := range datas {
-					if *data.ChildService == "mysqld" {
-						mysqlConf.Cluster.Ips = append(mysqlConf.Cluster.Ips, *data.IP)
-						mysqlConf.Cluster.Port = int(data.Port.Int64)
-						mysqlConf.Cluster.Username = *data.Username
-						mysqlConf.Cluster.Password = *data.Password
-						mysqlConf.Cluster.DefaultDB = "information_schema"
-					}
-				}
-				ConfigStruct.ConfigData[config.MYSQL] = mysqlConf
-
-			case config.REDIS:
-				// cluster:
-				// 	name: bigdata-dev-cluster
-				// 	ips:
-				// 		- 192.168.10.107
-				// 		- 192.168.10.108
-				// 		- 192.168.10.109
-				// 	hosts:
-				// 		- redis-dev-1
-				// 		- redis-dev-2
-				// 		- redis-dev-3
-				// 	ippwds:
-				// 		- rhcloud@123.com
-				// 		- rhcloud@123.com
-				// 		- rhcloud@123.com
-				// 	scrapehost: redis-dev-1
-				// 	scrapeip: 192.168.10.107
-				// 	redisport: 6379
-				redisConf := config.RedisConfig{}
-				redisConf.Cluster.Name = DbConfig.Cluster.Name
-				for _, data := range datas {
-					if *data.ChildService == "redis" {
-						redisConf.Cluster.Hosts = append(redisConf.Cluster.Hosts, *data.IP)
-						redisConf.Cluster.Ips = append(redisConf.Cluster.Ips, *data.IP)
-						redisConf.Cluster.Ippwds = append(redisConf.Cluster.Ippwds, *data.Password)
-						redisConf.Cluster.RedisPort = int(data.Port.Int64)
-					}
-				}
-				ConfigStruct.ConfigData[config.REDIS] = redisConf
-
-			case config.SKYWALKING:
-				// cluster:
-				// 	name: bigdata-dev-cluster
-				// 	elasticsearch:
-				// 		ips:
-				// 		- 192.168.10.65
-				// 		port: 9200
-				swConf := config.SkyWalkingConfig{}
-				swConf.Cluster.Name = DbConfig.Cluster.Name
-				for _, data := range datas {
-					if *data.ChildService == "elasticsearch" {
-						swConf.Cluster.ElasticSearch.Ips = append(swConf.Cluster.ElasticSearch.Ips, *data.IP)
-						swConf.Cluster.ElasticSearch.Port = int(data.Port.Int64)
-					}
-				}
-				ConfigStruct.ConfigData[config.SKYWALKING] = swConf
-
-			case config.SPARK:
-				// cluster: bigdata-dev-cluster
-				// 	masterhttp:
-				// 	ips:
-				// 		- 192.168.10.220
-				// 		- 192.168.10.221
-				// 		- 192.168.10.222
-				// 	port: 8080
-				// 	path: /metrics/prometheus
-
-				// 	workerhttp:
-				// 	ips:
-				// 		- 192.168.10.220
-				// 		- 192.168.10.221
-				// 		- 192.168.10.222
-				// 	port: 8081
-				// 	path: /metrics/prometheus
-
-				// 	applicationhttp:
-				// 	ips:
-				// 		- 192.168.10.220
-				// 		- 192.168.10.221
-				// 		- 192.168.10.222
-				// 	ports:
-				// 		- 4040
-				// 		- 4041
-				// 		- 4042
-				// 	mainpath: /metrics/prometheus
-				// 	executorpath: /metrics/executors/prometheus
-				sparkConf := config.SparkConfig{}
-				sparkConf.Cluster = DbConfig.Cluster.Name
-				for _, data := range datas {
-					if *data.ChildService == "master" && *data.PortType == "http" {
-						sparkConf.Masterhttp.Ips = append(sparkConf.Masterhttp.Ips, *data.IP)
-						sparkConf.Masterhttp.Port = int(data.Port.Int64)
-						sparkConf.Masterhttp.Path = "/metrics/prometheus"
-
-						sparkConf.Applicationhttp.Ips = append(sparkConf.Applicationhttp.Ips, *data.IP)
-						sparkConf.Applicationhttp.Ports = []int{4040, 4041, 4042}
-						sparkConf.Applicationhttp.MainPath = "/metrics/prometheus"
-					}
-					if *data.ChildService == "worker" && *data.PortType == "http" {
-						sparkConf.Workerhttp.Ips = append(sparkConf.Workerhttp.Ips, *data.IP)
-						sparkConf.Workerhttp.Port = int(data.Port.Int64)
-						sparkConf.Workerhttp.Path = "/metrics/prometheus"
-					}
-				}
-				ConfigStruct.ConfigData[config.SPARK] = sparkConf
-
-			case config.ZOOKEEPER:
-				// cluster:
-				// 	name: bigdata-dev-cluster
-				// 	hosts:
-				// 		- 192.168.10.220
-				// 		- 192.168.10.221
-				// 		- 192.168.10.222
-				// 	clientport: 2181
-				zkConf := config.ZookeepeConfig{}
-				zkConf.Cluster.Name = DbConfig.Cluster.Name
-				for _, data := range datas {
-					if *data.ChildService == "zookeeper" {
-						zkConf.Cluster.Hosts = append(zkConf.Cluster.Hosts, *data.IP)
-						zkConf.Cluster.ClientPort = fmt.Sprintf("%d", data.Port.Int64)
-					}
-				}
-				ConfigStruct.ConfigData[config.ZOOKEEPER] = zkConf
-
-			}
-		}
+	if datasource_count != 0 {
+		reloadConfigFromDB("all", "")
 		// 默认加载node配置
 		nodeConf := config.NodeConfig{}
 		nodeConf.Cluster.Name = DbConfig.Cluster.Name
