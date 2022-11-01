@@ -312,14 +312,14 @@ func init() {
 	}
 }
 
-func reloadConfigFromDB(reloadType string, toReloadModel string) (conf configStruct) {
+func reloadConfigFromDB(toReloadModel string) (conf configStruct) {
 	maps := getSourceAddr()
 	Logger.Printf("从数据库加载的配置: %v\n", maps)
 
 	// 加载数据库中的全部数据源相关配置
 	for model, datas := range maps {
 
-		if reloadType != "all" && toReloadModel != model {
+		if toReloadModel != "all" && toReloadModel != model {
 			Logger.Printf("不是待重载模块: %s 且不是全部重载, 跳过...", model)
 			continue
 		}
@@ -624,7 +624,7 @@ func reloadConfigFromDB(reloadType string, toReloadModel string) (conf configStr
 			ConfigStruct.ConfigData[config.ZOOKEEPER] = zkConf
 		}
 
-		if reloadType != "all" && toReloadModel == model {
+		if toReloadModel != "all" && toReloadModel == model {
 			//加载特定模块配置,加载完毕则直接退出循环
 			break
 		}
@@ -648,7 +648,7 @@ func init() {
 	datasource_count := PgCountQuery(Db, "")
 	// 从数据库加载配置
 	if datasource_count != 0 {
-		reloadConfigFromDB("all", "")
+		reloadConfigFromDB("all")
 		// 默认加载node配置
 		nodeConf := config.NodeConfig{}
 		nodeConf.Cluster.Name = DbConfig.Cluster.Name
