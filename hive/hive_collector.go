@@ -40,6 +40,9 @@ func NewHiveExporter() *HiveExporter {
 
 	// hive_exporter := new(HiveExporter)
 	// hiveConfig := *Parse_hive_config()
+
+	// 自动重载hive配置
+	utils.ReloadConfigFromDB(config.HIVE)
 	hiveConfig := (utils.ConfigStruct.ConfigData[config.HIVE]).(config.HiveConfig)
 	hiveCluster := hiveConfig.Cluster.Name
 	clusterMode := prometheus.NewGauge(prometheus.GaugeOpts{
