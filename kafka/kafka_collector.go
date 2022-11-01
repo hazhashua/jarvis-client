@@ -159,6 +159,9 @@ func NewKafkaCollector() *kafkaCollector {
 //Each and every collector must implement the Describe function.
 //It essentially writes all descriptors to the prometheus desc channel.
 func (collector *kafkaCollector) Describe(ch chan<- *prometheus.Desc) {
+	if collector == nil {
+		return
+	}
 	for _, disk_desc := range collector.kafkaMetrics.DiskUsage {
 		ch <- disk_desc
 	}
