@@ -50,6 +50,8 @@ func (handler SparkHandler) ServeHTTP(writer http.ResponseWriter, r *http.Reques
 func GetMetrics() []string {
 	// url_array := []string{"http://192.168.10.220", "http://192.168.10.221", "http://192.168.10.222"}
 	arrs := make([]string, 0)
+	// 自动重载spark配置文件
+	utils.ReloadConfigFromDB(config.SPARK)
 	sparkConfig, err := (utils.ConfigStruct.ConfigData[config.SPARK]).(config.SparkConfig)
 
 	if err != true {
