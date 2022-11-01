@@ -137,6 +137,8 @@ func Parse_hadoop_config() *config.HadoopConfigure {
 func NewHadoopCollector() *HadoopCollector {
 	var hadoop_metrics HadoopMetric
 
+	// 重载hadoop相关的配置信息
+	utils.ReloadConfigFromDB(config.HADOOP)
 	// 使用全局配置文件
 	hadoop_config := (utils.ConfigStruct.ConfigData["hadoop"]).(config.HadoopConfigure)
 	// hadoop_config := Parse_hadoop_config()
@@ -488,6 +490,8 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 
 	collector = NewHadoopCollector()
 	// hadoop_config := Parse_hadoop_config()
+	// 重载hadoop相关配置
+	utils.ReloadConfigFromDB(config.HADOOP)
 	hadoop_config, _ := (utils.ConfigStruct.ConfigData[config.HADOOP]).(config.HadoopConfigure)
 	utils.Logger.Printf("hadoop_config: %v\n", hadoop_config)
 	// fmt.Println("hadoop_config: ", hadoop_config)
@@ -697,6 +701,21 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 			namenode, fmt.Sprintf("%d", hadoop_config.Cluster.NamenodeRpcPort), "NameNode")
 
 		isOk, call_queue_length, rpc_slow_calls, num_open_connections, num_dropped_connections, rpc_authentication_successes, rpc_authentication_failures, sent_bytes, received_bytes, call_queuetime_avgtime, tag_hostname, tag_port := GetNameNodeRPCInfo(namenode_url)
+		if !isOk {
+			call_queue_length = new(int64)
+			rpc_slow_calls = new(int64)
+			num_open_connections = new(int64)
+			num_dropped_connections = new(int64)
+			rpc_authentication_successes = new(int64)
+			rpc_authentication_failures = new(int64)
+			sent_bytes = new(int64)
+			received_bytes = new(int64)
+			call_queuetime_avgtime = new(float64)
+			tag_hostname = new(string)
+			tag_port = new(string)
+			*call_queue_length, *rpc_slow_calls, *num_open_connections, *num_dropped_connections, *rpc_authentication_successes, *rpc_authentication_failures,
+				*sent_bytes, *received_bytes, *call_queuetime_avgtime, *tag_hostname, *tag_port = -1, -1, -1, -1, -1, -1, -1, -1, -1, "", ""
+		}
 		fmt.Printf("call_queue_length:%d\n  rpc_slow_calls:%d\n  num_open_connections:%d\n  num_dropped_connections:%d\n rpc_authentication_successes:%d\n  rpc_authentication_failures:%d\n  sent_bytes:%d\n  received_bytes:%d\n  call_queuetime_avgtime:%f\n  tag_hostname:%s\n  tag_port:%s \n",
 			*call_queue_length, *rpc_slow_calls, *num_open_connections, *num_dropped_connections,
 			*rpc_authentication_successes, *rpc_authentication_failures, *sent_bytes, *received_bytes,
