@@ -549,6 +549,8 @@ type hbaseMasterMetric struct {
 func NewHbaseCollector() *hbaseCollector {
 	var master_metrics hbaseMasterMetric
 	var regionMetricList []hbaseRegionMetric
+	// 自动重载数据库中的配置
+	utils.ReloadConfigFromDB(config.HBASE)
 	_, jmx_http_url := initUrl()
 	fmt.Println("jmx_http_url: ", jmx_http_url)
 	regionserver_num := len(*jmx_http_url.regionserversUrls)
