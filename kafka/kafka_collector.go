@@ -56,6 +56,8 @@ type myDesc struct {
 //initializes every descriptor and returns a pointer to the collector
 func NewKafkaCollector() *kafkaCollector {
 	var kafka_metrics KafkaMetric
+	// 自动重载kafka配置
+	utils.ReloadConfigFromDB(config.KAFKA)
 	client, config := GetClient()
 	if client == nil {
 		return nil
@@ -199,12 +201,12 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// 获取kafka的配置信息
 	// kafka_config := Parse_kafka_config()
-	kafka_config := (utils.ConfigStruct.ConfigData[config.KAFKA]).(config.KafkaConfigure)
 	collector = NewKafkaCollector()
 	if collector == nil {
 		utils.Logger.Printf("创建kafka采集器失败!")
 		return
 	}
+	kafka_config := (utils.ConfigStruct.ConfigData[config.KAFKA]).(config.KafkaConfigure)
 	// 获取kafka的metric数据
 	//    disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate_metric := GetKafkaMetrics()
 	disk_status, total_brokers, alive_brokers, topic_num_metric, topic_partition_metric, _, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, consumer_group_topic_partition_offsets, topic_partition_balance_rate_metric, _ := GetKafkaMetrics()
