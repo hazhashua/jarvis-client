@@ -141,7 +141,7 @@ func PgDataStoreInsert(db *gorm.DB, datas *Data_store_configure) {
 // 删除本exporter关联的data_store信息
 func PgDataStoreRemove(db *gorm.DB) {
 	for data_name, ip := range config.MetricIpMap {
-		db.Where("data_name=?", strings.ToUpper(data_name)).Where("ip=?", ip).Delete(&Data_store_configure{})
+		db.Where("data_name=?", strings.ToLower(data_name)).Where("ip=?", ip).Delete(&Data_store_configure{})
 		// db.Delete()
 	}
 }
