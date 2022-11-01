@@ -43,6 +43,22 @@ var MetricPathMap = map[string]string{
 	ALIVE:        ALIVE_METRICPATH,
 }
 
+// 保存注册的endpoint信息
+var MetricIpMap = map[string]string{
+	// HADOOP:       "",
+	// HBASE:        "",
+	// HIVE:         "",
+	// KAFKA:        "",
+	// MICROSERVICE: "",
+	// MYSQL:        "",
+	// NODE:         "",
+	// REDIS:        "",
+	// SKYWALKING:   "",
+	// SPARK:        "",
+	// ZOOKEEPER:    "",
+	// ALIVE:        "",
+}
+
 type K8sConfig struct {
 	ServiceURL      string `yaml:"serviceUrl,omitempty"`
 	EndpointURL     string `yaml:"endpointUrl,omitempty"`
