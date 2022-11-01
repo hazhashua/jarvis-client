@@ -145,8 +145,9 @@ func getMetrics(options *Options) map[string]string {
 		}
 
 		hostLabel := fmt.Sprintf("zk_host=%q", h)
+		ipLabel := fmt.Sprintf("ip=%q", strings.Split(h, ":")[0])
 		clusterLabel := fmt.Sprintf("cluster=%q", options.Cluster)
-		zkUp := fmt.Sprintf("zk_up{%s,%s}", hostLabel, clusterLabel)
+		zkUp := fmt.Sprintf("zk_up{%s,%s,%s}", hostLabel, ipLabel, clusterLabel)
 
 		conn, err := dial(tcpaddr.String(), timeout, options.ClientCert)
 		if err != nil {
