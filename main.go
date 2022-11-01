@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -134,6 +135,8 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 		utils.Logger.Printf("更新数据: %v\n", ds)
 		utils.Db.Save(ds)
 	}
+	// 存入数据库后 更新exporter的配置信息，方便异常退出时清理
+	config.MetricIpMap[strings.ToUpper(dataName)] = ds.Ip
 
 }
 
@@ -144,8 +147,24 @@ func registerConfigEndpoint() {
 		configs := pyaml.ScrapeConfigs
 		// 读取数据库配置
 		dss := utils.PgDataStoreQuery(utils.Db, utils.DbConfig.Cluster.Postgres.ExportTable)
+		sort.Slice(dss, func(i, j int) bool {
+			if dss[i].DataName >= dss[j].DataName {
+				return true
+			} else {
+				return false
+			}
+		})
+		var name string
+		num := 0
 		for _, ds := range dss {
-			name := ds.DataName
+			// 如果有相同job_name, 则追加数字后缀
+			if ds.DataName == name && name != "" {
+				num += 1
+				name = fmt.Sprintf("%s_%d", ds.DataName, num)
+			} else {
+				name = ds.DataName
+				num = 0
+			}
 			var ip, path string
 			reg, err := regexp.Compile("http://([^/]*)(.*)")
 			if err == nil {
