@@ -116,7 +116,22 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 		serviceDataType[dataName] = 1
 	}
 	ds.DataType = fmt.Sprintf("%d", serviceDataType[dataName])
+
 	var dss []utils.Data_store_configure
+	if dataName == "apisix" {
+		// 如果是网关，只更新一次
+		utils.Db.Where("data_name=?", dataName).Find(&dss)
+		if len(dss) == 0 {
+			utils.PgDataStoreInsert(utils.Db, ds)
+		} else {
+			utils.Logger.Printf("网关配置后,不再更新！")
+		}
+		// apisix endpoint信息退出不清理
+		//config.MetricIpMap[strings.ToUpper(dataName)] = ds.Ip
+		return
+	}
+
+	// var dss []utils.Data_store_configure
 	utils.Db.Where("data_name=?", dataName).Where("ip=?", ds.Ip).Find(&dss)
 	if len(dss) == 0 {
 		// 数据库没有数据插入
@@ -515,6 +530,9 @@ func main() {
 			}
 		}
 	}
+
+	//默认写表中apisix配置信息
+	registerEndpoint("apisix", utils.DbConfig.Cluster.HttpPort, "")
 
 	// go generateaAliveValue(serviceAliveCollector.channel)
 	// go getAliveValueLoop(serviceAliveCollector.channel)
