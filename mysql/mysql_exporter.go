@@ -27,10 +27,11 @@ type MysqlExporter struct {
 
 func NewMysqlExporter() *MysqlExporter {
 	// 查询当前db的个数
-	boolv, dbNum := utils.ValueQuery("select count(schema_name) from information_schema.schemata")
+	mysqlConfig, _ := (utils.ConfigStruct.ConfigData[config.MYSQL]).(config.MysqlConfig)
+	boolv, dbNum := utils.ValueQuery(mysqlConfig, "select count(schema_name) from information_schema.schemata")
 
 	//查询当前table的个数
-	boolv, tableNum := utils.ValueQuery("select count(table_name) from information_schema.tables")
+	boolv, tableNum := utils.ValueQuery(mysqlConfig, "select count(table_name) from information_schema.tables")
 
 	if !boolv {
 		utils.Logger.Printf("连接mysql失败, mysql exporter启动失败")
@@ -95,14 +96,16 @@ func (e *MysqlExporter) Describe(ch chan<- *prometheus.Desc) {
 
 func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 	// 实现exporter的collector方法
+	// mysqlConfig := Parse_mysql_config()
+	// 自动加载mysql配置信息
+	utils.ReloadConfigFromDB(config.MYSQL)
+	mysqlConfig, _ := (utils.ConfigStruct.ConfigData[config.MYSQL]).(config.MysqlConfig)
+	utils.Logger.Printf("mysqlConfig:%v\n", mysqlConfig)
 	e = NewMysqlExporter()
 	if e == nil {
 		utils.Logger.Printf("mysql exporter数据为空！")
 		return
 	}
-	// mysqlConfig := Parse_mysql_config()
-	mysqlConfig, _ := (utils.ConfigStruct.ConfigData[config.MYSQL]).(config.MysqlConfig)
-	utils.Logger.Printf("mysqlConfig:%v\n", mysqlConfig)
 	mysqlConnector := utils.MysqlConnect{
 		Host:      mysqlConfig.Cluster.Ips[0],
 		Port:      mysqlConfig.Cluster.Port,
