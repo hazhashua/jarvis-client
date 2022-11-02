@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"metric_exporter/config"
 	"reflect"
 	"strings"
 	"time"
@@ -44,12 +45,12 @@ type MysqlConnect struct {
 // 	Swap(int, int)
 // }
 
-func ValueQuery(sqlstr string) (bool, int) {
+func ValueQuery(config config.MysqlConfig, sqlstr string) (bool, int) {
 	// dsn := "test:@tcp(localhost:3306)/test?charset=utf8&parseTime=true"
 	//      root:pwd@123@tcp(127.0.0.1:3306)/test
-	config := ParseDbConfig()
+	// config = *ParseDbConfig()
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8&parseTime=true", config.Cluster.Mysql.Username, config.Cluster.Mysql.Password, config.Cluster.Mysql.Ip, config.Cluster.Mysql.Port) //"root:pwd@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8&parseTime=true", config.Cluster.Username, config.Cluster.Password, config.Cluster.Ips[0], config.Cluster.Port) //"root:pwd@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
