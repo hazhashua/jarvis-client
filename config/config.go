@@ -13,6 +13,7 @@ const (
 	SPARK        string = "spark"
 	ZOOKEEPER    string = "zookeeper"
 	ALIVE        string = "alive"
+	APISIX       string = "apisix"
 
 	HADOOP_METRICPATH       string = "/hadoop/metrics"
 	HBASE_METRICPATH        string = "/hbase/metrics"
@@ -26,9 +27,11 @@ const (
 	SPARK_METRICPATH        string = "/spark/metrics"
 	ZOOKEEPER_METRICPATH    string = "/zookeeper/metrics"
 	ALIVE_METRICPATH        string = "/alive/metrics"
+	APISIX_METRICPATH       string = "/apisix/prometheus/metrics"
 )
 
 var MetricPathMap = map[string]string{
+
 	HADOOP:       HADOOP_METRICPATH,
 	HBASE:        HBASE_METRICPATH,
 	HIVE:         HIVE_METRICPATH,
