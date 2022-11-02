@@ -66,15 +66,15 @@ func ValueQuery(config config.MysqlConfig, sqlstr string) (bool, int) {
 		sqlstr = "SELECT count(distinct service_name, child_service, cluster_name, ip , port_type) FROM test.service_port sp"
 	}
 	stmt, err2 := db.Prepare(sqlstr)
+	if !painc_err(err2) {
+		return false, -1
+	}
 	defer stmt.Close()
-	if !painc_err(err2) {
-		return false, -1
-	}
 	res, err := stmt.Query()
-	defer res.Close()
 	if !painc_err(err2) {
 		return false, -1
 	}
+	defer res.Close()
 	var count_value int
 	for res.Next() {
 		// var datasource_alive DatsourceAlive
@@ -146,11 +146,11 @@ func ExecuteSchemaQuery(db *sql.DB, sqlStr string, columns []string, types []str
 		return nil
 	}
 	stmt, err2 := db.Prepare(sqlStr)
-	defer stmt.Close()
 	painc_err(err2)
+	defer stmt.Close()
 	res, err := stmt.Query()
-	defer res.Close()
 	painc_err(err)
+	defer res.Close()
 	schemaTables := make([]SchemaTable, 0)
 	for res.Next() {
 		st := new(SchemaTable)
@@ -186,11 +186,11 @@ func ExecuteTableQuery(db *sql.DB, sqlStr string, columns []string, types []stri
 		return nil
 	}
 	stmt, err2 := db.Prepare(sqlStr)
-	defer stmt.Close()
 	painc_err(err2)
+	defer stmt.Close()
 	res, err := stmt.Query()
-	defer res.Close()
 	painc_err(err)
+	defer res.Close()
 	tableTables := make([]TableTable, 0)
 	for res.Next() {
 		tt := new(TableTable)
@@ -250,15 +250,15 @@ func ExecuteStatusQuery(db *sql.DB, sqlStr string, columns []string, types []str
 		return false, nil
 	}
 	stmt, err2 := db.Prepare(sqlStr)
-	defer stmt.Close()
 	if !painc_err(err2) {
 		return false, nil
 	}
+	defer stmt.Close()
 	res, err := stmt.Query()
-	defer res.Close()
 	if !painc_err(err) {
 		return false, nil
 	}
+	defer res.Close()
 	statuses := make([]Status, 0)
 	for res.Next() {
 		status := new(Status)
@@ -299,15 +299,15 @@ func Query(sqlstr string) (bool, []ServicePort) {
 		sqlstr = "SELECT * FROM test.service_port sp order by service_name asc"
 	}
 	stmt, err2 := db.Prepare(sqlstr)
-	defer stmt.Close()
 	if !painc_err(err2) {
 		return false, nil
 	}
+	defer stmt.Close()
 	res, err := stmt.Query()
-	defer res.Close()
 	if !painc_err(err) {
 		return false, nil
 	}
+	defer res.Close()
 	service_port_slice := make([]ServicePort, 0)
 	for res.Next() {
 		// var datasource_alive DatsourceAlive
