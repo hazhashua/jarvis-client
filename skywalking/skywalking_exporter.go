@@ -53,7 +53,20 @@ func ParseSkyWalkingConfig() *config.SkyWalkingConfig {
 
 // 创建skywalking exporter对象
 func NewSkywalkingExporter() *SkyWalkingExporter {
-	eventInfos := make([]EventInfo, 0)
+
+	// 动态加载es配置, 重建client对象
+	utils.ReloadConfigFromDB(config.SKYWALKING)
+	skywalkingConfig, _ := (utils.ConfigStruct.ConfigData["skywalking"]).(config.SkyWalkingConfig)
+	esHosts := make([]string, 0)
+	for _, ip := range skywalkingConfig.Cluster.ElasticSearch.Ips {
+		hostUrl := fmt.Sprintf("http://%s:%d", ip, skywalkingConfig.Cluster.ElasticSearch.Port)
+		hosts = append(esHosts, hostUrl)
+	}
+	// es client为空,则返回nil
+	if client = newEsClient(hosts...); client == nil {
+		return nil
+	}
+
 	now := time.Now()
 	beforeOneM := now.Add(time.Duration(-1000000000 * 60 * 480))
 	year, month, day := beforeOneM.Date()
@@ -66,6 +79,8 @@ func NewSkywalkingExporter() *SkyWalkingExporter {
 		utils.Logger.Printf("没有查询到es数据...\n")
 		return nil
 	}
+
+	eventInfos := make([]EventInfo, 0)
 	for _, event := range events {
 		switch ret := event.(type) {
 		case string:
@@ -134,6 +149,8 @@ func (e *SkyWalkingExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// skywalkingConfig := ParseSkyWalkingConfig()
+	// 动态加载es配置信息
+	utils.ReloadConfigFromDB(config.SKYWALKING)
 	skywalkingConfig, _ := (utils.ConfigStruct.ConfigData["skywalking"]).(config.SkyWalkingConfig)
 	// 获取event数据
 	eventInfoDatas := e.SkyEventDatas

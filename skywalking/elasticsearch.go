@@ -28,6 +28,20 @@ type Employee struct {
 	Interests []string `json:"interests"`
 }
 
+func newEsClient(host ...string) *elastic.Client {
+	if len(host) == 0 {
+		utils.Logger.Printf("host参数为空, 返回...")
+		return nil
+	}
+	//这个地方有个小坑 不加上elastic.SetSniff(false) 会连接不上
+	client, err := elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(host[0]))
+	if err != nil {
+		utils.Logger.Printf("elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(host)) error: %s", err.Error())
+		return nil
+	}
+	return client
+}
+
 //初始化
 func init() {
 	//errorlog := log.New(os.Stdout, "APP", log.LstdFlags)
@@ -43,24 +57,20 @@ func init() {
 		return
 	}
 	host = hosts[0]
-	var err error
-	//这个地方有个小坑 不加上elastic.SetSniff(false) 会连接不上
-	client, err = elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(host))
-	if err != nil {
-		utils.Logger.Printf("elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(host)) error: %s", err.Error())
-		panic(err)
+	client := newEsClient(host)
+	if client == nil {
+		utils.Logger.Printf("init es client error!")
+		return
 	}
 	info, code, err1 := client.Ping(host).Do(context.Background())
 	if err1 != nil {
-		utils.Logger.Printf("client.Ping(host).Do(context.Background()) error: %s", err.Error())
-		panic(err1)
+		utils.Logger.Printf("client.Ping(host).Do(context.Background()) error: %s", err1.Error())
 	}
 	fmt.Printf("Elasticsearch returned with code %d and version %s\n", code, info.Version.Number)
 	var esversion string
-	esversion, err = client.ElasticsearchVersion(host)
+	esversion, err := client.ElasticsearchVersion(host)
 	if err != nil {
 		utils.Logger.Printf("client.ElasticsearchVersion(host) error: %s", err.Error())
-		panic(err)
 	}
 	utils.Logger.Printf("Elasticsearch version %s\n", esversion)
 
