@@ -89,7 +89,11 @@ type Options struct {
 }
 
 // NewRedisExporter returns a new exporter of Redis metrics.
-func NewRedisExporter(redis_config config.RedisConfig, opts Options) (*Exporter, error) {
+func NewRedisExporter(opts Options) (*Exporter, error) {
+	// 重载redis配置
+	utils.ReloadConfigFromDB(config.MYSQL)
+	redis_config, _ := (utils.ConfigStruct.ConfigData[config.REDIS]).(config.RedisConfig)
+
 	ip := redis_config.Cluster.Ips[0]
 	// host := redis_config.Cluster.Hosts[0]
 	cluster := redis_config.Cluster.Name
@@ -498,9 +502,14 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect fetches new metrics from the RedisHost and updates the appropriate metrics.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
+
 	e.Lock()
 	defer e.Unlock()
 	e.totalScrapes.Inc()
+	// 重载redis配置
+	utils.ReloadConfigFromDB(config.REDIS)
+	redis_config, _ := (utils.ConfigStruct.ConfigData[config.REDIS]).(config.RedisConfig)
+	e.redis_config = redis_config
 
 	for idx, ip := range e.redis_config.Cluster.Ips {
 		// fmt.Println("暴露第", idx, "个redis的监控数据")
@@ -512,6 +521,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			if err := e.scrapeRedisHost(ch); err != nil {
 				e.registerConstMetricGauge(ch, "exporter_last_scrape_error", 1.0, fmt.Sprintf("%s", err))
 			} else {
+				// 正常抓取数据时, 写clusterMode指标
+				e.clusterMode.Set(1)
+				ch <- e.clusterMode
 				up = 1
 				e.registerConstMetricGauge(ch, "exporter_last_scrape_error", 0, "")
 			}
@@ -523,8 +535,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.registerConstMetricGauge(ch, "exporter_last_scrape_duration_seconds", took)
 		}
 	}
-	e.clusterMode.Set(1)
-	ch <- e.clusterMode
 	ch <- e.totalScrapes
 	ch <- e.scrapeDuration
 	ch <- e.targetScrapeRequestErrors
@@ -577,7 +587,8 @@ func (e *Exporter) scrapeRedisHost(ch chan<- prometheus.Metric) error {
 	defer log.Debugf("scrapeRedisHost() done")
 
 	// 抓取配置信息，作为metric的tag数据来源
-	redis_config := Parse_redis_config()
+	// redis_config := Parse_redis_config()
+	redis_config, _ := (utils.ConfigStruct.ConfigData[config.REDIS]).(config.RedisConfig)
 
 	startTime := time.Now()
 	c, err := e.connectToRedis()
@@ -660,7 +671,7 @@ func (e *Exporter) scrapeRedisHost(ch chan<- prometheus.Metric) error {
 
 	log.Debugf("dbCount: %d", dbCount)
 	// 解析info all返回的数据
-	e.extractInfoMetrics(ch, infoAll, dbCount, *redis_config)
+	e.extractInfoMetrics(ch, infoAll, dbCount, redis_config)
 	e.extractLatencyMetrics(ch, c)
 
 	if e.options.IsCluster {

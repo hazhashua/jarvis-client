@@ -81,7 +81,11 @@ func Parse_redis_config() *config.RedisConfig {
 }
 
 func RedisExporter() {
+	// 从配置文件中加载配置
 	// redis_config := Parse_redis_config()
+
+	// 动态加载redis配置
+	utils.ReloadConfigFromDB(config.REDIS)
 	redis_config, _ := (utils.ConfigStruct.ConfigData[config.REDIS]).(config.RedisConfig)
 
 	// ip := redis_config.Cluster.Ips[0]
@@ -132,7 +136,8 @@ func RedisExporter() {
 		inclSystemMetrics   = flag.Bool("include-system-metrics", getEnvBool("REDIS_EXPORTER_INCL_SYSTEM_METRICS", false), "Whether to include system metrics like e.g. redis_total_system_memory_bytes")
 		skipTLSVerification = flag.Bool("skip-tls-verification", getEnvBool("REDIS_EXPORTER_SKIP_TLS_VERIFICATION", false), "Whether to to skip TLS verification")
 	)
-	flag.Set("redisPwd", "rhcloud@123.com")
+
+	// flag.Set("redisPwd", "rhcloud@123.com")
 	flag.Parse()
 
 	*redisPwd = redis_config.Cluster.Ippwds[0]
@@ -192,7 +197,6 @@ func RedisExporter() {
 	}
 
 	exp, err := NewRedisExporter(
-		redis_config,
 		Options{
 			// User:                  *redisUser,
 			Password:             *redisPwd,
