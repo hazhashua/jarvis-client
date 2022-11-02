@@ -35,7 +35,13 @@ func NewMysqlExporter() *MysqlExporter {
 
 	if !boolv {
 		utils.Logger.Printf("连接mysql失败, mysql exporter启动失败")
-		return nil
+		// return new(MysqlExporter)
+	}
+	if tableNum == -1 {
+		tableNum = 1
+	}
+	if dbNum == -1 {
+		dbNum = 1
 	}
 	tableInfoDescriptions := make([]*prometheus.Desc, tableNum)
 	dbInfoDescriptions := make([]*prometheus.Desc, dbNum)
