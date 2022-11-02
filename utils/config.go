@@ -312,7 +312,7 @@ func init() {
 	}
 }
 
-func reloadConfigFromDB(toReloadModel string) (conf configStruct) {
+func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 	maps := getSourceAddr()
 	Logger.Printf("从数据库加载的配置: %v\n", maps)
 
@@ -648,7 +648,7 @@ func init() {
 	datasource_count := PgCountQuery(Db, "")
 	// 从数据库加载配置
 	if datasource_count != 0 {
-		reloadConfigFromDB("all")
+		ReloadConfigFromDB("all")
 		// 默认加载node配置
 		nodeConf := config.NodeConfig{}
 		nodeConf.Cluster.Name = DbConfig.Cluster.Name
