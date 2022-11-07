@@ -25,14 +25,8 @@ WORKDIR /opt
 COPY --from=golang /opt/collector /opt
 COPY --from=golang /opt/prometheus_template.yml /etc/
 COPY --from=golang /opt/config.yaml /etc/   
-
-# 给我们要传的参数一个初始值
-# ENV MODELS="all"      
+   
 
 # 启动命令 获取config配置
-ENTRYPOINT ["/opt/collector", "-exclude_model", "node" ]
-# CMD  ${MODELS}
-
-# 启动命令 全部模块启动
-# ENTRYPOINT ["/opt/collector", "-model", "all" ]
+ENTRYPOINT ["/opt/collector", "-model", "hbase" ]
 
