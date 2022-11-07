@@ -180,7 +180,7 @@ func GetAliveInfos() []DatsourceAlive {
 		datasourceAlive.Port = servicePort.Port
 		datasourceAlive.PortType = servicePort.PortType
 		utils.Logger.Println("***: ", *servicePort.IP, servicePort.Port)
-		if *servicePort.ServiceName == "k8s" {
+		if *servicePort.ServiceName == "micro_service" {
 			// 如果是k8s服务，则使用进程探活
 			// 如果不是本地的进程探测数据，则跳过
 			if *servicePort.IP == localIp {
@@ -188,8 +188,8 @@ func GetAliveInfos() []DatsourceAlive {
 			} else {
 				utils.Logger.Printf("待检测的ip地址: %s", *servicePort.IP)
 				utils.Logger.Printf("本地ip地址: %s", localIp)
-				// 测试时, 不跳过
-				// continue
+				// 测试时, 不跳过  开发或运行环境 跳过
+				continue
 			}
 			utils.Logger.Printf("执行服务进程检测: %s ...\n", *servicePort.ChildService)
 			alive := IsProcessRunning(*servicePort.ChildService)

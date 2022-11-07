@@ -535,6 +535,7 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 					redisConf.Cluster.Ips = append(redisConf.Cluster.Ips, *data.IP)
 					redisConf.Cluster.Ippwds = append(redisConf.Cluster.Ippwds, *data.Password)
 					redisConf.Cluster.RedisPort = int(data.Port.Int64)
+					Logger.Printf("redis ip: %s  redis port:%d \n", *data.IP, data.Port.Int64)
 				}
 			}
 			ConfigStruct.ConfigData[config.REDIS] = redisConf
