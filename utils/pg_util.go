@@ -6,8 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 func checkError(err error) {
@@ -57,23 +59,45 @@ type gatherName struct {
 }
 
 // 创建数据库对象
-func DbOpen(dbConfig *dbConfig) (db *gorm.DB) {
+func DbOpen(dbType string) (db *gorm.DB) {
+	// 根据dbTye决定数据库类型
 	// var err error
 	//参数根据自己的数据库进行修改
 	// db, err = sql.Open("postgres", "host=192.168.10.79 port=5432 user=postgres password=pwd@123 dbname=ahdb sslmode=disable")
 	dc := ParseDbConfig()
-	// dsn := "host=192.168.10.68 user=postgres password=pwd@123 dbname=cluster port=5432 sslmode=disable TimeZone=Asia/Shanghai"
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=Asia/Shanghai", dc.Cluster.Postgres.Ip, dc.Cluster.Postgres.Username, dc.Cluster.Postgres.Password, dc.Cluster.Postgres.DatasourceInfo.Schema, dc.Cluster.Postgres.Port)
-	var err error
-	if db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}); err == nil {
-		// fmt.Println("*************************connect to db success")
-		Logger.Printf("*************************connect to db success")
-		return db
-	} else {
-		// fmt.Println("connet to db error!")
-		Logger.Printf("connet to db error!")
-		return nil
+	if dbType == "postgres" {
+		// dsn := "host=192.168.10.68 user=postgres password=pwd@123 dbname=cluster port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=Asia/Shanghai", dc.Cluster.Postgres.Ip, dc.Cluster.Postgres.Username, dc.Cluster.Postgres.Password, dc.Cluster.Postgres.DatasourceInfo.Schema, dc.Cluster.Postgres.Port)
+		var err error
+		if db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{}); err == nil {
+			// fmt.Println("*************************connect to db success")
+			Logger.Printf("*************************connect to pg db success")
+			return db
+		} else {
+			// fmt.Println("connet to db error!")
+			Logger.Printf("connet to pg db error!")
+			return nil
+		}
+	} else if dbType == "mysql" {
+		// 创建mysql 连接对象
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=true", dc.Cluster.Mysql.Username, dc.Cluster.Mysql.Password, dc.Cluster.Mysql.Ip, dc.Cluster.Mysql.Port, dc.Cluster.Mysql.DefaultDB)
+		fmt.Println("mysql 连接串: ", dsn)
+
+		if db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+			NamingStrategy: schema.NamingStrategy{
+				SingularTable: true,
+			},
+		}); err == nil {
+			// DbMap[fmt.Sprintf("%s%d", config.Cluster.Postgres.Ip, config.Cluster.Postgres.Port)] = dbInstance
+			Logger.Println("*************************connect to mysql db success")
+			return db
+		} else {
+			Logger.Println("*************************connect to  mysql error")
+			return nil
+		}
 	}
+
+	return nil
 }
 
 // ID           int
@@ -85,7 +109,7 @@ func DbOpen(dbConfig *dbConfig) (db *gorm.DB) {
 // PortType     *string
 
 // 基于sql查询数据库信息
-func PgServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
+func ServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 	sps := make([]ServicePort, 0)
 	sql := fmt.Sprintf(` SELECT dgc.id as id, gn.name as service_name, dgc.service_name as child_service, 
 				-- case 
@@ -106,6 +130,7 @@ func PgServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 				FROM public.%s dgc 
 				JOIN public.%s gn 
 				ON dgc.service_type=gn.id `, DbConfig.Cluster.Postgres.GatherDetailTable, DbConfig.Cluster.Postgres.GatherTable)
+	Logger.Println("ServiceQuery sql: ", sql)
 	db.Raw(sql).Scan(&sps)
 	return sps
 }
@@ -114,7 +139,7 @@ func PgServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 //func PgDataStoreQuery(db *gorm.DB, table string) []Data_store_configure_default {
 //	dss := make([]Data_store_configure_default, 0)
 
-func PgDataStoreQuery(db *gorm.DB, table string) []Data_store_configure {
+func DataStoreQuery(db *gorm.DB, table string) []Data_store_configure {
 	dss := make([]Data_store_configure, 0)
 	// sql := fmt.Sprintf(` SELECT dsc.id as id,
 	// 		dsc.data_name as dataname,
@@ -134,12 +159,12 @@ func PgDataStoreQuery(db *gorm.DB, table string) []Data_store_configure {
 }
 
 // 数据写入data_store_cofigure_default表
-func PgDataStoreInsert(db *gorm.DB, datas *Data_store_configure) {
+func DataStoreInsert(db *gorm.DB, datas *Data_store_configure) {
 	db = db.Create(datas)
 }
 
 // 删除本exporter关联的data_store信息
-func PgDataStoreRemove(db *gorm.DB) {
+func DataStoreRemove(db *gorm.DB) {
 	for data_name, ip := range config.MetricIpMap {
 		db.Where("data_name=?", strings.ToLower(data_name)).Where("ip=?", ip).Delete(&Data_store_configure{})
 		// db.Delete()
@@ -147,14 +172,14 @@ func PgDataStoreRemove(db *gorm.DB) {
 }
 
 // 查询基础服务存活数据的个数
-func PgCountQuery(db *gorm.DB, sql string) int {
+func CountQuery(db *gorm.DB, sql string) int {
 	if sql == "" {
 		sql = fmt.Sprintf(` SELECT COUNT(*) 
 		FROM 
 		(
 			SELECT DISTINCT service_name, ip, port, service_type 
 			FROM  %s
-		) tmp`, DbConfig.Cluster.Postgres.GatherDetailTable)
+		) tmp`, DbConfig.Cluster.Mysql.GatherDetailTable) //DbConfig.Cluster.Postgres.GatherDetailTable
 	}
 	var countValue int
 	db.Raw(sql).Scan(&countValue)
@@ -177,7 +202,7 @@ func PgGatherNameConfigureInsert(db *gorm.DB, srcData dataGather) {
 // 临时迁移数据从mysql到pg
 func Migirate() {
 	// 创建数据库对象
-	db := DbOpen(nil)
+	db := DbOpen("postgres")
 	// tx := db.Begin()
 	// tx.Exec("use public")
 	// tx.Commit()
