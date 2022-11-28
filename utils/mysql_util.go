@@ -145,11 +145,19 @@ func ExecuteSchemaQuery(db *sql.DB, sqlStr string, columns []string, types []str
 	if &sqlStr == nil || sqlStr == "" {
 		return nil
 	}
+	fmt.Printf("db is %v\n", db == nil)
+	fmt.Println("db is ", *db)
 	stmt, err2 := db.Prepare(sqlStr)
-	painc_err(err2)
+	if !painc_err(err2) {
+		fmt.Printf("db.Prepare(sqlStr) error...")
+		return nil
+	}
 	defer stmt.Close()
 	res, err := stmt.Query()
-	painc_err(err)
+	if !painc_err(err) {
+		fmt.Printf("stmt.Query() error...")
+		return nil
+	}
 	defer res.Close()
 	schemaTables := make([]SchemaTable, 0)
 	for res.Next() {
@@ -169,7 +177,7 @@ func ExecuteSchemaQuery(db *sql.DB, sqlStr string, columns []string, types []str
 		// }
 		schemaTables = append(schemaTables, *st)
 	}
-	db.Close()
+	//db.Close()
 	return schemaTables
 }
 
@@ -208,7 +216,7 @@ func ExecuteTableQuery(db *sql.DB, sqlStr string, columns []string, types []stri
 		}
 		tableTables = append(tableTables, *tt)
 	}
-	db.Close()
+	//db.Close()
 	return tableTables
 }
 
@@ -318,7 +326,7 @@ func Query(sqlstr string) (bool, []ServicePort) {
 		painc_err(err)
 		fmt.Println(service_port.ID, *service_port.ServiceName, *service_port.ChildService, *service_port.ClusterName, *service_port.IP, service_port.Port, *service_port.PortType)
 	}
-	db.Close()
+	//db.Close()
 	fmt.Println("service_port table length: ", len(service_port_slice))
 	return true, service_port_slice
 }
@@ -336,11 +344,11 @@ func Serilize() bool {
 	serilize_data := make([]byte, 0)
 	// service_ports := Query("")
 	var db *gorm.DB
-	if Db == nil {
-		Db = DbOpen(nil)
+	if SourceMysqlDb == nil {
+		SourceMysqlDb = DbOpen("mysql")
 	}
-	db = Db
-	service_ports := PgServiceQuery(db)
+	db = SourceMysqlDb
+	service_ports := ServiceQuery(db)
 	for _, service_port := range service_ports {
 		service_port_seriaize, _ := json.Marshal(service_port)
 		// fmt.Println("&&&&&&&", string(service_port_seriaize))
@@ -395,6 +403,12 @@ func painc_err(err error) bool {
 func GetConnection(mysql_connection MysqlConnect) *sql.DB {
 	// 获取初始化的mysql db 结构体
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=true", mysql_connection.Username, mysql_connection.Password, mysql_connection.Host, mysql_connection.Port, mysql_connection.DefaultDB)
+	if db, have := DbMysqlMap[fmt.Sprintf("%s%s", mysql_connection.Host, mysql_connection.DefaultDB)]; have {
+		//如果已经有连接对象则直接返回
+		fmt.Println("连接map中找到这个对象！")
+		return db
+	}
+
 	fmt.Println("mysql 连接串: ", dsn)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -405,6 +419,7 @@ func GetConnection(mysql_connection MysqlConnect) *sql.DB {
 	db.SetConnMaxLifetime(time.Minute * 3)
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
+	DbMysqlMap[fmt.Sprintf("%s%s", mysql_connection.Host, mysql_connection.DefaultDB)] = db
 	return db
 
 }
@@ -418,7 +433,7 @@ func SchemaQuery(mysqlConnector MysqlConnect) []SchemaTable {
 	types := []string{"string", "string"}
 
 	st := ExecuteSchemaQuery(db, query, columns, types)
-	// db.Close()
+	//db.Close()
 	return st
 }
 
@@ -461,7 +476,7 @@ func ConnectionQuery(mysqlConnector MysqlConnect) (bool, []Variable) {
 	} else {
 		variables = append(variables, variablesUser[0])
 		variables = append(variables, variablesCurrent[0])
-		db.Close()
+		//db.Close()
 		return true, variables
 
 	}
@@ -483,7 +498,7 @@ func QpsAndSlowSqlQuery(mysqlConnector MysqlConnect) (bool, []Variable) {
 			variables = append(variables, variable)
 		}
 	}
-	db.Close()
+	//db.Close()
 	return true, variables
 }
 
@@ -503,7 +518,7 @@ func TpsQuery(mysqlConnector MysqlConnect) (bool, []Status) {
 
 	db := GetConnection(mysqlConnector)
 	bool, statuses := ExecuteStatusQuery(db, tpsSql, columns, types)
-	db.Close()
+	//db.Close()
 
 	return bool, statuses
 
