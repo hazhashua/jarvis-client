@@ -1,12 +1,16 @@
 package utils
 
 import (
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"metric_exporter/config"
 	"os"
 	"strings"
+
+	//"github.com/go-sql-driver/mysql"
+	"gorm.io/driver/mysql"
 
 	"gopkg.in/yaml.v2"
 	"gorm.io/driver/postgres"
@@ -287,29 +291,59 @@ func init() {
 
 // 全局Db对象
 var Db *gorm.DB
+var SourceMysqlDb *gorm.DB
+var SourceMysqlIP string
 var DbConfig *config.DbConfigure
 
+// 全局db连接map,防止重复数据库连接
+var DbMysqlMap map[string]*sql.DB
+
 func init() {
+	// 初始化db连接map
+	DbMysqlMap = make(map[string]*sql.DB)
+	// 默认加载pg作为数据源数据库
 	config := ParseDbConfig()
 	// 赋值全局配置变量
 	DbConfig = config
-	// config := dbConfig{
-	// 	Ip:       "192.168.10.68",
-	// 	Port:     5432,
-	// 	User:     "postgres",
-	// 	Password: "pwd@123",
-	// }
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Cluster.Postgres.Ip, config.Cluster.Postgres.Username, config.Cluster.Postgres.Password, config.Cluster.Postgres.Port)
 	var err error
+	// 加载pg数据库配置
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Cluster.Postgres.Ip, config.Cluster.Postgres.Username, config.Cluster.Postgres.Password, config.Cluster.Postgres.Port)
 	if Db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},
 	}); err == nil {
-		Logger.Println("*************************connect to db success")
+		// Db[fmt.Sprintf("%s%d", config.Cluster.Postgres.Ip, config.Cluster.Postgres.Port)] = dbInstance
+		Logger.Println("*************************connect to pg db success")
 	} else {
-		Logger.Println("*************************connect to db error")
+		Logger.Println("*************************connect to pg db error")
 	}
+
+	// 加载mysql作为数据源数据库
+
+	dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=true", config.Cluster.Mysql.Username, config.Cluster.Mysql.Password, config.Cluster.Mysql.Ip, config.Cluster.Mysql.Port, config.Cluster.Mysql.DefaultDB)
+	// if db := DbMap[mysql_connection.Host]; db != nil {
+	// 	//如果已经有连接对象则直接返回
+	// 	return db
+	// }
+	fmt.Println("mysql 连接串: ", dsn)
+	// // See "Important settings" section.
+	// db.SetConnMaxLifetime(time.Minute * 3)
+	// db.SetMaxOpenConns(10)
+	// db.SetMaxIdleConns(10)
+
+	SourceMysqlIP = config.Cluster.Mysql.Ip
+	if SourceMysqlDb, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+	}); err == nil {
+		// DbMap[fmt.Sprintf("%s%d", config.Cluster.Postgres.Ip, config.Cluster.Postgres.Port)] = dbInstance
+		Logger.Println("*************************connect to pg db success")
+	} else {
+		Logger.Println("*************************connect to pg db error")
+	}
+
 }
 
 func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
@@ -646,7 +680,7 @@ func init() {
 	}
 
 	// db = utils.Db
-	datasource_count := PgCountQuery(Db, "")
+	datasource_count := CountQuery(Db, "")
 	// 从数据库加载配置
 	if datasource_count != 0 {
 		ReloadConfigFromDB("all")
@@ -669,7 +703,7 @@ func init() {
 // 把ip和端口信息封装成访问地址类型信息
 // 配置默认的端口，防止在信息不全情况下数据获取的障碍
 func getSourceAddr() map[string][]ServicePort {
-	servicePorts := PgServiceQuery(Db)
+	servicePorts := ServiceQuery(Db)
 	Logger.Printf("读取数据库数据的记录数: %d\n", len(servicePorts))
 	sps := make(map[string][]ServicePort)
 	for _, sp := range servicePorts {
