@@ -120,9 +120,9 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 	var dss []utils.Data_store_configure
 	if dataName == "apisix" {
 		// 如果是网关，只更新一次
-		utils.Db.Where("data_name=?", dataName).Find(&dss)
+		utils.SourceMysqlDb.Where("data_name=?", dataName).Find(&dss)
 		if len(dss) == 0 {
-			utils.PgDataStoreInsert(utils.Db, ds)
+			utils.DataStoreInsert(utils.SourceMysqlDb, ds)
 		} else {
 			utils.Logger.Printf("网关配置后,不再更新！")
 		}
@@ -142,7 +142,7 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 		} else {
 			ds.Id = 1
 		}
-		utils.PgDataStoreInsert(utils.Db, ds)
+		utils.DataStoreInsert(utils.Db, ds)
 	} else {
 		// 数据库有数据执行更新
 		utils.Db.Select("id").Where("data_name=?", dataName).Where("ip=?", ds.Ip).Take(&dss)
@@ -161,7 +161,7 @@ func registerConfigEndpoint() {
 		pyaml := utils.LoadYaml()
 		configs := pyaml.ScrapeConfigs
 		// 读取数据库配置
-		dss := utils.PgDataStoreQuery(utils.Db, utils.DbConfig.Cluster.Postgres.ExportTable)
+		dss := utils.DataStoreQuery(utils.SourceMysqlDb, utils.DbConfig.Cluster.Postgres.ExportTable)
 		sort.Slice(dss, func(i, j int) bool {
 			if dss[i].DataName >= dss[j].DataName {
 				return true
@@ -374,7 +374,7 @@ func main() {
 		}
 	}
 
-	if modelV != "" && excludeModelV == "" {
+	if modelV != "all" && modelV != "" && excludeModelV == "" {
 		utils.Logger.Printf("启动指定设置的exporter！\n")
 		//只导出关心指标的数据
 		models := strings.Split(modelV, ",")
@@ -531,8 +531,9 @@ func main() {
 		}
 	}
 
-	//默认写表中apisix配置信息
-	registerEndpoint("apisix", utils.DbConfig.Cluster.HttpPort, "")
+	// 默认写表中apisix配置信息	 endpoint格式: http://192.168.10.75:9091/apisix/prometheus/metrics
+	utils.Logger.Printf("注册apisix endpoint!")
+	registerEndpoint("apisix", utils.DbConfig.Cluster.HttpPort, "/apisix/prometheus/metrics")
 
 	// go generateaAliveValue(serviceAliveCollector.channel)
 	// go getAliveValueLoop(serviceAliveCollector.channel)
@@ -632,7 +633,7 @@ func main() {
 func graceExit() {
 	shutdown.WaitTerminationSignal(func() {
 		//异常终止, 删除exporter注册地址
-		utils.PgDataStoreRemove(utils.Db)
+		utils.DataStoreRemove(utils.SourceMysqlDb)
 		utils.Logger.Printf("程序异常退出，清除exporter暴露地址！")
 		os.Exit(1)
 	})
