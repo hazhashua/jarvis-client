@@ -49,11 +49,11 @@ func NewServiceAliveCollector() *serviceCollector {
 	var serviceAliveList []serviceAlive2Collector
 	// db := utils.DbOpen(nil)
 	var db *gorm.DB
-	if utils.Db == nil {
-		utils.Db = utils.DbOpen(nil)
+	if utils.SourceMysqlDb == nil {
+		utils.SourceMysqlDb = utils.DbOpen("mysql")
 	}
-	db = utils.Db
-	datasource_count := utils.PgCountQuery(db, "")
+	db = utils.SourceMysqlDb
+	datasource_count := utils.CountQuery(db, "")
 
 	fmt.Println("查询到的service_port表记录数: ", datasource_count)
 	for length := 0; length < datasource_count; length++ {
