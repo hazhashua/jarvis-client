@@ -680,7 +680,7 @@ func init() {
 	}
 
 	// db = utils.Db
-	datasource_count := CountQuery(Db, "")
+	datasource_count := CountQuery(SourceMysqlDb, "")
 	// 从数据库加载配置
 	if datasource_count != 0 {
 		ReloadConfigFromDB("all")
@@ -703,7 +703,7 @@ func init() {
 // 把ip和端口信息封装成访问地址类型信息
 // 配置默认的端口，防止在信息不全情况下数据获取的障碍
 func getSourceAddr() map[string][]ServicePort {
-	servicePorts := ServiceQuery(Db)
+	servicePorts := ServiceQuery(SourceMysqlDb)
 	Logger.Printf("读取数据库数据的记录数: %d\n", len(servicePorts))
 	sps := make(map[string][]ServicePort)
 	for _, sp := range servicePorts {
