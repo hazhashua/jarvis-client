@@ -132,23 +132,23 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 	}
 
 	// var dss []utils.Data_store_configure
-	utils.Db.Where("data_name=?", dataName).Where("ip=?", ds.Ip).Find(&dss)
+	utils.SourceMysqlDb.Where("data_name=?", dataName).Where("ip=?", ds.Ip).Find(&dss)
 	if len(dss) == 0 {
 		// 数据库没有数据插入
 		var id []sql.NullInt32
-		utils.Db.Raw(fmt.Sprintf("select max(id) as id from public.%s", utils.DbConfig.Cluster.Postgres.ExportTable)).Pluck("id", &id)
+		utils.SourceMysqlDb.Raw(fmt.Sprintf("select max(id) as id from %s", utils.DbConfig.Cluster.Mysql.ExportTable)).Pluck("id", &id)
 		if id[0].Valid {
 			ds.Id = int(id[0].Int32) + 1
 		} else {
 			ds.Id = 1
 		}
-		utils.DataStoreInsert(utils.Db, ds)
+		utils.DataStoreInsert(utils.SourceMysqlDb, ds)
 	} else {
 		// 数据库有数据执行更新
-		utils.Db.Select("id").Where("data_name=?", dataName).Where("ip=?", ds.Ip).Take(&dss)
+		utils.SourceMysqlDb.Select("id").Where("data_name=?", dataName).Where("ip=?", ds.Ip).Take(&dss)
 		ds.Id = dss[0].Id
 		utils.Logger.Printf("更新数据: %v\n", ds)
-		utils.Db.Save(ds)
+		utils.SourceMysqlDb.Save(ds)
 	}
 	// 存入数据库后 更新exporter的配置信息，方便异常退出时清理
 	config.MetricIpMap[strings.ToUpper(dataName)] = ds.Ip
