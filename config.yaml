@@ -5,6 +5,10 @@ cluster:
     port: 3306 
     username: root
     password: pwd@123
+    defaultdb: cluster
+    gathertable: gather_name
+    gatherdetailtable: data_gather_configure
+    exporttable: data_store_configure
 
   postgres:
     ip: 192.168.10.68
@@ -13,3 +17,10 @@ cluster:
     password: pwd@123
     datasourceinfo:
       schema: cluster
+    
+    gathertable: gather_name
+    gatherdetailtable: data_gather_configure
+    exporttable: data_store_configure
+
+  
+  httpport: 38080
