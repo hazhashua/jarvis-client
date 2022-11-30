@@ -5,7 +5,7 @@ cluster:
     port: 3306 
     username: root
     password: pwd@123
-    defaultdb: cluster
+    defaultdb: fusion_monitor
     gathertable: gather_name
     gatherdetailtable: data_gather_configure
     exporttable: data_store_configure
