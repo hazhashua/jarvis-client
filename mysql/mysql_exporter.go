@@ -171,9 +171,13 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 
 	//"db_name", "table_name", "table_rows", "data_size", "index_size", "cluster", "ip"
 	tableTables := utils.TableQuery(mysqlConnector)
-	for idx, table := range tableTables {
-		// fmt.Println(table.TableSchema, table.TableName, table.TableRows, table.DataSize, table.IndexSize)
-		ch <- prometheus.MustNewConstMetric(e.tableInfos[idx], prometheus.GaugeValue, 1, table.TableSchema, table.TableName, fmt.Sprintf("%d", table.TableRows), fmt.Sprintf("%.5f", table.DataSize), fmt.Sprintf("%.5f", table.IndexSize), mysqlConfig.Cluster.Name, mysqlConnector.Host)
+	//len(e.tableInfos)
+	for idx := 0; idx < len(e.tableInfos); idx++ {
+		if len(tableTables) >= idx+1 {
+			table := tableTables[idx]
+			ch <- prometheus.MustNewConstMetric(e.tableInfos[idx], prometheus.GaugeValue, 1, table.TableSchema, table.TableName, fmt.Sprintf("%d", table.TableRows), fmt.Sprintf("%.5f", table.DataSize), fmt.Sprintf("%.5f", table.IndexSize), mysqlConfig.Cluster.Name, mysqlConnector.Host)
+
+		}
 	}
 
 }
