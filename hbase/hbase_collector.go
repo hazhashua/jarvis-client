@@ -276,7 +276,9 @@ func QueryMetric() *hbaseData {
 		// utils.Logger.Printf("response body: %s", string(body))
 		if region_ipc, unmarshalErr := UnmarshalRegionserverIPC(body); unmarshalErr == nil {
 			utils.Logger.Printf("region_ipc: %v\n", region_ipc)
-			if len(region_ipc.Beans) != 0 {
+			if len(region_ipc.Beans) > 0 {
+				fmt.Println("region_ipc.Beans[0].NumActiveHandler: ", region_ipc.Beans[0].NumActiveHandler)
+				fmt.Println("*region_ipc.Beans[0].NumActiveHandler: ", *region_ipc.Beans[0].NumActiveHandler)
 				region_data.numActiveHandler = *region_ipc.Beans[0].NumActiveHandler
 				region_data.receivedBytes = *region_ipc.Beans[0].ReceivedBytes
 				region_data.sentBytes = *region_ipc.Beans[0].SentBytes
@@ -314,19 +316,33 @@ func QueryMetric() *hbaseData {
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=Server")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		if region_server, unmarshalErr := UnmarshalRegionserverServer(body); unmarshalErr == nil {
-			if len(region_server.Beans) != 0 {
-				// jmx没有抓取到数据
-				region_data.blockCacheCountHitPercent = *region_server.Beans[0].BlockCacheCountHitPercent
-				region_data.blockCacheExpressHitPercent = *region_server.Beans[0].BlockCacheExpressHitPercent
-				region_data.readRequestCount = *region_server.Beans[0].ReadRequestCount
-				region_data.writeRequestCount = *region_server.Beans[0].WriteRequestCount
-				region_data.regionCount = *region_server.Beans[0].RegionCount
-				region_data.storeFileCount = *region_server.Beans[0].StoreFileCount
-				region_data.slowGetCount = *region_server.Beans[0].SlowGetCount
-				region_data.slowPutCount = *region_server.Beans[0].SlowPutCount
-				region_data.slowDeleteCount = *region_server.Beans[0].SlowDeleteCount
-				region_data.slowAppendCount = *region_server.Beans[0].SlowAppendCount
-				region_data.slowIncrementCount = *region_server.Beans[0].SlowIncrementCount
+			if len(region_server.Beans) > 0 {
+				// jmx抓取到数据
+				if region_server.Beans[0].BlockCacheCountHitPercent != nil && region_server.Beans[0].BlockCacheExpressHitPercent != nil {
+					region_data.blockCacheCountHitPercent = *region_server.Beans[0].BlockCacheCountHitPercent
+					region_data.blockCacheExpressHitPercent = *region_server.Beans[0].BlockCacheExpressHitPercent
+					region_data.readRequestCount = *region_server.Beans[0].ReadRequestCount
+					region_data.writeRequestCount = *region_server.Beans[0].WriteRequestCount
+					region_data.regionCount = *region_server.Beans[0].RegionCount
+					region_data.storeFileCount = *region_server.Beans[0].StoreFileCount
+					region_data.slowGetCount = *region_server.Beans[0].SlowGetCount
+					region_data.slowPutCount = *region_server.Beans[0].SlowPutCount
+					region_data.slowDeleteCount = *region_server.Beans[0].SlowDeleteCount
+					region_data.slowAppendCount = *region_server.Beans[0].SlowAppendCount
+					region_data.slowIncrementCount = *region_server.Beans[0].SlowIncrementCount
+				} else {
+					region_data.blockCacheCountHitPercent = -1
+					region_data.blockCacheExpressHitPercent = -1
+					region_data.readRequestCount = -1
+					region_data.writeRequestCount = -1
+					region_data.regionCount = -1
+					region_data.storeFileCount = -1
+					region_data.slowGetCount = -1
+					region_data.slowPutCount = -1
+					region_data.slowDeleteCount = -1
+					region_data.slowAppendCount = -1
+					region_data.slowIncrementCount = -1
+				}
 
 				// // server的读请求数
 				// fmt.Println(*region_server.Beans[0].ReadRequestCount)
@@ -371,8 +387,17 @@ func QueryMetric() *hbaseData {
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		if region_io, unmarshalErr := UnmarshalRegionserverIO(body); unmarshalErr == nil {
 			if len(region_io.Beans) > 0 {
-				region_data.fsReadTimeMax = *region_io.Beans[0].FSReadTimeMax
-				region_data.fsWriteTimeMax = *region_io.Beans[0].FSWriteTimeMax
+				fmt.Println("region_data.fsReadTimeMax: ", region_io.Beans[0].FSReadTimeMax)
+				if region_io.Beans[0].FSReadTimeMax != nil {
+					region_data.fsReadTimeMax = *region_io.Beans[0].FSReadTimeMax
+				} else {
+					region_data.fsReadTimeMax = -1
+				}
+				if region_io.Beans[0].FSWriteTimeMax != nil {
+					region_data.fsWriteTimeMax = *region_io.Beans[0].FSWriteTimeMax
+				} else {
+					region_data.fsWriteTimeMax = -1
+				}
 				// // 文件系统最大读时间
 				// fmt.Println(*region_io.Beans[0].FSReadTimeMax)
 				// // 文件系统最大写时间
@@ -389,7 +414,7 @@ func QueryMetric() *hbaseData {
 		query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=RegionServer,sub=Tables")
 		body = HttpRequest(false, jmx_http_url, query_url, region_no)
 		if region_tables, unmarshalErr := UnmarshalTables(body); unmarshalErr == nil {
-			if len(region_tables.Beans) != 0 {
+			if len(region_tables.Beans) > 0 {
 				tds := make(map[string]*tableData, 0)
 				var hostName, tableName string
 				for key, value := range region_tables.Beans[0] {
