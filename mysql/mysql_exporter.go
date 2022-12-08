@@ -164,10 +164,18 @@ func (e *MysqlExporter) Collect(ch chan<- prometheus.Metric) {
 
 	//"db_name", "default_character_set_name", "cluster", "ip"
 	schemaTables := utils.SchemaQuery(mysqlConnector)
-	for idx, schema := range schemaTables {
-		fmt.Printf("schema: %v\n", schema)
-		ch <- prometheus.MustNewConstMetric(e.dbInfos[idx], prometheus.GaugeValue, 1, schema.SchemaName, schema.DefaultCharacterSetName, mysqlConfig.Cluster.Name, mysqlConnector.Host)
+	for idx := 0; idx < len(schemaTables); idx++ {
+		if len(e.dbInfos) >= idx+1 {
+			schema := schemaTables[idx]
+			fmt.Printf("schema: %v\n", schema)
+			ch <- prometheus.MustNewConstMetric(e.dbInfos[idx], prometheus.GaugeValue, 1, schema.SchemaName, schema.DefaultCharacterSetName, mysqlConfig.Cluster.Name, mysqlConnector.Host)
+		}
+
 	}
+	// for idx, schema := range schemaTables {
+	// 	fmt.Printf("schema: %v\n", schema)
+	// 	ch <- prometheus.MustNewConstMetric(e.dbInfos[idx], prometheus.GaugeValue, 1, schema.SchemaName, schema.DefaultCharacterSetName, mysqlConfig.Cluster.Name, mysqlConnector.Host)
+	// }
 
 	//"db_name", "table_name", "table_rows", "data_size", "index_size", "cluster", "ip"
 	tableTables := utils.TableQuery(mysqlConnector)
