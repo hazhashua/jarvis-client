@@ -247,10 +247,16 @@ type DbConfigure struct {
 	Cluster struct {
 		Name  string
 		Mysql struct {
-			Ip       string
-			Port     int32
-			Username string
-			Password string
+			Ip        string
+			Port      int32
+			Username  string
+			Password  string
+			DefaultDB string
+
+			GatherTable       string // gather_name
+			GatherDetailTable string // data_gather_configure
+			ExportTable       string // data_store_configure
+
 		}
 		Postgres struct {
 			Ip             string
