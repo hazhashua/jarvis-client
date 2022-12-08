@@ -120,15 +120,15 @@ func ServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 				'' as cluster_name,
 				dgc.ip as ip, 
 				case 
-					when dgc.port!='' then cast(dgc.port as int)
+					when dgc.port!='' then cast(dgc.port as signed)
 					else -1
 				end as port, 
 				dgc.protocol_type as port_type,
 				dgc.remarks as comment,
 				dgc.username as username,
 				dgc.password as password
-				FROM public.%s dgc 
-				JOIN public.%s gn 
+				FROM %s dgc 
+				JOIN %s gn 
 				ON dgc.service_type=gn.id `, DbConfig.Cluster.Postgres.GatherDetailTable, DbConfig.Cluster.Postgres.GatherTable)
 	Logger.Println("ServiceQuery sql: ", sql)
 	db.Raw(sql).Scan(&sps)
