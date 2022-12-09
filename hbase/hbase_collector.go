@@ -169,11 +169,11 @@ func HttpRequest(is_master bool, jmx_http_url *jmxHttpUrl, uri string, region_no
 	var response *http.Response
 	if is_master {
 		// fmt.Println("master url: ", (*jmx_http_url.masterUrl)+uri)
-		utils.Logger.Printf("master url: %s\n", (*jmx_http_url.masterUrl)+uri)
+		utils.Logger.Printf("request url: %s\n", (*jmx_http_url.masterUrl)+uri)
 		response, httpErr = http.Get((*jmx_http_url.masterUrl) + uri)
 	} else {
 		// fmt.Println("regionserver url: ", (*jmx_http_url.regionserversUrls)[region_no-1]+uri)
-		utils.Logger.Printf("regionserver url: %s\n", (*jmx_http_url.regionserversUrls)[region_no-1]+uri)
+		utils.Logger.Printf("request url: %s\n", (*jmx_http_url.regionserversUrls)[region_no-1]+uri)
 		response, httpErr = http.Get((*jmx_http_url.regionserversUrls)[region_no-1] + uri)
 	}
 	if response != nil {
@@ -187,7 +187,8 @@ func HttpRequest(is_master bool, jmx_http_url *jmxHttpUrl, uri string, region_no
 	if err != nil {
 		// handle error
 		utils.Logger.Printf("ioutil.ReadAll(response.Body) error:%s\n", err.Error())
-		panic(err)
+		return []byte{}
+
 	}
 	//fmt.Println("------response:", string(body))
 	return body
@@ -225,9 +226,14 @@ func QueryMetric() *hbaseData {
 
 	body := HttpRequest(true, jmx_http_url, query_url, 0)
 	if mm, unmarshalErr := UnmarshalMasterMain(body); unmarshalErr == nil {
-		hmaster_data.numRegionServers = *mm.Beans[0].NumRegionServers
-		hmaster_data.numDeadRegionServers = *mm.Beans[0].NumDeadRegionServers
-		utils.Logger.Printf("hmaster_data.numRegionServers: %d \t hmaster_data.numDeadRegionServers: %d \n", *mm.Beans[0].NumRegionServers, *mm.Beans[0].NumDeadRegionServers)
+		if len(mm.Beans) > 0 {
+			hmaster_data.numRegionServers = *mm.Beans[0].NumRegionServers
+			hmaster_data.numDeadRegionServers = *mm.Beans[0].NumDeadRegionServers
+			utils.Logger.Printf("hmaster_data.numRegionServers: %d \t hmaster_data.numDeadRegionServers: %d \n", *mm.Beans[0].NumRegionServers, *mm.Beans[0].NumDeadRegionServers)
+		} else {
+			utils.Logger.Printf("UnmarshalMasterMain 数据解析为空！\n")
+		}
+
 	} else {
 		utils.Logger.Printf("UnmarshalMasterMain(body) error: %s", unmarshalErr.Error())
 	}
@@ -235,29 +241,39 @@ func QueryMetric() *hbaseData {
 	query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=AssignmentManager")
 	body = HttpRequest(true, jmx_http_url, query_url, 0)
 	if assignment_manager, unmarshalErr := UnmarshalAssignmentManager(body); unmarshalErr == nil {
-		hmaster_data.ritCount = *assignment_manager.Beans[0].RitCount
-		hmaster_data.ritCountOverThreshold = *assignment_manager.Beans[0].RitCountOverThreshold
-		// fmt.Println(*assignment_manager.Beans[0].RitCount)
-		// fmt.Println(*assignment_manager.Beans[0].RitCountOverThreshold)
-		utils.Logger.Printf("hmaster_data.ritCount: %d \t hmaster_data.ritCountOverThreshold: %d \n", *assignment_manager.Beans[0].RitCount, *assignment_manager.Beans[0].RitCountOverThreshold)
+		if len(assignment_manager.Beans) > 0 {
+			hmaster_data.ritCount = *assignment_manager.Beans[0].RitCount
+			hmaster_data.ritCountOverThreshold = *assignment_manager.Beans[0].RitCountOverThreshold
+			// fmt.Println(*assignment_manager.Beans[0].RitCount)
+			// fmt.Println(*assignment_manager.Beans[0].RitCountOverThreshold)
+			utils.Logger.Printf("hmaster_data.ritCount: %d \t hmaster_data.ritCountOverThreshold: %d \n", *assignment_manager.Beans[0].RitCount, *assignment_manager.Beans[0].RitCountOverThreshold)
+
+		} else {
+			utils.Logger.Printf("UnmarshalAssignmentManager 解析数据为空! \n")
+		}
 	}
 
 	//Hadoop:service=HBase,name=Master,sub=IPC
 	query_url = fmt.Sprintf("?qry=%s", "Hadoop:service=HBase,name=Master,sub=IPC")
 	body = HttpRequest(true, jmx_http_url, query_url, 0)
 	if master_ipc, unmarshalErr := UnmarshalMasterIPC(body); unmarshalErr == nil {
-		hmaster_data.masterNumActiveHandler = *master_ipc.Beans[0].NumActiveHandler
-		hmaster_data.masterReceivedBytes = *master_ipc.Beans[0].ReceivedBytes
-		hmaster_data.masterSentBytes = *master_ipc.Beans[0].SentBytes
-		hmaster_data.masterNumOpenConnections = *master_ipc.Beans[0].NumOpenConnections
-		// fmt.Println(*master_ipc.Beans[0].NumActiveHandler)
-		// // 接收的数据量
-		// fmt.Println(*master_ipc.Beans[0].ReceivedBytes)
-		// // 发送的数据量
-		// fmt.Println(*master_ipc.Beans[0].SentBytes)
-		// // 打开的ipc连接数
-		// fmt.Println(*master_ipc.Beans[0].NumOpenConnections)
-		utils.Logger.Printf("NumActiveHandler: %d\t ReceivedBytes: %d\t SentBytes: %d \t, NumOpenConnections: %d \n", *master_ipc.Beans[0].NumActiveHandler, *master_ipc.Beans[0].ReceivedBytes, *master_ipc.Beans[0].SentBytes, *master_ipc.Beans[0].NumOpenConnections)
+		if len(master_ipc.Beans) > 0 {
+			hmaster_data.masterNumActiveHandler = *master_ipc.Beans[0].NumActiveHandler
+			hmaster_data.masterReceivedBytes = *master_ipc.Beans[0].ReceivedBytes
+			hmaster_data.masterSentBytes = *master_ipc.Beans[0].SentBytes
+			hmaster_data.masterNumOpenConnections = *master_ipc.Beans[0].NumOpenConnections
+			// fmt.Println(*master_ipc.Beans[0].NumActiveHandler)
+			// // 接收的数据量
+			// fmt.Println(*master_ipc.Beans[0].ReceivedBytes)
+			// // 发送的数据量
+			// fmt.Println(*master_ipc.Beans[0].SentBytes)
+			// // 打开的ipc连接数
+			// fmt.Println(*master_ipc.Beans[0].NumOpenConnections)
+			utils.Logger.Printf("NumActiveHandler: %d\t ReceivedBytes: %d\t SentBytes: %d \t, NumOpenConnections: %d \n", *master_ipc.Beans[0].NumActiveHandler, *master_ipc.Beans[0].ReceivedBytes, *master_ipc.Beans[0].SentBytes, *master_ipc.Beans[0].NumOpenConnections)
+
+		} else {
+			utils.Logger.Printf("UnmarshalMasterIPC 解析数据为空! \n")
+		}
 	}
 
 	utils.Logger.Printf("jmx_http_url.regionserversUrls: %s", jmx_http_url.regionserversUrls)
@@ -265,7 +281,6 @@ func QueryMetric() *hbaseData {
 	region_no := 1
 	// var region_datas [3]regionData
 	region_datas := make([]regionData, 0)
-	// tdL := make([]*tableData, 0)
 	for {
 		// 查询所有regionserver的特定指标
 		//?qry=Hadoop:service=HBase,name=RegionServer,sub=IPC
@@ -420,7 +435,6 @@ func QueryMetric() *hbaseData {
 				for key, value := range region_tables.Beans[0] {
 					reg := regexp.MustCompile("Namespace_([^_]+?)_table_(.*)")
 					rss := reg.FindSubmatch([]byte(key))
-					// var tabled tableData
 					if len(rss) == 3 {
 						fmt.Printf("key: %s, namespace: %s   table: %s\n", key, rss[1], rss[2])
 						splits := strings.Split(string(rss[2]), "_metric_")
