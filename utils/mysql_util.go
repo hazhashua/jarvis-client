@@ -50,7 +50,7 @@ func ValueQuery(config config.MysqlConfig, sqlstr string) (bool, int) {
 	//      root:pwd@123@tcp(127.0.0.1:3306)/test
 	// config = *ParseDbConfig()
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/test?charset=utf8&parseTime=true", config.Cluster.Username, config.Cluster.Password, config.Cluster.Ips[0], config.Cluster.Port) //"root:pwd@123@tcp(192.168.10.70:3306)/test?charset=utf8&parseTime=true"
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/fusion_monitor?charset=utf8&parseTime=true", config.Cluster.Username, config.Cluster.Password, config.Cluster.Ips[0], config.Cluster.Port)
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -63,7 +63,7 @@ func ValueQuery(config config.MysqlConfig, sqlstr string) (bool, int) {
 
 	if &sqlstr == nil || sqlstr == "" {
 		// sqlstr = "SELECT * FROM test.datasource_alive da"
-		sqlstr = "SELECT count(distinct service_name, child_service, cluster_name, ip , port_type) FROM test.service_port sp"
+		sqlstr = "SELECT count(distinct service_name, ip, port) FROM fusion_monitor.data_gather_configure dgc"
 	}
 	stmt, err2 := db.Prepare(sqlstr)
 	if !painc_err(err2) {
