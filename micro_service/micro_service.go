@@ -111,12 +111,14 @@ func Parse_k8s_config() *config.K8sYamlConfig {
 func Get(url string) string {
 	resp, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		utils.Logger.Printf("get url:%s error:%s\n", url, err.Error())
+		return ""
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		utils.Logger.Printf("read response body error: %s\n", err.Error())
+		return ""
 	}
 	//fmt.Println(string(body))
 	return string(body)
@@ -128,6 +130,9 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 	*/
 	//url 为apiservice service的路径地址，后面改成配置化
 	data := Get(url)
+	if data == "" {
+		return nil
+	}
 	aPIV1Services, _ := UnmarshalAPIV1Services([]byte(data))
 	//fmt.Println(*aPIV1Services.APIVersion, *aPIV1Services.Kind)
 	// 存储所有serviceinfo信息
@@ -151,7 +156,7 @@ func GetServiceInfo(url string) map[string]ServiceInfo {
 			serviceInfoMap[service_name] = serviceInfo
 		}
 	}
-	utils.Logger.Println("serviceinfoMap: ", serviceInfoMap)
+	// utils.Logger.Println("serviceinfoMap: ", serviceInfoMap)
 	return serviceInfoMap
 }
 
@@ -160,6 +165,9 @@ func GetEndpointInfo(url string) map[string]EndpointInfo {
 	解析endpoint api内容
 	*/
 	endpoint_data := Get(url)
+	if endpoint_data == "" {
+		return nil
+	}
 	// fmt.Println("endpoint_data: ", endpoint_data)
 	aPIV1Endpoints, _ := UnmarshalAPIV1Endpoints([]byte(endpoint_data))
 	// fmt.Println(*aPIV1Endpoints.APIVersion, *aPIV1Endpoints.Kind, aPIV1Endpoints.Items, *aPIV1Endpoints.Metadata)
@@ -203,6 +211,9 @@ func GetNodeInfo(url string) []*MyK8sNodeInfo {
 		基于k8sapi 获取所有所有node的节点信息
 	*/
 	node_data := Get(url)
+	if node_data == "" {
+		return nil
+	}
 	// fmt.Println("node_data: ", node_data)
 
 	k8sNodeInfo, _ := UnmarshalK8sNodeInfo([]byte(node_data))
@@ -432,6 +443,9 @@ type NodeResourceUsed struct {
 func GetResourceUsed(nodeMetricsUrl string) map[string]*NodeResourceUsed {
 	node_resource_data := make(map[string]*NodeResourceUsed, 0)
 	node_metric_data := Get(nodeMetricsUrl)
+	if node_metric_data == "" {
+		return nil
+	}
 	if node_metrics, err := UnmarshalNodeMetrics([]byte(node_metric_data)); err == nil {
 		for _, node_metric := range node_metrics.Items {
 			if node_metric.Metadata != nil {

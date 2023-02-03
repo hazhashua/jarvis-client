@@ -107,9 +107,11 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 
 	// 抓取k8s的相关配置
 	// k8s_config := Parse_k8s_config()
+	// 动态加载k8s配置
+	utils.ReloadConfigFromDB(config.MICROSERVICE)
 	k8s_config, _ := (utils.ConfigStruct.ConfigData[config.MICROSERVICE]).(config.K8sYamlConfig)
 
-	fmt.Println("k8s_config: ", k8s_config.Cluster.Name)
+	fmt.Println("k8s_config: ", k8s_config.Cluster.Name, k8s_config.Cluster.Master)
 	master0 := k8s_config.Cluster.Master[0]
 
 	var k8sConfig config.K8sConfig = config.K8sConfig{
@@ -127,117 +129,122 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 
 	// 抓取node资源使用情况
 	nodeResourceUsedData := GetResourceUsed(k8sConfig.NodeResourceURL)
-	for _, nodeInfo := range myk8sNodeInfos {
-		// nodeInfo.Ip
-		if _, ok := nodeResourceUsedData[nodeInfo.Ip]; ok {
-			cpuUsed := nodeResourceUsedData[nodeInfo.Ip].Cpu
-			if strings.Contains(*cpuUsed, "n") {
-				if cpuUsedint, err := strconv.ParseUint((*cpuUsed)[:len(*cpuUsed)-1], 10, 64); err == nil {
-					nodeInfo.CpuUsedN = cpuUsedint
-				} else {
-					utils.Logger.Printf("获取cpu使用数据失败!")
+	if nodeResourceUsedData != nil && myk8sNodeInfos != nil {
+		for _, nodeInfo := range myk8sNodeInfos {
+			// nodeInfo.Ip
+			if _, ok := nodeResourceUsedData[nodeInfo.Ip]; ok {
+				cpuUsed := nodeResourceUsedData[nodeInfo.Ip].Cpu
+				if strings.Contains(*cpuUsed, "n") {
+					if cpuUsedint, err := strconv.ParseUint((*cpuUsed)[:len(*cpuUsed)-1], 10, 64); err == nil {
+						nodeInfo.CpuUsedN = cpuUsedint
+					} else {
+						utils.Logger.Printf("获取cpu使用数据失败!")
+					}
 				}
-			}
-			memoryUsed := nodeResourceUsedData[nodeInfo.Ip].Memory
-			if strings.Contains(*memoryUsed, "Ki") {
-				if memoryUsedData, err := strconv.ParseUint((*memoryUsed)[:len(*memoryUsed)-2], 10, 64); err == nil {
-					nodeInfo.MemoryUsedKB = memoryUsedData
-				} else {
-					utils.Logger.Printf("获取内存使用数据失败!")
+				memoryUsed := nodeResourceUsedData[nodeInfo.Ip].Memory
+				if strings.Contains(*memoryUsed, "Ki") {
+					if memoryUsedData, err := strconv.ParseUint((*memoryUsed)[:len(*memoryUsed)-2], 10, 64); err == nil {
+						nodeInfo.MemoryUsedKB = memoryUsedData
+					} else {
+						utils.Logger.Printf("获取内存使用数据失败!")
+					}
 				}
+			} else {
+				utils.Logger.Println("warnning: 没有抓取到这个ip主机的IP资源使用情况")
 			}
-		} else {
-			utils.Logger.Println("warnning: 没有抓取到这个ip主机的IP资源使用情况")
 		}
-	}
+		for i := 0; i < len(myk8sNodeInfos); i++ {
+			var k8sNodeDesc K8sNodeDesc
 
-	for i := 0; i < len(myk8sNodeInfos); i++ {
-		var k8sNodeDesc K8sNodeDesc
+			k8sNodeDesc.MaxCpuDesc = prometheus.NewDesc("max_cpu_total", "主机的cpu总数",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.MaxCpuValType = prometheus.GaugeValue
 
-		k8sNodeDesc.MaxCpuDesc = prometheus.NewDesc("max_cpu_total", "主机的cpu总数",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.MaxCpuValType = prometheus.GaugeValue
+			k8sNodeDesc.MaxDiskStorageDesc = prometheus.NewDesc("max_disk_total", "主机的磁盘总大小(单位byte)",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.MaxDiskStorageValType = prometheus.GaugeValue
 
-		k8sNodeDesc.MaxDiskStorageDesc = prometheus.NewDesc("max_disk_total", "主机的磁盘总大小(单位byte)",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.MaxDiskStorageValType = prometheus.GaugeValue
+			k8sNodeDesc.MaxMemoryDesc = prometheus.NewDesc("max_memory_total", "主机的总内存大小",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.MaxMemoryValType = prometheus.GaugeValue
 
-		k8sNodeDesc.MaxMemoryDesc = prometheus.NewDesc("max_memory_total", "主机的总内存大小",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.MaxMemoryValType = prometheus.GaugeValue
+			k8sNodeDesc.MaxPodsDesc = prometheus.NewDesc("max_pod_total", "主机的总的pod数量",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.MaxPodsValType = prometheus.GaugeValue
 
-		k8sNodeDesc.MaxPodsDesc = prometheus.NewDesc("max_pod_total", "主机的总的pod数量",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.MaxPodsValType = prometheus.GaugeValue
+			k8sNodeDesc.AllocateCpuDesc = prometheus.NewDesc("allocate_cpu_total", "分配的cpu总数",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.AllocateCpuValType = prometheus.GaugeValue
 
-		k8sNodeDesc.AllocateCpuDesc = prometheus.NewDesc("allocate_cpu_total", "分配的cpu总数",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.AllocateCpuValType = prometheus.GaugeValue
+			k8sNodeDesc.AllocateDiskStorageDesc = prometheus.NewDesc("allocate_disk_total", "分配的磁盘总大小(单位byte)",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.AllocateDiskStorageValType = prometheus.GaugeValue
 
-		k8sNodeDesc.AllocateDiskStorageDesc = prometheus.NewDesc("allocate_disk_total", "分配的磁盘总大小(单位byte)",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.AllocateDiskStorageValType = prometheus.GaugeValue
+			k8sNodeDesc.AllocateMemoryDesc = prometheus.NewDesc("allocate_memory_total", "分配的总内存大小",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.AllocateMemoryValType = prometheus.GaugeValue
 
-		k8sNodeDesc.AllocateMemoryDesc = prometheus.NewDesc("allocate_memory_total", "分配的总内存大小",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.AllocateMemoryValType = prometheus.GaugeValue
+			k8sNodeDesc.AllocatePodsDesc = prometheus.NewDesc("allocate_pod_total", "分配的总的pod数量",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.AllocatePodsValType = prometheus.GaugeValue
 
-		k8sNodeDesc.AllocatePodsDesc = prometheus.NewDesc("allocate_pod_total", "分配的总的pod数量",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.AllocatePodsValType = prometheus.GaugeValue
+			k8sNodeDesc.CpuUsedDesc = prometheus.NewDesc("cpu_used_n", "主机cpu使用量",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.CpuUsedValType = prometheus.GaugeValue
 
-		k8sNodeDesc.CpuUsedDesc = prometheus.NewDesc("cpu_used_n", "主机cpu使用量",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.CpuUsedValType = prometheus.GaugeValue
+			k8sNodeDesc.MemoryUsedDesc = prometheus.NewDesc("memory_used_kb", "主机内存使用量",
+				[]string{"cluster", "host", "ip"},
+				prometheus.Labels{})
+			k8sNodeDesc.MemoryUsedValType = prometheus.GaugeValue
 
-		k8sNodeDesc.MemoryUsedDesc = prometheus.NewDesc("memory_used_kb", "主机内存使用量",
-			[]string{"cluster", "host", "ip"},
-			prometheus.Labels{})
-		k8sNodeDesc.MemoryUsedValType = prometheus.GaugeValue
+			nodeDescs = append(nodeDescs, k8sNodeDesc)
 
-		nodeDescs = append(nodeDescs, k8sNodeDesc)
-
-		var k8sNodeinfodesc K8sNodeInfoDesc
-		k8sNodeinfodesc.NodeInfoDesc = prometheus.NewDesc("k8s_node_ready", "展示k8s每一个节点资源负载情况及是否ready",
-			[]string{"cluster", "host", "ip", "memory_pressure_ok", "disk_pressure_ok", "pid_pressure_ok"},
-			prometheus.Labels{})
-		k8sNodeinfodesc.NodeInfoValType = prometheus.GaugeValue
-		nodeInfoDescs = append(nodeInfoDescs, k8sNodeinfodesc)
+			var k8sNodeinfodesc K8sNodeInfoDesc
+			k8sNodeinfodesc.NodeInfoDesc = prometheus.NewDesc("k8s_node_ready", "展示k8s每一个节点资源负载情况及是否ready",
+				[]string{"cluster", "host", "ip", "memory_pressure_ok", "disk_pressure_ok", "pid_pressure_ok"},
+				prometheus.Labels{})
+			k8sNodeinfodesc.NodeInfoValType = prometheus.GaugeValue
+			nodeInfoDescs = append(nodeInfoDescs, k8sNodeinfodesc)
+		}
 	}
 
 	serviceinfo := GetServiceInfo(k8sConfig.ServiceURL)
 	//fmt.Println(" len(serviceinfo):", len(serviceinfo))
 	serviceinfoDescs := make([]K8sServiceDesc, 0)
-	for i := 0; i < len(serviceinfo); i++ {
-		var k8sServiceDesc K8sServiceDesc
-		k8sServiceDesc.ServiceInfoDesc = prometheus.NewDesc("service_info", "显示k8s集群中所有的服务信息",
-			[]string{"cluster", "service_name", "is_nodeport"},
-			prometheus.Labels{})
-		k8sServiceDesc.ServiceInfoValType = prometheus.GaugeValue
-		serviceinfoDescs = append(serviceinfoDescs, k8sServiceDesc)
+	if serviceinfo != nil {
+		for i := 0; i < len(serviceinfo); i++ {
+			var k8sServiceDesc K8sServiceDesc
+			k8sServiceDesc.ServiceInfoDesc = prometheus.NewDesc("service_info", "显示k8s集群中所有的服务信息",
+				[]string{"cluster", "service_name", "is_nodeport"},
+				prometheus.Labels{})
+			k8sServiceDesc.ServiceInfoValType = prometheus.GaugeValue
+			serviceinfoDescs = append(serviceinfoDescs, k8sServiceDesc)
+		}
 	}
 
 	// 微服务上应用的pod状态
 	// podInfoDescs []K8sPodDesc
 	myk8spodinfo := GetPodInfo(k8sConfig.PodURL)
 	podInfoDescs := make([]K8sPodDesc, 0)
-	// fmt.Println("len(myk8spodinfo): ", len(myk8spodinfo))
-	for i := 0; i < len(myk8spodinfo); i++ {
-		var k8spodDesc K8sPodDesc
-		k8spodDesc.PodInfoDesc = prometheus.NewDesc("pod_info", "显示k8s集群节点的pod信息",
-			[]string{"cluster", "pod_name", "app", "phase", "run_host_ip", "restart_count", "state", "state_description"},
-			prometheus.Labels{})
-		k8spodDesc.PodInfoValType = prometheus.GaugeValue
-		podInfoDescs = append(podInfoDescs, k8spodDesc)
+	if myk8spodinfo != nil {
+		// fmt.Println("len(myk8spodinfo): ", len(myk8spodinfo))
+		for i := 0; i < len(myk8spodinfo); i++ {
+			var k8spodDesc K8sPodDesc
+			k8spodDesc.PodInfoDesc = prometheus.NewDesc("pod_info", "显示k8s集群节点的pod信息",
+				[]string{"cluster", "pod_name", "app", "phase", "run_host_ip", "restart_count", "state", "state_description"},
+				prometheus.Labels{})
+			k8spodDesc.PodInfoValType = prometheus.GaugeValue
+			podInfoDescs = append(podInfoDescs, k8spodDesc)
+		}
 	}
 
 	// fmt.Println("k8s_config: ", k8s_config)
@@ -298,15 +305,19 @@ func (e *MicroServiceExporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	// 基于抓取node, service, pod数据，输出指标
 	e = NewMicroServiceExporter()
-	k8sNodeInfo := e.nodeDatas
-	for _, node_info := range k8sNodeInfo {
-		fmt.Println(node_info.Name)
-		fmt.Println(node_info.CreationTimestamp)
-		fmt.Println(node_info.NodeCapacityS.cpuCores)
-		fmt.Println(node_info.NodeCapacityS.diskStorage)
-		fmt.Println(node_info.NodeCapacityS.memory)
-		fmt.Println(node_info.NodeCapacityS.pods)
+	if e.nodeDatas == nil || e.podInfoDatas == nil || e.serviceInfoDatas == nil {
+		utils.Logger.Printf("get k8s data error ")
+		return
 	}
+	// k8sNodeInfo := e.nodeDatas
+	// for _, node_info := range k8sNodeInfo {
+	// 	fmt.Println(node_info.Name)
+	// 	fmt.Println(node_info.CreationTimestamp)
+	// 	fmt.Println(node_info.NodeCapacityS.cpuCores)
+	// 	fmt.Println(node_info.NodeCapacityS.diskStorage)
+	// 	fmt.Println(node_info.NodeCapacityS.memory)
+	// 	fmt.Println(node_info.NodeCapacityS.pods)
+	// }
 	for idx, nodeDesc := range e.nodeDescs {
 		ch <- prometheus.MustNewConstMetric(nodeDesc.MaxCpuDesc, nodeDesc.MaxCpuValType, float64(e.nodeDatas[idx].NodeCapacityS.cpuCores),
 			e.k8sConfig.Cluster.Name, e.nodeDatas[idx].Ip, e.nodeDatas[idx].Ip)
