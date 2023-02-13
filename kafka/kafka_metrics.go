@@ -6,6 +6,7 @@ import (
 	"metric_exporter/config"
 	"metric_exporter/utils"
 	"runtime"
+	"sort"
 	"strings"
 	"syscall"
 
@@ -282,10 +283,27 @@ func GetClient() (sarama.Client, sarama.Config) {
 	kafka_config := (utils.ConfigStruct.ConfigData["kafka"]).(config.KafkaConfigure)
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_7_0_0
+	// kafka数组排序
+	sort.Slice(kafka_config.Cluster.Hosts, func(i, j int) bool {
+		if i >= j {
+			return true
+		} else {
+			return false
+		}
+	})
 	var kafka_host string
-	if len(kafka_config.Cluster.Hosts) > 0 {
-		kafka_host = kafka_config.Cluster.Hosts[0]
+	for _, host := range kafka_config.Cluster.Hosts {
+		conneted := utils.CheckPorts(fmt.Sprintf("%s:%d", host, kafka_config.Cluster.Port), "tcp")
+		if conneted {
+			kafka_host = host
+			utils.Logger.Printf("使用%s作为kafka客户端连接", kafka_host)
+			break
+		}
 	}
+	// if len(kafka_config.Cluster.Hosts) > 0 {
+	// 	service_alive.CheckPorts(kafka_config.Cluster.Hosts[0],"tcp")
+	// 	kafka_host = kafka_config.Cluster.Hosts[0]
+	// }
 	client, err := sarama.NewClient([]string{kafka_host + fmt.Sprintf(":%d", kafka_config.Cluster.Port)}, config)
 	if err != nil {
 		utils.Logger.Printf("try create client err :%s\n", err.Error())
