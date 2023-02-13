@@ -172,6 +172,10 @@ func registerConfigEndpoint() {
 		var name string
 		num := 0
 		for _, ds := range dss {
+			// 如果是配置endpoint信息则跳过
+			if ds.DataName == "config" {
+				continue
+			}
 			// 如果有相同job_name, 则追加数字后缀
 			if ds.DataName == name && name != "" {
 				num += 1
@@ -222,9 +226,11 @@ func registerConfigEndpoint() {
 
 // 暴露所有的服务指标数据
 func exportAll(allModels map[string]string) {
+
 	if _, ok := allModels[config.MICROSERVICE]; ok {
 		// 存在micro_service, 注册微服务endpoint
 		// 激活微服务exporter
+		utils.Logger.Printf("启动%s exporter!", config.MICROSERVICE)
 		microServiceExporter := micro_service.NewMicroServiceExporter()
 		microServiceR := prometheus.NewRegistry()
 		microServiceR.MustRegister(microServiceExporter)
@@ -234,6 +240,7 @@ func exportAll(allModels map[string]string) {
 
 	if _, ok := allModels[config.ALIVE]; ok {
 		// 激活服务存活exporter
+		utils.Logger.Printf("启动%s exporter!", config.ALIVE)
 		serviceCollector := service_alive.NewServiceAliveCollector()
 		r := prometheus.NewRegistry()
 		r.MustRegister(serviceCollector)
@@ -243,6 +250,7 @@ func exportAll(allModels map[string]string) {
 
 	if _, ok := allModels[config.HBASE]; ok {
 		// 激活hbase exporter
+		utils.Logger.Printf("启动%s exporter!", config.HBASE)
 		hbaseCollector := hbase.NewHbaseCollector()
 		hbaseR := prometheus.NewRegistry()
 		hbaseR.MustRegister(hbaseCollector)
@@ -254,6 +262,7 @@ func exportAll(allModels map[string]string) {
 		// 激活spark exporter
 		// 数组传入所有的master和standby地址
 		// 查询spark的metric信息，默认为查询测试集群
+		utils.Logger.Printf("启动%s exporter!", config.SPARK)
 		print_metrics := spark.GetMetrics()
 		sparkHandler := spark.SparkHandler{Metrics: print_metrics}
 		http.Handle(config.SPARK_METRICPATH, sparkHandler)
@@ -262,6 +271,7 @@ func exportAll(allModels map[string]string) {
 
 	if _, ok := allModels[config.KAFKA]; ok {
 		// 激活kafka exporter
+		utils.Logger.Printf("启动%s exporter!", config.KAFKA)
 		kafka_collector := kafka.NewKafkaCollector()
 		kafka_r := prometheus.NewRegistry()
 		kafka_r.MustRegister(kafka_collector)
@@ -271,6 +281,7 @@ func exportAll(allModels map[string]string) {
 
 	if _, ok := allModels[config.HADOOP]; ok {
 		// 激活hadoop exporter
+		utils.Logger.Printf("启动%s exporter!", config.HADOOP)
 		hadoop_exporter := hadoop.NewHadoopCollector()
 		hadoop_r := prometheus.NewRegistry()
 		hadoop_r.MustRegister(hadoop_exporter)
@@ -281,16 +292,19 @@ func exportAll(allModels map[string]string) {
 
 	if _, ok := allModels[config.REDIS]; ok {
 		// 激活redis exporter
+		utils.Logger.Printf("启动%s exporter!", config.REDIS)
 		redis.RedisExporter()
 	}
 
 	if _, ok := allModels[config.ZOOKEEPER]; ok {
 		// 激活zookeeper exporter
+		utils.Logger.Printf("启动%s exporter!", config.ZOOKEEPER)
 		zookeeper.ZookeeperExporter()
 		// zookeeper.Watch()
 	}
 
 	if _, ok := allModels[config.HIVE]; ok {
+		utils.Logger.Printf("启动%s exporter!", config.HIVE)
 		hive_exporter := hive.NewHiveExporter()
 		if hive_exporter == nil {
 			fmt.Println("hive_exporter is nil")
@@ -305,6 +319,7 @@ func exportAll(allModels map[string]string) {
 
 	if _, ok := allModels[config.MYSQL]; ok {
 		// 激活mysql exporter
+		utils.Logger.Printf("启动%s exporter!", config.MYSQL)
 		mysql_exporter := mysql.NewMysqlExporter()
 		mysql_r := prometheus.NewRegistry()
 		mysql_r.MustRegister(mysql_exporter)
@@ -314,6 +329,7 @@ func exportAll(allModels map[string]string) {
 
 	if _, ok := allModels[config.NODE]; ok {
 		// 激活物理机指标采集脚本
+		utils.Logger.Printf("启动%s exporter!", config.NODE)
 		node_exporter := nodeexporter.NewNodeExporter()
 		node_r := prometheus.NewRegistry()
 		node_r.MustRegister(node_exporter)
@@ -323,6 +339,7 @@ func exportAll(allModels map[string]string) {
 
 	if _, ok := allModels[config.SKYWALKING]; ok {
 		// 激活skywalking exporter
+		utils.Logger.Printf("启动%s exporter!", config.SKYWALKING)
 		skywalking_exporter := skywalking.NewSkywalkingExporter()
 		skywalking_r := prometheus.NewRegistry()
 		skywalking_r.MustRegister(skywalking_exporter)
