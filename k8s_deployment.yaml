@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-monitor-exporter-deployment
+  labels:
+    app: service-monitor-exporter
+spec:
+  selector:
+    matchLabels:
+      app: service-monitor-exporter
+  replicas: 3
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: service-monitor-exporter
+    spec:
+      containers:
+      - image: service-monitor-exporter/go:v1.2
+        name: service-monitor-exporter
+        imagePullPolicy: Always
+        # command: ["./main","-v","v1.3"]
+        ports:
+        - containerPort: 38080
+          protocol: TCP
