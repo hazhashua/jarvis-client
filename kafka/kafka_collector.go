@@ -298,7 +298,10 @@ func (collector *kafkaCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for idx, consumer_topic_partition_offsets_desc := range collector.kafkaMetrics.TopicConsumergroupOffset {
-		ch <- prometheus.MustNewConstMetric(consumer_topic_partition_offsets_desc, collector.kafkaMetrics.TopicConsumergroupOffsetValType, float64(offsets_info[idx]), kafka_config.Cluster.Name, consumer_group_info[idx], topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
+		if len(topic_info) > idx {
+			ch <- prometheus.MustNewConstMetric(consumer_topic_partition_offsets_desc, collector.kafkaMetrics.TopicConsumergroupOffsetValType, float64(offsets_info[idx]), kafka_config.Cluster.Name, consumer_group_info[idx], topic_info[idx], fmt.Sprintf("%d", partition_info[idx]))
+
+		}
 	}
 
 	// 处理分区副本均衡率
