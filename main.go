@@ -542,7 +542,7 @@ func main() {
 			case "config":
 				// 注册config端点
 				registerConfig()
-				registerEndpoint()
+				registerEndpoint(config.CONFIG, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.CONFIG])
 			default:
 				fmt.Println("unknown model...")
 			}
