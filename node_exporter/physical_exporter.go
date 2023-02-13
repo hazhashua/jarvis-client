@@ -58,6 +58,7 @@ type MachineExporter struct {
 	physicalMetricsData  *ProcessInfo
 	netInfoData          *utils.NetInfo
 	cpuData              *CpuInfo
+	hostInfoData         *HostInfo
 	virtualMetrics       VirtualDesc
 }
 
@@ -142,6 +143,8 @@ func NewNodeExporter() *MachineExporter {
 
 	cpuInfo := CpuUsageGet()
 	netInfo := utils.NetInfoGet()
+	hostInfo := HostInfoGet()
+
 	var virtualMetrics VirtualDesc
 	return &MachineExporter{
 		physicalDiskNum:      deviceNum,
@@ -152,6 +155,7 @@ func NewNodeExporter() *MachineExporter {
 		physicalNetDeviceNum: netDeviceNum,
 		cpuData:              cpuInfo,
 		netInfoData:          netInfo,
+		hostInfoData:         hostInfo,
 		virtualMetrics:       virtualMetrics,
 	}
 }
@@ -184,10 +188,10 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	// nodeConfig := parseNodeConfig()
 	nodeConfig, _ := (utils.ConfigStruct.ConfigData[config.NODE]).(config.NodeConfig)
 	utils.Logger.Println("nodeConfig: ", nodeConfig)
-	hostInfo := HostInfoGet()
+	hostInfo := e.hostInfoData
 	utils.Logger.Printf("获取到的主机名称: %s\n", hostInfo.hostName)
-	cpuInfo := CpuUsageGet()
-	netInfo := utils.NetInfoGet()
+	cpuInfo := e.cpuData
+	netInfo := e.netInfoData
 
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuCoresDesc, e.physicalMetrics.cpuCoresValType,
 		float64(cpuInfo.cores), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
