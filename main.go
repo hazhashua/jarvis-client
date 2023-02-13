@@ -156,7 +156,7 @@ func registerEndpoint(dataName string, port int, metricPath string) {
 }
 
 // 注册config endpoint
-func registerConfigEndpoint() {
+func registerConfig() {
 	http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		pyaml := utils.LoadYaml()
 		configs := pyaml.ScrapeConfigs
@@ -347,8 +347,8 @@ func exportAll(allModels map[string]string) {
 		http.Handle(config.SKYWALKING_METRICPATH, skywalking_handler)
 	}
 
-	// 默认注册config endpoint
-	registerConfigEndpoint()
+	// 默认注册config端点
+	registerConfig()
 }
 
 func main() {
@@ -540,8 +540,9 @@ func main() {
 
 				}
 			case "config":
-				// 注册config endpoint
-				registerConfigEndpoint()
+				// 注册config端点
+				registerConfig()
+				registerEndpoint()
 			default:
 				fmt.Println("unknown model...")
 			}

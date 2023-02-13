@@ -14,6 +14,7 @@ const (
 	ZOOKEEPER    string = "zookeeper"
 	ALIVE        string = "alive"
 	APISIX       string = "apisix"
+	CONFIG       string = "config"
 
 	HADOOP_METRICPATH       string = "/hadoop/metrics"
 	HBASE_METRICPATH        string = "/hbase/metrics"
@@ -28,6 +29,7 @@ const (
 	ZOOKEEPER_METRICPATH    string = "/zookeeper/metrics"
 	ALIVE_METRICPATH        string = "/alive/metrics"
 	APISIX_METRICPATH       string = "/apisix/prometheus/metrics"
+	CONFIG_PATH             string = "/config"
 )
 
 var MetricPathMap = map[string]string{
@@ -44,6 +46,7 @@ var MetricPathMap = map[string]string{
 	SPARK:        SPARK_METRICPATH,
 	ZOOKEEPER:    ZOOKEEPER_METRICPATH,
 	ALIVE:        ALIVE_METRICPATH,
+	CONFIG:       CONFIG_PATH,
 }
 
 // 保存注册的endpoint信息
