@@ -38,6 +38,10 @@ type PhysicalDesc struct {
 	diskReadValType       []prometheus.ValueType
 	diskWriteDesc         []*prometheus.Desc
 	diskWriteValType      []prometheus.ValueType
+	diskReadCountDesc     []*prometheus.Desc
+	diskReadCountValType  []prometheus.ValueType
+	diskWriteCountDesc    []*prometheus.Desc
+	diskWriteCountValType []prometheus.ValueType
 	networkReceiveDesc    []*prometheus.Desc
 	networkReceiveValType []prometheus.ValueType
 	networkSentDesc       []*prometheus.Desc
@@ -97,6 +101,7 @@ func NewNodeExporter() *MachineExporter {
 			[]string{"cluster", "host", "ip", "device_id", "mount_path"},
 			prometheus.Labels{})
 		physicalMetrics.diskUsedValType[i] = prometheus.GaugeValue
+
 	}
 	physicalMetrics.diskReadDesc = make([]*prometheus.Desc, deviceIoNum)
 	physicalMetrics.diskReadValType = make([]prometheus.ValueType, deviceIoNum)
@@ -112,6 +117,17 @@ func NewNodeExporter() *MachineExporter {
 			[]string{"cluster", "host", "ip", "device"},
 			prometheus.Labels{})
 		physicalMetrics.diskWriteValType[i] = prometheus.GaugeValue
+
+		physicalMetrics.diskReadCountDesc[i] = prometheus.NewDesc("disk_read_count", "磁盘read次数",
+			[]string{"cluster", "host", "ip", "device"},
+			prometheus.Labels{})
+		physicalMetrics.diskReadCountValType[i] = prometheus.CounterValue
+
+		physicalMetrics.diskWriteCountDesc[i] = prometheus.NewDesc("disk_write_count", "磁盘write次数",
+			[]string{"cluster", "host", "ip", "device"},
+			prometheus.Labels{})
+		physicalMetrics.diskWriteCountValType[i] = prometheus.CounterValue
+
 	}
 
 	netDeviceNum := NetDeviceNum()

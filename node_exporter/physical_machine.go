@@ -111,6 +111,8 @@ type Disk struct {
 	ioDeviceNum int
 	readBytes   map[string]uint64
 	writeBytes  map[string]uint64
+	readCount   map[string]uint64
+	writeCount  map[string]uint64
 }
 
 func DiskDeviceNum() int {
@@ -134,6 +136,8 @@ func DiskUsageGet() *Disk {
 
 	readBytes := make(map[string]uint64)
 	writeBytes := make(map[string]uint64)
+	readCount := make(map[string]uint64)
+	writeCount := make(map[string]uint64)
 
 	if ps, err := disk.Partitions(false); err == nil {
 		for _, partitionInfo := range ps {
@@ -161,6 +165,9 @@ func DiskUsageGet() *Disk {
 			ioDeviceNum += 1
 			readBytes[key] = value.ReadBytes
 			writeBytes[key] = value.WriteBytes
+
+			readCount[key] = value.ReadCount
+			writeCount[key] = value.WriteCount
 		}
 	}
 
@@ -174,6 +181,8 @@ func DiskUsageGet() *Disk {
 		ioDeviceNum: ioDeviceNum,
 		readBytes:   readBytes,
 		writeBytes:  writeBytes,
+		readCount:   readCount,
+		writeCount:  writeCount,
 	}
 }
 
