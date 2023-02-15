@@ -6,19 +6,22 @@ import (
 	"metric_exporter/utils"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/shirou/gopsutil/load"
 )
 
 type PhysicalMetricsValue struct {
-	cpuCores     int
-	cpuUsage     float32
-	memTotal     int
-	memUsage     float32
-	diskTotal    int
-	diskUsage    float32
-	diskRead     int32
-	diskWrite    int32
-	networkRead  int32
-	networkWrite int32
+	cpuCores       int
+	cpuUsage       float32
+	memTotal       int
+	memUsage       float32
+	diskTotal      int
+	diskUsage      float32
+	diskRead       int32
+	diskWrite      int32
+	diskReadCount  int32
+	diskWriteCount int32
+	networkRead    int32
+	networkWrite   int32
 }
 
 type PhysicalDesc struct {
@@ -67,6 +70,8 @@ type MachineExporter struct {
 }
 
 func NewNodeExporter() *MachineExporter {
+
+	load.Avg()
 	// 构建MachineExporter对象
 	var physicalMetrics PhysicalDesc
 	physicalMetrics.cpuCoresDesc = prometheus.NewDesc("cpu_cores_total", "cpu总核心数",
@@ -107,6 +112,11 @@ func NewNodeExporter() *MachineExporter {
 	physicalMetrics.diskReadValType = make([]prometheus.ValueType, deviceIoNum)
 	physicalMetrics.diskWriteDesc = make([]*prometheus.Desc, deviceIoNum)
 	physicalMetrics.diskWriteValType = make([]prometheus.ValueType, deviceIoNum)
+	physicalMetrics.diskReadCountDesc = make([]*prometheus.Desc, deviceIoNum)
+	physicalMetrics.diskReadCountValType = make([]prometheus.ValueType, deviceIoNum)
+	physicalMetrics.diskWriteCountDesc = make([]*prometheus.Desc, deviceIoNum)
+	physicalMetrics.diskWriteCountValType = make([]prometheus.ValueType, deviceIoNum)
+
 	for i := 0; i < deviceIoNum; i++ {
 		physicalMetrics.diskReadDesc[i] = prometheus.NewDesc("disk_read_bytes", "磁盘每秒读速率",
 			[]string{"cluster", "host", "ip", "device"},
@@ -188,6 +198,8 @@ func (e *MachineExporter) Describe(ch chan<- *prometheus.Desc) {
 	for i := 0; i < e.physicalIoDiskNum; i++ {
 		ch <- e.physicalMetrics.diskReadDesc[i]
 		ch <- e.physicalMetrics.diskWriteDesc[i]
+		ch <- e.physicalMetrics.diskReadCountDesc[i]
+		ch <- e.physicalMetrics.diskWriteCountDesc[i]
 	}
 	for i := 0; i < e.physicalNetDeviceNum; i++ {
 		ch <- e.physicalMetrics.networkReceiveDesc[i]
@@ -228,6 +240,7 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskUsedDesc[i], e.physicalMetrics.memTotalValType,
 			float64(disk.used[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, disk.deviceIds[i], disk.mountPoint[i])
+
 	}
 	// devices := make([]string, 0)
 	// readBytess := make([]uint64, 0)
@@ -251,12 +264,17 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	for key, value := range disk.readBytes {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskReadDesc[i], e.physicalMetrics.diskReadValType[i],
 			float64(value), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, key)
+		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskReadCountDesc[i], e.physicalMetrics.diskReadCountValType[i],
+			float64(disk.readCount[key]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, key)
 		i += 1
 	}
 	i = 0
 	for key, value := range disk.writeBytes {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskWriteDesc[i], e.physicalMetrics.diskWriteValType[i],
 			float64(value), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, key)
+		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskWriteCountDesc[i], e.physicalMetrics.diskWriteCountValType[i],
+			float64(disk.writeCount[key]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, key)
+		i += 1
 	}
 
 	deviceNames := make([]string, 0)
