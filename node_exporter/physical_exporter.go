@@ -151,17 +151,17 @@ func NewNodeExporter() *MachineExporter {
 	}
 
 	// 声明最近1 5 15 分钟的系统负载
-	physicalMetrics.load1Desc = prometheus.NewDesc("load1", "最近1分钟内的负载",
+	physicalMetrics.load1Desc = prometheus.NewDesc("os_load1", "最近1分钟内的负载",
 		[]string{"cluster", "host", "ip"},
 		prometheus.Labels{})
 	physicalMetrics.load1ValueType = prometheus.GaugeValue
 
-	physicalMetrics.load5Desc = prometheus.NewDesc("load5", "最近5分钟内的负载",
+	physicalMetrics.load5Desc = prometheus.NewDesc("os_load5", "最近5分钟内的负载",
 		[]string{"cluster", "host", "ip"},
 		prometheus.Labels{})
 	physicalMetrics.load5ValueType = prometheus.GaugeValue
 
-	physicalMetrics.load15Desc = prometheus.NewDesc("load1", "最近15分钟内的负载",
+	physicalMetrics.load15Desc = prometheus.NewDesc("os_load15", "最近15分钟内的负载",
 		[]string{"cluster", "host", "ip"},
 		prometheus.Labels{})
 	physicalMetrics.load15ValueType = prometheus.GaugeValue
