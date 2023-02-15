@@ -45,6 +45,12 @@ type PhysicalDesc struct {
 	diskReadCountValType  []prometheus.ValueType
 	diskWriteCountDesc    []*prometheus.Desc
 	diskWriteCountValType []prometheus.ValueType
+	load1Desc             *prometheus.Desc
+	load1ValueType        prometheus.ValueType
+	load5Desc             *prometheus.Desc
+	load5ValueType        prometheus.ValueType
+	load15Desc            *prometheus.Desc
+	load15ValueType       prometheus.ValueType
 	networkReceiveDesc    []*prometheus.Desc
 	networkReceiveValType []prometheus.ValueType
 	networkSentDesc       []*prometheus.Desc
@@ -66,12 +72,16 @@ type MachineExporter struct {
 	netInfoData          *utils.NetInfo
 	cpuData              *CpuInfo
 	hostInfoData         *HostInfo
+	memoryData           *Memory
+	diskData             *Disk
+	load1                float64
+	load5                float64
+	load15               float64
 	virtualMetrics       VirtualDesc
 }
 
 func NewNodeExporter() *MachineExporter {
 
-	load.Avg()
 	// 构建MachineExporter对象
 	var physicalMetrics PhysicalDesc
 	physicalMetrics.cpuCoresDesc = prometheus.NewDesc("cpu_cores_total", "cpu总核心数",
@@ -140,6 +150,22 @@ func NewNodeExporter() *MachineExporter {
 
 	}
 
+	// 声明最近1 5 15 分钟的系统负载
+	physicalMetrics.load1Desc = prometheus.NewDesc("load1", "最近1分钟内的负载",
+		[]string{"cluster", "host", "ip"},
+		prometheus.Labels{})
+	physicalMetrics.load1ValueType = prometheus.GaugeValue
+
+	physicalMetrics.load5Desc = prometheus.NewDesc("load5", "最近5分钟内的负载",
+		[]string{"cluster", "host", "ip"},
+		prometheus.Labels{})
+	physicalMetrics.load5ValueType = prometheus.GaugeValue
+
+	physicalMetrics.load15Desc = prometheus.NewDesc("load1", "最近15分钟内的负载",
+		[]string{"cluster", "host", "ip"},
+		prometheus.Labels{})
+	physicalMetrics.load15ValueType = prometheus.GaugeValue
+
 	netDeviceNum := NetDeviceNum()
 	physicalMetrics.networkSentDesc = make([]*prometheus.Desc, netDeviceNum)
 	physicalMetrics.networkSentValType = make([]prometheus.ValueType, netDeviceNum)
@@ -170,6 +196,15 @@ func NewNodeExporter() *MachineExporter {
 	cpuInfo := CpuUsageGet()
 	netInfo := utils.NetInfoGet()
 	hostInfo := HostInfoGet()
+	memoryInfo := MemUsageGet()
+	diskInfo := DiskUsageGet()
+
+	var load1, load5, load15 float64
+	if avgSta, err := load.Avg(); err != nil {
+		load1 = avgSta.Load1
+		load5 = avgSta.Load5
+		load15 = avgSta.Load15
+	}
 
 	var virtualMetrics VirtualDesc
 	return &MachineExporter{
@@ -182,6 +217,11 @@ func NewNodeExporter() *MachineExporter {
 		cpuData:              cpuInfo,
 		netInfoData:          netInfo,
 		hostInfoData:         hostInfo,
+		memoryData:           memoryInfo,
+		diskData:             diskInfo,
+		load1:                load1,
+		load5:                load5,
+		load15:               load15,
 		virtualMetrics:       virtualMetrics,
 	}
 }
@@ -226,14 +266,14 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuUsageDesc, e.physicalMetrics.cpuUsageValType,
 		cpuInfo.usage, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 
-	memory := MemUsageGet()
+	memory := e.memoryData
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.memTotalDesc, e.physicalMetrics.memTotalValType,
 		float64(memory.total), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.memUsageDesc, e.physicalMetrics.memTotalValType,
 		float64(memory.usedPercent), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 
-	disk := DiskUsageGet()
+	disk := e.diskData
 	for i := 0; i < e.physicalDiskNum; i++ {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskTotalDesc[i], e.physicalMetrics.diskTotalValType[i],
 			float64(disk.total[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, disk.deviceIds[i], disk.mountPoint[i])
@@ -276,6 +316,14 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 			float64(disk.writeCount[key]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, key)
 		i += 1
 	}
+
+	// 写入负载的相关信息
+	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.load1Desc, e.physicalMetrics.load1ValueType,
+		e.load1, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
+	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.load5Desc, e.physicalMetrics.load5ValueType,
+		e.load5, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
+	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.load15Desc, e.physicalMetrics.load15ValueType,
+		e.load15, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 
 	deviceNames := make([]string, 0)
 	flowInfos := make([]utils.FlowInfo, 0)
