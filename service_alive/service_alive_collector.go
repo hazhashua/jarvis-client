@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"metric_exporter/micro_service"
 	"metric_exporter/utils"
-	"net"
 	"strings"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"gorm.io/gorm"
@@ -203,7 +201,7 @@ func GetAliveInfos() []DatsourceAlive {
 			if servicePort.Port.Valid == false {
 				datasourceAlive.MetricValue = 0
 			} else {
-				if CheckPorts(fmt.Sprintf("%s:%d", *servicePort.IP, servicePort.Port.Int64), "tcp") {
+				if utils.CheckPorts(fmt.Sprintf("%s:%d", *servicePort.IP, servicePort.Port.Int64), "tcp") {
 					datasourceAlive.MetricValue = float32(1)
 				} else {
 					datasourceAlive.MetricValue = float32(0)
@@ -221,22 +219,22 @@ func GetAliveInfos() []DatsourceAlive {
 }
 
 // 检测端口
-func CheckPorts(ip_port string, port_type string) bool {
-	check := false
-	now := time.Now().Format("2006-01-02 15:04:05")
-	// 检测端口
-	conn, err := net.DialTimeout(port_type, ip_port, 1*time.Second)
-	if err != nil {
-		fmt.Printf("检测%s超时, [%v], ip_port, 端口未开启(fail), error: %s\n", ip_port, now, err.Error())
-	} else {
-		if conn != nil {
-			check = true
-			utils.Logger.Println("["+now+"]", ip_port, "端口已开启(success)!")
-			conn.Close()
-		} else {
-			utils.Logger.Println("["+now+"]", ip_port, "端口未开启(fail)!")
-		}
-	}
-	return check
+// func CheckPorts(ip_port string, port_type string) bool {
+// 	check := false
+// 	now := time.Now().Format("2006-01-02 15:04:05")
+// 	// 检测端口
+// 	conn, err := net.DialTimeout(port_type, ip_port, 1*time.Second)
+// 	if err != nil {
+// 		fmt.Printf("检测%s超时, [%v], ip_port, 端口未开启(fail), error: %s\n", ip_port, now, err.Error())
+// 	} else {
+// 		if conn != nil {
+// 			check = true
+// 			utils.Logger.Println("["+now+"]", ip_port, "端口已开启(success)!")
+// 			conn.Close()
+// 		} else {
+// 			utils.Logger.Println("["+now+"]", ip_port, "端口未开启(fail)!")
+// 		}
+// 	}
+// 	return check
 
-}
+// }
