@@ -106,12 +106,12 @@ func NewNodeExporter() *MachineExporter {
 		prometheus.Labels{})
 	physicalMetrics.cpuSysUsageValType = prometheus.GaugeValue
 
-	physicalMetrics.cpuUserUsageDesc = prometheus.NewDesc("cpu_usage", "cpu当前用户态使用率",
+	physicalMetrics.cpuUserUsageDesc = prometheus.NewDesc("cpu_user_usage", "cpu当前用户态使用率",
 		[]string{"cluster", "host", "ip"},
 		prometheus.Labels{})
 	physicalMetrics.cpuUserUsageValType = prometheus.GaugeValue
 
-	physicalMetrics.cpuIoUsageDesc = prometheus.NewDesc("cpu_usage", "cpu当前io堵塞使用率",
+	physicalMetrics.cpuIoUsageDesc = prometheus.NewDesc("cpu_io_usage", "cpu当前io堵塞使用率",
 		[]string{"cluster", "host", "ip"},
 		prometheus.Labels{})
 	physicalMetrics.cpuIoUsageValType = prometheus.GaugeValue
