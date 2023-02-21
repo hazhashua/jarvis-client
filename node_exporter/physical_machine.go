@@ -1,7 +1,11 @@
 package nodeexporter
 
 import (
+	"fmt"
 	"io/ioutil"
+	"os/exec"
+	"strconv"
+	"strings"
 
 	// "strings"
 	"metric_exporter/config"
@@ -32,6 +36,54 @@ func parseNodeConfig() *config.NodeConfig {
 type CpuInfo struct {
 	cores int
 	usage float64
+	sys   float64
+	user  float64
+	io    float64
+}
+
+func cpuUsageDetailGet() *CpuInfo {
+	// 获取系统核心数
+	f, _ := cpu.Percent(time.Second, false)
+	utils.Logger.Println("主机cpu usage: ", f)
+	cores := 0
+	//获取cpu配额信息
+	if infoStats, err := cpu.Info(); err == nil {
+		for _, infoStat := range infoStats {
+			// fmt.Println("infoStat: ", infoStat)
+			cores += int(infoStat.Cores)
+		}
+	}
+
+	// 获取CPU使用率
+	s := fmt.Sprintf(`top -bn1 | fgrep 'Cpu(s)' | awk -F" " '{print $2" "$4" "$8" "$10}'`)
+	utils.Logger.Printf("top = %s", s)
+	cmd := exec.Command("bash", "-c", s)
+	bs, e := cmd.Output()
+	if e != nil {
+		utils.Logger.Printf("failed due to :%v", e)
+		panic(e)
+	}
+	utils.Logger.Printf("%v", string(bs))
+	raw := string(bs)
+	percents := strings.Split(raw, " ")
+	//用户态使用率 系统态使用率 cpu空闲率 io使用占比
+	fmt.Printf("%v, %v, %v, %v", percents[0], percents[1], percents[2], percents[3])
+
+	var usage, sys, user, io float64
+	if idle, err := strconv.ParseFloat(percents[2], 64); err != nil {
+		usage = 1 - idle/100
+	}
+	user, _ = strconv.ParseFloat(percents[0], 64)
+	sys, _ = strconv.ParseFloat(percents[1], 64)
+	io, _ = strconv.ParseFloat(percents[3], 64)
+
+	return &CpuInfo{
+		cores: cores,
+		usage: usage,
+		sys:   sys,
+		user:  user,
+		io:    io,
+	}
 }
 
 func CpuUsageGet() *CpuInfo {
@@ -118,6 +170,14 @@ type Disk struct {
 func DiskDeviceNum() int {
 	partitionStats, _ := disk.Partitions(false)
 	return len(partitionStats)
+}
+
+func Uptime() uint64 {
+	if uptime, err := host.Uptime(); err != nil {
+		return uptime
+	}
+	return 0
+
 }
 
 func DiskIoDeviceNum() int {

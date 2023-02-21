@@ -25,10 +25,18 @@ type PhysicalMetricsValue struct {
 }
 
 type PhysicalDesc struct {
-	cpuCoresDesc          *prometheus.Desc
-	cpuCoresValType       prometheus.ValueType
-	cpuUsageDesc          *prometheus.Desc
-	cpuUsageValType       prometheus.ValueType
+	cpuCoresDesc    *prometheus.Desc
+	cpuCoresValType prometheus.ValueType
+	cpuUsageDesc    *prometheus.Desc
+	cpuUsageValType prometheus.ValueType
+
+	cpuSysUsageDesc     *prometheus.Desc
+	cpuSysUsageValType  prometheus.ValueType
+	cpuUserUsageDesc    *prometheus.Desc
+	cpuUserUsageValType prometheus.ValueType
+	cpuIoUsageDesc      *prometheus.Desc
+	cpuIoUsageValType   prometheus.ValueType
+
 	memTotalDesc          *prometheus.Desc
 	memTotalValType       prometheus.ValueType
 	memUsageDesc          *prometheus.Desc
@@ -92,6 +100,22 @@ func NewNodeExporter() *MachineExporter {
 		[]string{"cluster", "host", "ip"},
 		prometheus.Labels{})
 	physicalMetrics.cpuUsageValType = prometheus.GaugeValue
+
+	physicalMetrics.cpuSysUsageDesc = prometheus.NewDesc("cpu_sys_usage", "cpu当前系统态使用率",
+		[]string{"cluster", "host", "ip"},
+		prometheus.Labels{})
+	physicalMetrics.cpuSysUsageValType = prometheus.GaugeValue
+
+	physicalMetrics.cpuUserUsageDesc = prometheus.NewDesc("cpu_usage", "cpu当前用户态使用率",
+		[]string{"cluster", "host", "ip"},
+		prometheus.Labels{})
+	physicalMetrics.cpuUserUsageValType = prometheus.GaugeValue
+
+	physicalMetrics.cpuIoUsageDesc = prometheus.NewDesc("cpu_usage", "cpu当前io堵塞使用率",
+		[]string{"cluster", "host", "ip"},
+		prometheus.Labels{})
+	physicalMetrics.cpuIoUsageValType = prometheus.GaugeValue
+
 	physicalMetrics.memTotalDesc = prometheus.NewDesc("memory_total", "总内存大小",
 		[]string{"cluster", "host", "ip"},
 		prometheus.Labels{})
@@ -193,11 +217,11 @@ func NewNodeExporter() *MachineExporter {
 		physicalMetrics.processInfoValType[i] = prometheus.GaugeValue
 	}
 
-	cpuInfo := CpuUsageGet()
 	netInfo := utils.NetInfoGet()
 	hostInfo := HostInfoGet()
 	memoryInfo := MemUsageGet()
 	diskInfo := DiskUsageGet()
+	cpuInfo := cpuUsageDetailGet()
 
 	var load1, load5, load15 float64
 	if avgSta, err := load.Avg(); err != nil {
@@ -229,6 +253,9 @@ func NewNodeExporter() *MachineExporter {
 func (e *MachineExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.physicalMetrics.cpuCoresDesc
 	ch <- e.physicalMetrics.cpuUsageDesc
+	ch <- e.physicalMetrics.cpuSysUsageDesc
+	ch <- e.physicalMetrics.cpuUserUsageDesc
+	ch <- e.physicalMetrics.cpuIoUsageDesc
 	ch <- e.physicalMetrics.memTotalDesc
 	ch <- e.physicalMetrics.memUsageDesc
 	for i := 0; i < e.physicalDiskNum; i++ {
@@ -265,6 +292,10 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 		float64(cpuInfo.cores), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuUsageDesc, e.physicalMetrics.cpuUsageValType,
 		cpuInfo.usage, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
+
+	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuSysUsageDesc, e.physicalMetrics.cpuSysUsageValType, cpuInfo.sys, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
+	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuUserUsageDesc, e.physicalMetrics.cpuUserUsageValType, cpuInfo.user, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
+	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuIoUsageDesc, e.physicalMetrics.cpuIoUsageValType, cpuInfo.io, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 
 	memory := e.memoryData
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.memTotalDesc, e.physicalMetrics.memTotalValType,
