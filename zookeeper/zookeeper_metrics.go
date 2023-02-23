@@ -137,7 +137,16 @@ func getMetrics(options *Options) map[string]string {
 	timeout := time.Duration(options.Timeout) * time.Second
 	// fmt.Println("options.Hosts: ", options.Hosts)
 
+	// 每次请求都动态重载下数据库配置,防止配置的变更
+	utils.ReloadConfigFromDB(config.ZOOKEEPER)
+	zk_config, _ := (utils.ConfigStruct.ConfigData[config.ZOOKEEPER]).(config.ZookeepeConfig)
+	options.Hosts = make([]string, 0)
+	for _, host := range zk_config.Cluster.Hosts {
+		options.Hosts = append(options.Hosts, fmt.Sprintf("%s:%s", host, zk_config.Cluster.ClientPort))
+	}
+
 	for _, h := range options.Hosts {
+		utils.Logger.Printf("options.Hosts: h:%s\n", h)
 		tcpaddr, err := net.ResolveTCPAddr("tcp", h)
 		if err != nil {
 			utils.Logger.Printf("warning: cannot resolve zk hostname '%s': %s", h, err)
