@@ -305,6 +305,7 @@ func init() {
 	config := ParseDbConfig()
 	// 赋值全局配置变量
 	DbConfig = config
+	// DbConfig.Cluster.Name
 	var err error
 	// 加载pg数据库配置
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=cluster port=%d sslmode=disable TimeZone=Asia/Shanghai", config.Cluster.Postgres.Ip, config.Cluster.Postgres.Username, config.Cluster.Postgres.Password, config.Cluster.Postgres.Port)
@@ -401,8 +402,9 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// resourcemanagerhost: bigdata-dev01
 			// resourcemanagerhttpport: 8088
 			hc := config.HadoopConfigure{}
-			hc.Cluster.Name = DbConfig.Cluster.Name
+			// hc.Cluster.Name = DbConfig.Cluster.Name
 			for _, data := range datas {
+				hc.Cluster.Name = *data.ClusterName
 				if *data.ChildService == "resourcemanager" {
 					hc.Cluster.ResourceManagerHosts = append(hc.Cluster.ResourceManagerHosts, "")
 					hc.Cluster.ResourceManagers = append(hc.Cluster.ResourceManagers, *data.IP)
@@ -435,8 +437,9 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// 		- bigdata-dev02
 			// 		- bigdata-dev03
 			hbaseConf := config.HbaseConfigure{}
-			hbaseConf.Cluster.ClusterName = DbConfig.Cluster.Name
+			//hbaseConf.Cluster.ClusterName = DbConfig.Cluster.Name
 			for _, data := range datas {
+				hbaseConf.Cluster.ClusterName = *data.ClusterName
 				hbaseConf.Cluster.Names = append(hbaseConf.Cluster.Names, "")
 				if *data.ChildService == "hmaster" {
 					hbaseConf.Cluster.MasterJmxPort = fmt.Sprintf("%d", data.Port.Int64)
@@ -463,8 +466,9 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// 	scrapehost: bigdata-dev01
 			// 	scrapeip: 192.168.10.220
 			hiveConf := config.HiveConfig{}
-			hiveConf.Cluster.Name = DbConfig.Cluster.Name
+			// hiveConf.Cluster.Name = DbConfig.Cluster.Name
 			for _, data := range datas {
+				hiveConf.Cluster.Name = *data.ClusterName
 				hiveConf.Cluster.Hosts = append(hiveConf.Cluster.Hosts, "")
 				if *data.ChildService == "metastore" {
 					hiveConf.Cluster.Mysql.Host = *data.IP
@@ -484,8 +488,9 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// 	port: 9092
 			// 	env: dev
 			kafkaConf := config.KafkaConfigure{}
-			kafkaConf.Cluster.Name = DbConfig.Cluster.Name
+			// kafkaConf.Cluster.Name = DbConfig.Cluster.Name
 			for _, data := range datas {
+				kafkaConf.Cluster.Name = *data.ClusterName
 				kafkaConf.Cluster.Hosts = append(kafkaConf.Cluster.Hosts, *data.IP)
 				kafkaConf.Cluster.Port = int(data.Port.Int64)
 			}
@@ -508,10 +513,11 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// 		- 192.168.10.111
 			// 	apiserverport: 8080
 			k8syamlConf := config.K8sYamlConfig{}
-			k8syamlConf.Cluster.Name = DbConfig.Cluster.Name
+			// k8syamlConf.Cluster.Name = DbConfig.Cluster.Name
 			for _, data := range datas {
-				fmt.Println("micro_service: ", data)
-				if *data.ChildService == "apiserver" {
+				k8syamlConf.Cluster.Name = *data.ClusterName
+				fmt.Println("micro_service: ", data.IP, *data.ChildService, "**********")
+				if *data.ChildService == "kube-apiserver" {
 					k8syamlConf.Cluster.Master = append(k8syamlConf.Cluster.Master, *data.IP)
 					k8syamlConf.Cluster.ApiServerPort = fmt.Sprintf("%d", data.Port.Int64)
 				}
@@ -531,8 +537,9 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// 	- master
 
 			mysqlConf := config.MysqlConfig{}
-			mysqlConf.Cluster.Name = DbConfig.Cluster.Name
+			// mysqlConf.Cluster.Name = DbConfig.Cluster.Name
 			for _, data := range datas {
+				mysqlConf.Cluster.Name = *data.ClusterName
 				if *data.ChildService == "mysqld" {
 					mysqlConf.Cluster.Ips = append(mysqlConf.Cluster.Ips, *data.IP)
 					mysqlConf.Cluster.Port = int(data.Port.Int64)
@@ -562,8 +569,9 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// 	scrapeip: 192.168.10.107
 			// 	redisport: 6379
 			redisConf := config.RedisConfig{}
-			redisConf.Cluster.Name = DbConfig.Cluster.Name
+			// redisConf.Cluster.Name = DbConfig.Cluster.Name
 			for _, data := range datas {
+				redisConf.Cluster.Name = *data.ClusterName
 				if *data.ChildService == "redis" {
 					redisConf.Cluster.Hosts = append(redisConf.Cluster.Hosts, *data.IP)
 					redisConf.Cluster.Ips = append(redisConf.Cluster.Ips, *data.IP)
@@ -582,8 +590,9 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// 		- 192.168.10.65
 			// 		port: 9200
 			swConf := config.SkyWalkingConfig{}
-			swConf.Cluster.Name = DbConfig.Cluster.Name
+			// swConf.Cluster.Name = DbConfig.Cluster.Name
 			for _, data := range datas {
+				swConf.Cluster.Name = *data.ClusterName
 				if *data.ChildService == "elasticsearch" {
 					swConf.Cluster.ElasticSearch.Ips = append(swConf.Cluster.ElasticSearch.Ips, *data.IP)
 					swConf.Cluster.ElasticSearch.Port = int(data.Port.Int64)
@@ -621,8 +630,9 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// 	mainpath: /metrics/prometheus
 			// 	executorpath: /metrics/executors/prometheus
 			sparkConf := config.SparkConfig{}
-			sparkConf.Cluster = DbConfig.Cluster.Name
+			// sparkConf.Cluster = DbConfig.Cluster.Name
 			for _, data := range datas {
+				sparkConf.Cluster = *data.ClusterName
 				if *data.ChildService == "master" && *data.PortType == "http" {
 					sparkConf.Masterhttp.Ips = append(sparkConf.Masterhttp.Ips, *data.IP)
 					sparkConf.Masterhttp.Port = int(data.Port.Int64)
@@ -649,8 +659,9 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// 		- 192.168.10.222
 			// 	clientport: 2181
 			zkConf := config.ZookeepeConfig{}
-			zkConf.Cluster.Name = DbConfig.Cluster.Name
+			// zkConf.Cluster.Name = DbConfig.Cluster.Name
 			for _, data := range datas {
+				zkConf.Cluster.Name = *data.ClusterName
 				if *data.ChildService == "zookeeper" {
 					zkConf.Cluster.Hosts = append(zkConf.Cluster.Hosts, *data.IP)
 					zkConf.Cluster.ClientPort = fmt.Sprintf("%d", data.Port.Int64)
@@ -707,12 +718,12 @@ func getSourceAddr() map[string][]ServicePort {
 	Logger.Printf("读取数据库数据的记录数: %d\n", len(servicePorts))
 	sps := make(map[string][]ServicePort)
 	for _, sp := range servicePorts {
-		fmt.Println("servicePort: ", *sp.ServiceName, *sp.ChildService, *sp.IP, *sp.Comment)
+		fmt.Println("servicePort: ", *sp.ClusterName, *sp.ServiceName, *sp.ChildService, *sp.IP, *sp.Comment)
 		if len(sps[*sp.ServiceName]) == 0 {
 			sps[*sp.ServiceName] = make([]ServicePort, 0)
 		}
 		sps[*sp.ServiceName] = append(sps[*sp.ServiceName], sp)
-		fmt.Println("*sp.ServiceName: ", *sp.ServiceName, "serviceport: ", *sp.ChildService, *sp.IP, sp.Port.Valid, sp.Port.Int64)
+		fmt.Println("*sp.ClusterName: ", *sp.ClusterName, "*sp.ServiceName: ", *sp.ServiceName, "serviceport: ", *sp.ChildService, *sp.IP, sp.Port.Valid, sp.Port.Int64)
 	}
 
 	// 提前hadoop相关源数据信息
@@ -773,7 +784,7 @@ func getSourceAddr() map[string][]ServicePort {
 	micSerRes := make([]ServicePort, 0)
 	for _, ele := range sps[config.MICROSERVICE] {
 		switch *ele.ChildService {
-		case "apiserver":
+		case "kube-apiserver":
 			micSerRes = append(micSerRes, ele)
 		}
 	}

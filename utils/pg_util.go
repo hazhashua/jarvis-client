@@ -111,13 +111,26 @@ func DbOpen(dbType string) (db *gorm.DB) {
 // 基于sql查询数据库信息
 func ServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 	sps := make([]ServicePort, 0)
+	/*
+		ID           int
+		ServiceName  *string
+		ChildService *string
+		ClusterName  *string
+		IP           *string
+		Port         sql.NullInt64
+		PortType     *string
+		Username     *string
+		Password     *string
+		Comment      *string
+	*/
+
 	sql := fmt.Sprintf(` SELECT dgc.id as id, gn.name as service_name, dgc.service_name as child_service, 
 				-- case 
 				-- 	when dgc.remarks='' then '大数据融合平台'
 				-- else
 				-- 	dgc.remarks
 				-- end as cluster_name,
-				'' as cluster_name,
+				doc.system_cluster as cluster_name,
 				dgc.ip as ip, 
 				case 
 					when dgc.port!='' then cast(dgc.port as signed)
@@ -129,9 +142,13 @@ func ServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 				dgc.password as password
 				FROM %s dgc 
 				JOIN %s gn 
-				ON dgc.service_type=gn.id `, DbConfig.Cluster.Postgres.GatherDetailTable, DbConfig.Cluster.Postgres.GatherTable)
+				ON dgc.service_type=gn.id 
+				JOIN %s doc 
+				on gn.cluster_id = doc.id
+				where doc.cluster_id = %d`, DbConfig.Cluster.Postgres.GatherDetailTable, DbConfig.Cluster.Postgres.GatherTable, DbConfig.Cluster.Postgres.ObtainTable, DbConfig.Cluster.ClusterID)
 	Logger.Println("ServiceQuery sql: ", sql)
 	db.Raw(sql).Scan(&sps)
+
 	return sps
 }
 
