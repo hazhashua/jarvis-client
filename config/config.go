@@ -248,8 +248,9 @@ type ZookeepeConfig struct {
 // 存储utils工具包, 数据库源地址配置数据
 type DbConfigure struct {
 	Cluster struct {
-		Name  string
-		Mysql struct {
+		ClusterID int32
+		Name      string
+		Mysql     struct {
 			Ip        string
 			Port      int32
 			Username  string
@@ -258,6 +259,7 @@ type DbConfigure struct {
 
 			GatherTable       string // gather_name
 			GatherDetailTable string // data_gather_configure
+			ObtainTable       string // data_obtain_configure
 			ExportTable       string // data_store_configure
 
 		}
@@ -272,6 +274,7 @@ type DbConfigure struct {
 
 			GatherTable       string // gather_name
 			GatherDetailTable string // data_gather_configure
+			ObtainTable       string // data_obtain_configure
 			ExportTable       string // data_store_configure
 
 		}
