@@ -662,7 +662,7 @@ func ReloadConfigFromDB(toReloadModel string) (conf configStruct) {
 			// zkConf.Cluster.Name = DbConfig.Cluster.Name
 			for _, data := range datas {
 				zkConf.Cluster.Name = *data.ClusterName
-				if *data.ChildService == "zookeeper" {
+				if *data.ChildService == "QuorumPeerMain" {
 					zkConf.Cluster.Hosts = append(zkConf.Cluster.Hosts, *data.IP)
 					zkConf.Cluster.ClientPort = fmt.Sprintf("%d", data.Port.Int64)
 				}
