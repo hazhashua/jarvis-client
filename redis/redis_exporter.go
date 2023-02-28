@@ -88,11 +88,27 @@ type Options struct {
 	BuildInfo             BuildInfo
 }
 
+type EmptyError struct {
+	errorDescription string
+}
+
+func (obj *EmptyError) Error() string {
+	return fmt.Sprintf("%s空异常！", obj.errorDescription)
+}
+
 // NewRedisExporter returns a new exporter of Redis metrics.
 func NewRedisExporter(opts Options) (*Exporter, error) {
 	// 重载redis配置
 	utils.ReloadConfigFromDB(config.MYSQL)
 	redis_config, _ := (utils.ConfigStruct.ConfigData[config.REDIS]).(config.RedisConfig)
+
+	err := new(EmptyError)
+
+	if len(redis_config.Cluster.Ips) == 0 || len(redis_config.Cluster.Hosts) == 0 {
+		// 异常处理
+		utils.Logger.Printf("redis配置信息为空，exporter输出为空！")
+		return nil, err
+	}
 
 	ip := redis_config.Cluster.Ips[0]
 	// host := redis_config.Cluster.Hosts[0]
