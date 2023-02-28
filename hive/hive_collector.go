@@ -44,6 +44,10 @@ func NewHiveExporter() *HiveExporter {
 	// 自动重载hive配置
 	utils.ReloadConfigFromDB(config.HIVE)
 	hiveConfig := (utils.ConfigStruct.ConfigData[config.HIVE]).(config.HiveConfig)
+	if len(hiveConfig.Cluster.Hosts) == 0 {
+		utils.Logger.Printf("hive配置信息为空，输出指标为空！")
+		return nil
+	}
 	hiveCluster := hiveConfig.Cluster.Name
 	clusterMode := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace:   "",
@@ -150,7 +154,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 
 	exporter = NewHiveExporter()
 
-	if exporter.dbDatas == nil {
+	if exporter.dbDatas == nil || exporter == nil {
 		utils.Logger.Printf("查询元数据库为空！")
 		return
 	}
