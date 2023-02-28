@@ -494,6 +494,12 @@ func (collector *HadoopCollector) Collect(ch chan<- prometheus.Metric) {
 	utils.ReloadConfigFromDB(config.HADOOP)
 	hadoop_config, _ := (utils.ConfigStruct.ConfigData[config.HADOOP]).(config.HadoopConfigure)
 	utils.Logger.Printf("hadoop_config: %v\n", hadoop_config)
+
+	if len(hadoop_config.Cluster.DatanodeHosts) == 0 || len(hadoop_config.Cluster.NamenodeHosts) == 0 || len(hadoop_config.Cluster.ResourceManagerHosts) == 0 {
+		utils.Logger.Printf("主机信息为空, exporter输出空！")
+		return
+	}
+
 	// fmt.Println("hadoop_config: ", hadoop_config)
 	yarn_urls := make([]string, 0)
 	namenode_urls := make([]string, 0)
