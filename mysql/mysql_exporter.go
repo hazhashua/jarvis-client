@@ -28,6 +28,9 @@ type MysqlExporter struct {
 func NewMysqlExporter() *MysqlExporter {
 	// 查询当前db的个数
 	mysqlConfig, _ := (utils.ConfigStruct.ConfigData[config.MYSQL]).(config.MysqlConfig)
+	if len(mysqlConfig.Cluster.Ips) == 0 || mysqlConfig.Cluster.Port <= 0 {
+		return nil
+	}
 	boolv, dbNum := utils.ValueQuery(mysqlConfig, "select count(schema_name) from information_schema.schemata")
 
 	//查询当前table的个数
