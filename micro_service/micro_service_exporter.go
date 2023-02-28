@@ -111,6 +111,11 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 	utils.ReloadConfigFromDB(config.MICROSERVICE)
 	k8s_config, _ := (utils.ConfigStruct.ConfigData[config.MICROSERVICE]).(config.K8sYamlConfig)
 
+	if len(k8s_config.Cluster.Master) == 0 {
+		utils.Logger.Printf("微服务master配置数据为空")
+		return nil
+	}
+
 	fmt.Println("k8s_config: ", k8s_config.Cluster.Name, k8s_config.Cluster.Master)
 	master0 := k8s_config.Cluster.Master[0]
 
@@ -305,8 +310,8 @@ func (e *MicroServiceExporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	// 基于抓取node, service, pod数据，输出指标
 	e = NewMicroServiceExporter()
-	if e.nodeDatas == nil || e.podInfoDatas == nil || e.serviceInfoDatas == nil {
-		utils.Logger.Printf("get k8s data error ")
+	if e.nodeDatas == nil || e.podInfoDatas == nil || e.serviceInfoDatas == nil || e.k8sConfig.Cluster.Master == nil {
+		utils.Logger.Printf("k8s配置为空或获取k8s数据错误！")
 		return
 	}
 	// k8sNodeInfo := e.nodeDatas
