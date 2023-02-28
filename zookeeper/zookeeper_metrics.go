@@ -132,7 +132,7 @@ func dial(host string, timeout time.Duration, clientCert *tls.Certificate) (net.
 }
 
 // open tcp connections to zk nodes, send 'mntr' and return result as a map
-func getMetrics(options *Options) map[string]string {
+func getMetrics(options *Options) *map[string]string {
 	metrics := map[string]string{}
 	timeout := time.Duration(options.Timeout) * time.Second
 	// fmt.Println("options.Hosts: ", options.Hosts)
@@ -140,6 +140,12 @@ func getMetrics(options *Options) map[string]string {
 	// 每次请求都动态重载下数据库配置,防止配置的变更
 	utils.ReloadConfigFromDB(config.ZOOKEEPER)
 	zk_config, _ := (utils.ConfigStruct.ConfigData[config.ZOOKEEPER]).(config.ZookeepeConfig)
+
+	intVal, _ := strconv.Atoi(zk_config.Cluster.ClientPort)
+	if len(zk_config.Cluster.Hosts) == 0 || intVal <= 0 {
+		return nil
+	}
+
 	options.Hosts = make([]string, 0)
 	for _, host := range zk_config.Cluster.Hosts {
 		options.Hosts = append(options.Hosts, fmt.Sprintf("%s:%s", host, zk_config.Cluster.ClientPort))
@@ -279,8 +285,12 @@ func sendZookeeperCmd(conn net.Conn, host, cmd string) string {
 func serveMetrics(options *Options) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		metrics := getMetrics(options)
+		if metrics == nil {
+			fmt.Fprintf(w, "%s\n", "# HELP redis_export run empty, maybe the configuration is wrong")
+			return
+		}
 		keys := make([]string, 0)
-		for k := range metrics {
+		for k := range *metrics {
 			keys = append(keys, k)
 		}
 
@@ -295,7 +305,7 @@ func serveMetrics(options *Options) {
 
 		metric_strs := make([]string, 0)
 		for _, key := range keys {
-			metric_str := fmt.Sprintf("%s %s", key, metrics[key])
+			metric_str := fmt.Sprintf("%s %s", key, (*metrics)[key])
 			metric_strs = append(metric_strs, metric_str)
 		}
 		for _, ele := range metric_strs {
