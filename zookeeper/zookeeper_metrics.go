@@ -253,7 +253,7 @@ func getMetrics(options *Options) *map[string]string {
 		metrics[zkUp] = "1"
 	}
 
-	return metrics
+	return &metrics
 }
 
 func isDigit(in string) bool {
