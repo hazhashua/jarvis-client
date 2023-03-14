@@ -111,6 +111,8 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 	utils.ReloadConfigFromDB(config.MICROSERVICE)
 	k8s_config, _ := (utils.ConfigStruct.ConfigData[config.MICROSERVICE]).(config.K8sYamlConfig)
 
+	utils.Logger.Printf("------- k8s_config: %v, %v, %v", k8s_config.Cluster.Master, k8s_config.Cluster.Name, k8s_config.Cluster.Nodes)
+
 	if len(k8s_config.Cluster.Master) == 0 {
 		utils.Logger.Printf("微服务master配置数据为空")
 		return nil
@@ -277,6 +279,11 @@ func NewMicroServiceExporter() *MicroServiceExporter {
 
 // func (Collector).Describe(chan<- *Desc)
 func (e *MicroServiceExporter) Describe(ch chan<- *prometheus.Desc) {
+
+	if e == nil {
+		return
+	}
+
 	for _, nodeDesc := range e.nodeDescs {
 		ch <- nodeDesc.MaxCpuDesc
 		ch <- nodeDesc.MaxDiskStorageDesc
@@ -310,8 +317,8 @@ func (e *MicroServiceExporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *MicroServiceExporter) Collect(ch chan<- prometheus.Metric) {
 	// 基于抓取node, service, pod数据，输出指标
 	e = NewMicroServiceExporter()
-	if e.nodeDatas == nil || e.podInfoDatas == nil || e.serviceInfoDatas == nil || e.k8sConfig.Cluster.Master == nil {
-		utils.Logger.Printf("k8s配置为空或获取k8s数据错误！")
+	if e == nil || e.nodeDatas == nil || e.podInfoDatas == nil || e.serviceInfoDatas == nil || e.k8sConfig.Cluster.Master == nil {
+		utils.Logger.Printf("k8s配置为空或获取k8s数据错误！e==nil %v e.nodeDatas == nil %v e.podInfoDatas == nil %v e.serviceInfoDatas == nil %v  e.k8sConfig.Cluster.Master %v", e == nil, e.nodeDatas == nil, e.podInfoDatas == nil, e.serviceInfoDatas == nil, e.k8sConfig.Cluster.Master == nil)
 		return
 	}
 	// k8sNodeInfo := e.nodeDatas
