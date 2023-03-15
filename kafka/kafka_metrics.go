@@ -291,20 +291,22 @@ func GetClient() (sarama.Client, sarama.Config) {
 			return false
 		}
 	})
-	var kafka_host string
+	hosts := make([]string, 0)
+	var connectedHost string
 	for _, host := range kafka_config.Cluster.Hosts {
-		conneted := utils.CheckPorts(fmt.Sprintf("%s:%d", host, kafka_config.Cluster.Port), "tcp")
-		if conneted {
-			kafka_host = host
-			utils.Logger.Printf("使用%s作为kafka客户端连接", kafka_host)
-			break
-		}
+		//conneted := utils.CheckPorts(fmt.Sprintf("%s:%d", host, kafka_config.Cluster.Port), "tcp")
+		// if conneted {
+		// 	kafka_host = host
+		// 	utils.Logger.Printf("使用%s作为kafka客户端连接", kafka_host)
+		// 	break
+		// }
+		connectedHost += fmt.Sprintf("%s:%d", host, kafka_config.Cluster.Port)
+		hosts = append(hosts, fmt.Sprintf("%s:%d", host, kafka_config.Cluster.Port))
 	}
-	// if len(kafka_config.Cluster.Hosts) > 0 {
-	// 	service_alive.CheckPorts(kafka_config.Cluster.Hosts[0],"tcp")
-	// 	kafka_host = kafka_config.Cluster.Hosts[0]
-	// }
-	client, err := sarama.NewClient([]string{kafka_host + fmt.Sprintf(":%d", kafka_config.Cluster.Port)}, config)
+
+	utils.Logger.Printf("使用: %s 作为kafka连接host\n", connectedHost)
+
+	client, err := sarama.NewClient(hosts, config)
 	if err != nil {
 		utils.Logger.Printf("try create client err :%s\n", err.Error())
 		return nil, *config
@@ -332,7 +334,9 @@ func GetKafkaMetrics() (diskStatus []*DiskStatus, total_brokers int, alive_broke
 	// 	return
 	// }
 	client, config := GetClient()
-	defer client.Close()
+	if client != nil {
+		defer client.Close()
+	}
 	total_brokers, alive_brokers, _ = getBrokerInfo(client)
 	utils.Logger.Println("total_brokers: ", total_brokers, "alive_brokers: ", alive_brokers)
 	topic_num_metric, topic_partition_metric, topic_partition_brokers, topic_partition_offsets_metric, topic_partition_replication_metric, replication_distribution_balanced_rate_metric, consumer_group_num_metric, topic_partition_consumer_group_offsets, topic_partition_balance_rate_metric, replication_infos = getTopicInfo(client, &config)
