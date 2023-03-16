@@ -133,6 +133,10 @@ func NewHiveExporter() *HiveExporter {
 
 func (exporter *HiveExporter) Describe(ch chan<- *prometheus.Desc) {
 
+	if exporter == nil {
+		return
+	}
+
 	for _, desc := range exporter.metricDescriptions {
 		ch <- desc
 	}
@@ -154,7 +158,7 @@ func (exporter *HiveExporter) Collect(ch chan<- prometheus.Metric) {
 
 	exporter = NewHiveExporter()
 
-	if exporter.dbDatas == nil || exporter == nil {
+	if exporter == nil || exporter.dbDatas == nil {
 		utils.Logger.Printf("查询元数据库为空！")
 		return
 	}
