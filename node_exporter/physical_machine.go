@@ -12,6 +12,7 @@ import (
 	"metric_exporter/utils"
 	"time"
 
+	"github.com/cedarwu/lsblk"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
@@ -153,12 +154,13 @@ func MemUsageGet() *Memory {
 
 type Disk struct {
 	// 磁盘设备编号
-	deviceNum  int
-	deviceIds  []string
-	mountPoint []string
-	total      []uint64
-	used       []uint64
-	free       []uint64
+	deviceNum      int
+	deviceIds      []string
+	mountPoint     []string
+	filesystemType []string
+	total          []uint64
+	used           []uint64
+	free           []uint64
 	// 磁盘读写速率
 	ioDeviceNum int
 	readBytes   map[string]uint64
@@ -190,6 +192,7 @@ func DiskUsageGet() *Disk {
 	//获取各个磁盘的信息及使用率
 	deviceIds := make([]string, 0)
 	mountPoint := make([]string, 0)
+	filesystemType := make([]string, 0)
 	total := make([]uint64, 0)
 	used := make([]uint64, 0)
 	free := make([]uint64, 0)
@@ -199,8 +202,16 @@ func DiskUsageGet() *Disk {
 	readCount := make(map[string]uint64)
 	writeCount := make(map[string]uint64)
 
+	if devices, err3 := lsblk.ListDevices(); err3 != nil {
+		for deviceName, deviceObj := range devices {
+			utils.Logger.Printf("deviceName: %s fstype: %s", deviceName, deviceObj.Fstype)
+		}
+
+	}
+
 	if ps, err := disk.Partitions(false); err == nil {
 		for _, partitionInfo := range ps {
+
 			// fmt.Println("partitionInfo.Device: ", partitionInfo.Device)
 			// fmt.Println("partitionInfo.Fstype: ", partitionInfo.Fstype)
 			// fmt.Println("partitionInfo.Mountpoint: ", partitionInfo.Mountpoint)
@@ -213,6 +224,7 @@ func DiskUsageGet() *Disk {
 
 			deviceIds = append(deviceIds, partitionInfo.Device)
 			mountPoint = append(mountPoint, partitionInfo.Mountpoint)
+			filesystemType = append(filesystemType, partitionInfo.Fstype)
 			total = append(total, usage.Total)
 			used = append(used, usage.Used)
 			free = append(free, usage.Free)
@@ -232,17 +244,18 @@ func DiskUsageGet() *Disk {
 	}
 
 	return &Disk{
-		deviceNum:   len(deviceIds),
-		deviceIds:   deviceIds,
-		mountPoint:  mountPoint,
-		total:       total,
-		used:        used,
-		free:        free,
-		ioDeviceNum: ioDeviceNum,
-		readBytes:   readBytes,
-		writeBytes:  writeBytes,
-		readCount:   readCount,
-		writeCount:  writeCount,
+		deviceNum:      len(deviceIds),
+		deviceIds:      deviceIds,
+		mountPoint:     mountPoint,
+		filesystemType: filesystemType,
+		total:          total,
+		used:           used,
+		free:           free,
+		ioDeviceNum:    ioDeviceNum,
+		readBytes:      readBytes,
+		writeBytes:     writeBytes,
+		readCount:      readCount,
+		writeCount:     writeCount,
 	}
 }
 
@@ -251,6 +264,7 @@ type HostInfo struct {
 	hostName string
 	os       string
 	bootTime uint64
+	upTime   float64
 	plaform  string
 	// 主机的主要ip
 	id string
@@ -260,13 +274,20 @@ func HostInfoGet() *HostInfo {
 	// 返回主机信息
 	var infoStat *host.InfoStat
 	var err error
-	if infoStat, err = host.Info(); err == nil {
+	var upTime uint64
+	if infoStat, err = host.Info(); err != nil {
 		utils.Logger.Println("获取的主机信息: ", infoStat)
 	}
+
+	if upTime, err = host.Uptime(); err != nil {
+		utils.Logger.Printf("获取设备运行时长报错：%v", err)
+	}
+
 	return &HostInfo{
 		hostName: infoStat.Hostname,
 		os:       infoStat.OS,
 		bootTime: infoStat.BootTime,
+		upTime:   float64(upTime / 60 / 60 / 24),
 		plaform:  infoStat.Platform,
 		id:       infoStat.HostID,
 	}

@@ -25,6 +25,9 @@ type PhysicalMetricsValue struct {
 }
 
 type PhysicalDesc struct {
+	upTimeDesc    *prometheus.Desc
+	upTimeValType prometheus.ValueType
+
 	cpuCoresDesc    *prometheus.Desc
 	cpuCoresValType prometheus.ValueType
 	cpuUsageDesc    *prometheus.Desc
@@ -92,6 +95,12 @@ func NewNodeExporter() *MachineExporter {
 
 	// 构建MachineExporter对象
 	var physicalMetrics PhysicalDesc
+
+	physicalMetrics.upTimeDesc = prometheus.NewDesc("uptime", "系统运行时长",
+		[]string{"cluster", "host", "ip"},
+		prometheus.Labels{})
+	physicalMetrics.upTimeValType = prometheus.CounterValue
+
 	physicalMetrics.cpuCoresDesc = prometheus.NewDesc("cpu_cores_total", "cpu总核心数",
 		[]string{"cluster", "host", "ip"},
 		prometheus.Labels{})
@@ -132,12 +141,12 @@ func NewNodeExporter() *MachineExporter {
 	physicalMetrics.diskUsedValType = make([]prometheus.ValueType, deviceNum)
 	for i := 0; i < deviceNum; i++ {
 		physicalMetrics.diskTotalDesc[i] = prometheus.NewDesc("disk_total", "机器的总磁盘大小",
-			[]string{"cluster", "host", "ip", "device_id", "mount_path"},
+			[]string{"cluster", "host", "ip", "device_id", "filesystem_type", "mount_path"},
 			prometheus.Labels{})
 		physicalMetrics.diskTotalValType[i] = prometheus.GaugeValue
 
 		physicalMetrics.diskUsedDesc[i] = prometheus.NewDesc("disk_used", "机器使用的磁盘大小",
-			[]string{"cluster", "host", "ip", "device_id", "mount_path"},
+			[]string{"cluster", "host", "ip", "device_id", "filesystem_type", "mount_path"},
 			prometheus.Labels{})
 		physicalMetrics.diskUsedValType[i] = prometheus.GaugeValue
 
@@ -251,6 +260,7 @@ func NewNodeExporter() *MachineExporter {
 }
 
 func (e *MachineExporter) Describe(ch chan<- *prometheus.Desc) {
+	ch <- e.physicalMetrics.upTimeDesc
 	ch <- e.physicalMetrics.cpuCoresDesc
 	ch <- e.physicalMetrics.cpuUsageDesc
 	ch <- e.physicalMetrics.cpuSysUsageDesc
@@ -288,6 +298,9 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	cpuInfo := e.cpuData
 	netInfo := e.netInfoData
 
+	//输出系统运行时长
+	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.upTimeDesc, e.physicalMetrics.upTimeValType, hostInfo.upTime, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
+
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuCoresDesc, e.physicalMetrics.cpuCoresValType,
 		float64(cpuInfo.cores), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.cpuUsageDesc, e.physicalMetrics.cpuUsageValType,
@@ -307,10 +320,10 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	disk := e.diskData
 	for i := 0; i < e.physicalDiskNum; i++ {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskTotalDesc[i], e.physicalMetrics.diskTotalValType[i],
-			float64(disk.total[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, disk.deviceIds[i], disk.mountPoint[i])
+			float64(disk.total[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, disk.deviceIds[i], disk.filesystemType[i], disk.mountPoint[i])
 
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskUsedDesc[i], e.physicalMetrics.memTotalValType,
-			float64(disk.used[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, disk.deviceIds[i], disk.mountPoint[i])
+			float64(disk.used[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, disk.deviceIds[i], disk.filesystemType[i], disk.mountPoint[i])
 
 	}
 	// devices := make([]string, 0)
