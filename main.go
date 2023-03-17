@@ -29,7 +29,6 @@ import (
 	"github.com/minms/shutdown"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 )
 
 // func comineServiceInfo() (map[string]map[string]string, []*micro_service.MyK8sNodeInfo) {
@@ -69,18 +68,6 @@ import (
 // 	myK8SNodeInfo := micro_service.GetNodeInfo(k8sConfig.NodeURL)
 // 	return service_all_info, myK8SNodeInfo
 // }
-
-// 向主程序发布要执行的采集模块
-func publish(model string, ch chan interface{}) {
-	ch <- model
-}
-
-// 读取发布的待采集模块，并实现启动
-func subscribe(ch chan interface{}) {
-	model := <-ch
-	// 启动对应的exporter
-	fmt.Printf("启动%s ...", model)
-}
 
 func parseArgs() (string, string) {
 
@@ -170,8 +157,10 @@ func registerConfig() {
 			}
 		})
 		var name string
+		var configName string
 		num := 0
 		for _, ds := range dss {
+			utils.Logger.Printf("data_name: %s", ds.DataName)
 			// 如果是配置endpoint信息则跳过
 			if ds.DataName == "config" {
 				continue
@@ -179,9 +168,11 @@ func registerConfig() {
 			// 如果有相同job_name, 则追加数字后缀
 			if ds.DataName == name && name != "" {
 				num += 1
-				name = fmt.Sprintf("%s_%d", ds.DataName, num)
+				name = ds.DataName
+				configName = fmt.Sprintf("%s_%d", ds.DataName, num)
 			} else {
 				name = ds.DataName
+				configName = ds.DataName
 				num = 0
 			}
 			var ip, path string
@@ -203,7 +194,7 @@ func registerConfig() {
 					Targets []string "yaml:\"targets,omitempty\""
 				} "yaml:\"static_configs\" mapstructure:\"static_configs\""
 			}{
-				JobName:     name,
+				JobName:     configName,
 				MetricsPath: path,
 				StaticConfigs: []struct {
 					Targets []string "yaml:\"targets,omitempty\""
@@ -353,8 +344,12 @@ func exportAll(allModels map[string]string) {
 
 func main() {
 
-	modelStart := make(map[string]bool, 0)
+	// 注册所有可以注册的模块
+	go utils.RegisterDefaultAll()
+	// 启动注册model模块
+	go utils.Consumer(utils.ModelChan)
 
+	modelStart := make(map[string]bool, 0)
 	modelV, excludeModelV := parseArgs()
 
 	if excludeModelV == "all" {
@@ -379,6 +374,7 @@ func main() {
 			if _, ok := models[dataName]; ok {
 				utils.Logger.Printf("注册endpoint数据: %s %s\n", dataName, path)
 				registerEndpoint(dataName, utils.DbConfig.Cluster.HttpPort, path)
+				go utils.Publish(dataName, utils.ModelChan)
 			}
 		}
 	}
@@ -388,6 +384,7 @@ func main() {
 		exportAll(config.MetricPathMap)
 		for dataName, path := range config.MetricPathMap {
 			registerEndpoint(dataName, utils.DbConfig.Cluster.HttpPort, path)
+			go utils.Publish(dataName, utils.ModelChan)
 		}
 	}
 
@@ -418,6 +415,7 @@ func main() {
 					http.Handle(config.HBASE_METRICPATH, hbaseHandler)
 					modelStart[model] = true
 					registerEndpoint(config.HBASE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.HBASE])
+					go utils.Publish(config.HBASE, utils.ModelChan)
 
 				}
 
@@ -436,6 +434,8 @@ func main() {
 					modelStart[model] = true
 					registerEndpoint(config.HIVE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.HIVE])
 
+					go utils.Publish(config.HIVE, utils.ModelChan)
+
 				}
 			case config.KAFKA:
 				if modelStart[model] == false {
@@ -447,6 +447,8 @@ func main() {
 					http.Handle(config.KAFKA_METRICPATH, kafka_handler)
 					modelStart[model] = true
 					registerEndpoint(config.KAFKA, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.KAFKA])
+
+					go utils.Publish(config.KAFKA, utils.ModelChan)
 
 				}
 			case config.MICROSERVICE:
@@ -460,6 +462,8 @@ func main() {
 					modelStart[model] = true
 					registerEndpoint(config.MICROSERVICE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.MICROSERVICE])
 
+					go utils.Publish(config.MICROSERVICE, utils.ModelChan)
+
 				}
 			case config.MYSQL:
 				if modelStart[model] == false {
@@ -471,6 +475,8 @@ func main() {
 					http.Handle(config.MYSQL_METRICPATH, mysql_handler)
 					modelStart[model] = true
 					registerEndpoint(config.MYSQL, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.MYSQL])
+
+					go utils.Publish(config.MYSQL, utils.ModelChan)
 
 				}
 			case config.NODE:
@@ -484,6 +490,8 @@ func main() {
 					modelStart[model] = true
 					registerEndpoint(config.NODE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.NODE])
 
+					go utils.Publish(config.NODE, utils.ModelChan)
+
 				}
 			case config.REDIS:
 				if modelStart[model] == false {
@@ -491,6 +499,7 @@ func main() {
 					redis.RedisExporter()
 					modelStart[model] = true
 					registerEndpoint(config.REDIS, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.REDIS])
+					go utils.Publish(config.REDIS, utils.ModelChan)
 
 				}
 			case config.ALIVE:
@@ -505,6 +514,8 @@ func main() {
 					utils.Logger.Printf("注册alive endpoint到数据库！")
 					registerEndpoint(config.ALIVE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.ALIVE])
 
+					go utils.Publish(config.ALIVE, utils.ModelChan)
+
 				}
 			case config.SKYWALKING:
 				if modelStart[model] == false {
@@ -516,6 +527,8 @@ func main() {
 					http.Handle(config.SKYWALKING_METRICPATH, skywalking_handler)
 					modelStart[model] = true
 					registerEndpoint(config.SKYWALKING, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.SKYWALKING])
+
+					go utils.Publish(config.SKYWALKING, utils.ModelChan)
 
 				}
 			case config.SPARK:
@@ -530,6 +543,8 @@ func main() {
 					modelStart[model] = true
 					registerEndpoint(config.SPARK, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.SPARK])
 
+					go utils.Publish(config.SPARK, utils.ModelChan)
+
 				}
 			case config.ZOOKEEPER:
 				if modelStart[model] == false {
@@ -537,12 +552,16 @@ func main() {
 					zookeeper.ZookeeperExporter()
 					modelStart[model] = true
 					registerEndpoint(config.ZOOKEEPER, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.ZOOKEEPER])
+					go utils.Publish(config.ZOOKEEPER, utils.ModelChan)
 
 				}
 			case "config":
 				// 注册config端点
 				registerConfig()
 				registerEndpoint(config.CONFIG, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.CONFIG])
+
+				go utils.Publish(config.CONFIG, utils.ModelChan)
+
 			default:
 				fmt.Println("unknown model...")
 			}
@@ -601,8 +620,7 @@ func main() {
 	// }
 
 	go graceExit()
-
-	log.Info(fmt.Sprintf("Beginning to serve on port :%d", utils.DbConfig.Cluster.HttpPort))
+	utils.Logger.Printf(fmt.Sprintf("Beginning to serve on port :%d", utils.DbConfig.Cluster.HttpPort))
 	// log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", utils.DbConfig.Cluster.HttpPort), nil))
 	http.ListenAndServe(fmt.Sprintf(":%d", utils.DbConfig.Cluster.HttpPort), nil)
 
