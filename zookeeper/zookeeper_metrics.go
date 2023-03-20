@@ -143,6 +143,7 @@ func getMetrics(options *Options) *map[string]string {
 
 	intVal, _ := strconv.Atoi(zk_config.Cluster.ClientPort)
 	if len(zk_config.Cluster.Hosts) == 0 || intVal <= 0 {
+		utils.Logger.Printf("len(zk_config.Cluster.Hosts) == %d   port == %d", len(zk_config.Cluster.Hosts), intVal)
 		return nil
 	}
 
@@ -286,7 +287,7 @@ func serveMetrics(options *Options) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		metrics := getMetrics(options)
 		if metrics == nil {
-			fmt.Fprintf(w, "%s\n", "# HELP redis_export run empty, maybe the configuration is wrong")
+			fmt.Fprintf(w, "%s\n", "# HELP zookeeper_export run empty, maybe the configuration is wrong")
 			return
 		}
 		keys := make([]string, 0)
