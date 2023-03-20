@@ -29,6 +29,7 @@ func NewMysqlExporter() *MysqlExporter {
 	// 查询当前db的个数
 	mysqlConfig, _ := (utils.ConfigStruct.ConfigData[config.MYSQL]).(config.MysqlConfig)
 	if len(mysqlConfig.Cluster.Ips) == 0 || mysqlConfig.Cluster.Port <= 0 {
+		utils.Logger.Printf("mysql配置 ip列表为空或端口格式不正确！")
 		return nil
 	}
 	boolv, dbNum := utils.ValueQuery(mysqlConfig, "select count(schema_name) from information_schema.schemata")
@@ -86,6 +87,9 @@ func NewMysqlExporter() *MysqlExporter {
 
 func (e *MysqlExporter) Describe(ch chan<- *prometheus.Desc) {
 	// 实现exporter的describe方法
+	if e == nil {
+		return
+	}
 	ch <- e.up
 	ch <- e.maxConnections
 	ch <- e.maxUserConnections
