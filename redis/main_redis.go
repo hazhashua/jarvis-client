@@ -88,6 +88,10 @@ func RedisExporter() {
 	utils.ReloadConfigFromDB(config.REDIS)
 	redis_config, _ := (utils.ConfigStruct.ConfigData[config.REDIS]).(config.RedisConfig)
 
+	if len(redis_config.Cluster.Ips) == 0 {
+		return
+	}
+
 	// ip := redis_config.Cluster.Ips[0]
 	// host := redis_config.Cluster.Hosts[0]
 	// cluster := redis_config.Cluster.Name
