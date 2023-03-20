@@ -186,6 +186,13 @@ func DataStoreRemove(db *gorm.DB) {
 		db.Where("data_name=?", strings.ToLower(data_name)).Where("ip=?", ip).Delete(&Data_store_configure{})
 		// db.Delete()
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("执行DataStoreRemove操作失败  err: ", r)
+		}
+	}()
+
 }
 
 // 查询基础服务存活数据的个数
