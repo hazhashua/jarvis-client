@@ -39,6 +39,7 @@ func newEsClient(host ...string) *elastic.Client {
 		utils.Logger.Printf("elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(host)) error: %s", err.Error())
 		return nil
 	}
+	utils.Logger.Printf("到 elasticsearch:%s 的连接创建成功", host[0])
 	return client
 }
 
@@ -217,6 +218,10 @@ func GetCpmInfo(metricTable string) (cpmInfo []MyCpmInfo) {
 	boolQuery := elastic.NewBoolQuery().Must(termQuery, rangeQuery)
 
 	// queryStr := elastic.NewQueryStringQuery("metric_table:service_instance_cpm")
+	if client == nil {
+		utils.Logger.Printf("client对象为nil, 创建client对象！")
+		client = newEsClient(host)
+	}
 	if searchRs, err := client.Search(index).Query(boolQuery).Size(10000).Do(context.Background()); err == nil {
 		utils.Logger.Println("hit数组长度为: ", searchRs.TotalHits())
 		if searchRs.TotalHits() <= 0 {
