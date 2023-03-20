@@ -44,7 +44,9 @@ func create(path string) bool {
 		path = "/test_zk_node"
 	}
 	var conn *zk.Conn = conn()
-	defer conn.Close()
+	if conn != nil {
+		defer conn.Close()
+	}
 	var data = []byte("test zk node 数据")
 	//flags有4种取值：
 	//0:永久，除非手动删除
@@ -110,42 +112,4 @@ func delete(path string) {
 	} else {
 		fmt.Println(fmt.Sprintf("节点%s删除成功!", path))
 	}
-}
-
-func Callback(event zk.Event) {
-	fmt.Println("*******************")
-	fmt.Println("path:", event.Path)
-	fmt.Println("type:", event.Type.String())
-	fmt.Println("state:", event.State.String())
-	fmt.Println("*******************")
-}
-
-// 添加watcher, 创建监听
-func Watch() {
-	var hosts = []string{"192.168.10.220:2181", "192.168.10.221:2181", "192.168.10.222:2181"}
-	option := zk.WithEventCallback(Callback)
-	conn, _, err := zk.Connect(hosts, time.Second*5, option)
-	defer conn.Close()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	var path = "/testzk"
-	_, _, _, err = conn.ExistsW(path)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// // 创建节点
-	// path = ""
-	// create("test_watcher")
-	// time.Sleep(time.Second * 2)
-	// _, _, _, err = conn.ExistsW(path)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-	// // 删除节点
-	// delete(path)
 }
