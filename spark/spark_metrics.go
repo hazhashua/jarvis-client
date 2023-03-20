@@ -59,6 +59,10 @@ func GetMetrics() []string {
 		return []string{}
 	}
 
+	if len(sparkConfig.Masterhttp.Ips) == 0 || len(sparkConfig.Workerhttp.Ips) == 0 {
+		return []string{}
+	}
+
 	url_array := make([]string, 0)
 	worker_array := make([]string, 0)
 	for _, ip := range sparkConfig.Masterhttp.Ips {

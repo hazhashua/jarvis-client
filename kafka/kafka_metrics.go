@@ -256,6 +256,7 @@ func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric
 			ofr, err5 := cluster_admin.ListConsumerGroupOffsets(group, topic_partitions)
 			if err5 != nil {
 				utils.Logger.Printf("ListConsumerGroupOffsets error: %s\n", err5.Error())
+				continue
 			}
 			for topic, offset_infos := range ofr.Blocks {
 				// 消费组下partition的消费情况
