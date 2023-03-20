@@ -361,7 +361,7 @@ func main() {
 		excludeModels := strings.Split(excludeModelV, ",")
 		models := make(map[string]string)
 
-		for model, _ := range config.MetricPathMap {
+		for model := range config.MetricPathMap {
 			models[model] = ""
 		}
 		for _, model := range excludeModels {
