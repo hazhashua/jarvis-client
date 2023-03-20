@@ -57,6 +57,11 @@ func NewSkywalkingExporter() *SkyWalkingExporter {
 	// 动态加载es配置, 重建client对象
 	utils.ReloadConfigFromDB(config.SKYWALKING)
 	skywalkingConfig, _ := (utils.ConfigStruct.ConfigData["skywalking"]).(config.SkyWalkingConfig)
+
+	if len(skywalkingConfig.Cluster.ElasticSearch.Ips) == 0 || skywalkingConfig.Cluster.ElasticSearch.Port <= 0 {
+		return nil
+	}
+
 	esHosts := make([]string, 0)
 	for _, ip := range skywalkingConfig.Cluster.ElasticSearch.Ips {
 		hostUrl := fmt.Sprintf("http://%s:%d", ip, skywalkingConfig.Cluster.ElasticSearch.Port)
@@ -124,6 +129,10 @@ func NewSkywalkingExporter() *SkyWalkingExporter {
 }
 
 func (e *SkyWalkingExporter) Describe(ch chan<- *prometheus.Desc) {
+
+	if e == nil {
+		return
+	}
 	for _, event := range e.EventInfos {
 		ch <- event.EventInfoDesc
 	}
