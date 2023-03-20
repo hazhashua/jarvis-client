@@ -190,7 +190,14 @@ func GetAliveInfos() []DatsourceAlive {
 				continue
 			}
 			utils.Logger.Printf("执行服务进程检测: %s ...\n", *servicePort.ChildService)
-			alive := IsProcessRunning(*servicePort.ChildService)
+			var alive bool
+			if *servicePort.ChildService == "scheduler" {
+				alive = IsProcessRunning("kube-scheduler")
+			} else if *servicePort.ChildService == "controller manager" {
+				alive = IsProcessRunning("kube-controller-manager")
+			} else {
+				alive = IsProcessRunning(*servicePort.ChildService)
+			}
 			if alive == true {
 				datasourceAlive.MetricValue = float32(1)
 			} else {
