@@ -1,7 +1,6 @@
 package nodeexporter
 
 import (
-	"fmt"
 	"metric_exporter/config"
 	"metric_exporter/utils"
 
@@ -77,18 +76,22 @@ type MachineExporter struct {
 	physicalDiskNum      int
 	physicalIoDiskNum    int
 	physicalNetDeviceNum int
-	processNum           int
-	physicalMetrics      PhysicalDesc
-	physicalMetricsData  *ProcessInfo
-	netInfoData          *utils.NetInfo
-	cpuData              *CpuInfo
-	hostInfoData         *HostInfo
-	memoryData           *Memory
-	diskData             *Disk
-	load1                float64
-	load5                float64
-	load15               float64
-	virtualMetrics       VirtualDesc
+	// processNum           int
+	physicalMetrics PhysicalDesc
+	// physicalMetricsData  *ProcessInfo
+	// 网络名称列表
+	networkNames []string
+	// 网络对应的流量信息
+	networkFlowinfos []utils.FlowInfo
+	netInfoData      *utils.NetInfo
+	cpuData          *CpuInfo
+	hostInfoData     *HostInfo
+	memoryData       *Memory
+	diskData         *Disk
+	load1            float64
+	load5            float64
+	load15           float64
+	virtualMetrics   VirtualDesc
 }
 
 func NewNodeExporter() *MachineExporter {
@@ -199,7 +202,18 @@ func NewNodeExporter() *MachineExporter {
 		prometheus.Labels{})
 	physicalMetrics.load15ValueType = prometheus.GaugeValue
 
-	netDeviceNum := NetDeviceNum()
+	netInfo := utils.NetInfoGet()
+	netDeviceNum := len(netInfo.DeviceIds)
+
+	deviceNames := make([]string, 0)
+	flowInfos := make([]utils.FlowInfo, 0)
+	for deviceName, flowInfo := range netInfo.DeviceIds {
+		utils.Logger.Println("deviceName: ", deviceName, " flowInfo: ", flowInfo)
+		deviceNames = append(deviceNames, deviceName)
+		flowInfos = append(flowInfos, flowInfo)
+	}
+
+	// netDeviceNum := NetDeviceNum()
 	physicalMetrics.networkSentDesc = make([]*prometheus.Desc, netDeviceNum)
 	physicalMetrics.networkSentValType = make([]prometheus.ValueType, netDeviceNum)
 	physicalMetrics.networkReceiveDesc = make([]*prometheus.Desc, netDeviceNum)
@@ -216,17 +230,16 @@ func NewNodeExporter() *MachineExporter {
 	}
 	diskIoDeviceNum := DiskIoDeviceNum()
 
-	processNum, processInfos := ProcessInfoGet()
-	physicalMetrics.processInfoDesc = make([]*prometheus.Desc, processNum)
-	physicalMetrics.processInfoValType = make([]prometheus.ValueType, processNum)
-	for i := 0; i < processNum; i++ {
-		physicalMetrics.processInfoDesc[i] = prometheus.NewDesc("process_info", "主机运行进程的相关信息",
-			[]string{"cluster", "host", "ip", "id", "read_bytes", "write_bytes"},
-			prometheus.Labels{})
-		physicalMetrics.processInfoValType[i] = prometheus.GaugeValue
-	}
+	// processNum, processInfos := ProcessInfoGet()
+	// physicalMetrics.processInfoDesc = make([]*prometheus.Desc, processNum)
+	// physicalMetrics.processInfoValType = make([]prometheus.ValueType, processNum)
+	// for i := 0; i < processNum; i++ {
+	// 	physicalMetrics.processInfoDesc[i] = prometheus.NewDesc("process_info", "主机运行进程的相关信息",
+	// 		[]string{"cluster", "host", "ip", "id", "read_bytes", "write_bytes"},
+	// 		prometheus.Labels{})
+	// 	physicalMetrics.processInfoValType[i] = prometheus.GaugeValue
+	// }
 
-	netInfo := utils.NetInfoGet()
 	hostInfo := HostInfoGet()
 	memoryInfo := MemUsageGet()
 	diskInfo := DiskUsageGet()
@@ -241,11 +254,13 @@ func NewNodeExporter() *MachineExporter {
 
 	var virtualMetrics VirtualDesc
 	return &MachineExporter{
-		physicalDiskNum:      deviceNum,
-		physicalIoDiskNum:    diskIoDeviceNum,
-		processNum:           processNum,
-		physicalMetrics:      physicalMetrics,
-		physicalMetricsData:  processInfos,
+		physicalDiskNum:   deviceNum,
+		physicalIoDiskNum: diskIoDeviceNum,
+		// processNum:           processNum,
+		physicalMetrics:  physicalMetrics,
+		networkNames:     deviceNames,
+		networkFlowinfos: flowInfos,
+		// physicalMetricsData:  processInfos,
 		physicalNetDeviceNum: netDeviceNum,
 		cpuData:              cpuInfo,
 		netInfoData:          netInfo,
@@ -282,9 +297,9 @@ func (e *MachineExporter) Describe(ch chan<- *prometheus.Desc) {
 		ch <- e.physicalMetrics.networkReceiveDesc[i]
 		ch <- e.physicalMetrics.networkSentDesc[i]
 	}
-	for i := 0; i < e.processNum; i++ {
-		ch <- e.physicalMetrics.processInfoDesc[i]
-	}
+	// for i := 0; i < e.processNum; i++ {
+	// 	ch <- e.physicalMetrics.processInfoDesc[i]
+	// }
 
 }
 
@@ -326,24 +341,7 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 			float64(disk.used[i]), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, disk.deviceIds[i], disk.filesystemType[i], disk.mountPoint[i])
 
 	}
-	// devices := make([]string, 0)
-	// readBytess := make([]uint64, 0)
-	// writeBytess := make([]uint64, 0)
-	// for device, bytes := range disk.readBytes {
-	// 	devices = append(devices, device)
-	// 	readBytess = append(readBytess, bytes)
-	// }
-	// for _, bytes := range disk.writeBytes {
-	// 	writeBytess = append(writeBytess, bytes)
-	// }
 
-	// for i := 0; i < e.physicalIoDiskNum; i++ {
-	// 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskReadDesc[i], e.physicalMetrics.diskReadValType[i],
-	// 		float64(readBytess[i]), nodeConfig.Cluster.name, hostInfo.hostName, "", disk.deviceIds[i], disk.mountPoint[i])
-
-	// 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskWriteDesc[i], e.physicalMetrics.diskReadValType[i],
-	// 		float64(writeBytess[i]), nodeConfig.Cluster.name, hostInfo.hostName, "", disk.deviceIds[i], disk.mountPoint[i])
-	// }
 	i := 0
 	for key, value := range disk.readBytes {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.diskReadDesc[i], e.physicalMetrics.diskReadValType[i],
@@ -369,30 +367,30 @@ func (e *MachineExporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.load15Desc, e.physicalMetrics.load15ValueType,
 		e.load15, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip)
 
-	deviceNames := make([]string, 0)
-	flowInfos := make([]utils.FlowInfo, 0)
-	for deviceName, flowInfo := range netInfo.DeviceIds {
-		utils.Logger.Println("deviceName: ", deviceName, " flowInfo: ", flowInfo)
-		deviceNames = append(deviceNames, deviceName)
-		flowInfos = append(flowInfos, flowInfo)
-	}
-	for idx, deviceName := range deviceNames {
+	// deviceNames := make([]string, 0)
+	// flowInfos := make([]utils.FlowInfo, 0)
+	// for deviceName, flowInfo := range netInfo.DeviceIds {
+	// 	utils.Logger.Println("deviceName: ", deviceName, " flowInfo: ", flowInfo)
+	// 	deviceNames = append(deviceNames, deviceName)
+	// 	flowInfos = append(flowInfos, flowInfo)
+	// }
+	for idx, deviceName := range e.networkNames {
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.networkReceiveDesc[idx], e.physicalMetrics.networkReceiveValType[idx],
-			float64(flowInfos[idx].ReceiveBytes), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, deviceName)
+			float64(e.networkFlowinfos[idx].ReceiveBytes), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, deviceName)
 
 		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.networkSentDesc[idx], e.physicalMetrics.networkSentValType[idx],
-			float64(flowInfos[idx].SentBytes), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, deviceName)
+			float64(e.networkFlowinfos[idx].SentBytes), nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, deviceName)
 	}
 
-	processInfos := e.physicalMetricsData
+	// processInfos := e.physicalMetricsData
 
-	idx := 0
-	for key, value := range processInfos.processIoMap {
+	// idx := 0
+	// for key, value := range processInfos.processIoMap {
 
-		// {"cluster", "host", "ip", "id", "read_bytes", "write_bytes"}
-		ch <- prometheus.MustNewConstMetric(e.physicalMetrics.processInfoDesc[idx], e.physicalMetrics.processInfoValType[idx],
-			1, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, fmt.Sprintf("%d", key), fmt.Sprintf("%d", value.readBytes), fmt.Sprintf("%d", value.writeBytes))
-		idx += 1
-	}
+	// 	// {"cluster", "host", "ip", "id", "read_bytes", "write_bytes"}
+	// 	ch <- prometheus.MustNewConstMetric(e.physicalMetrics.processInfoDesc[idx], e.physicalMetrics.processInfoValType[idx],
+	// 		1, nodeConfig.Cluster.Name, hostInfo.hostName, netInfo.Ip, fmt.Sprintf("%d", key), fmt.Sprintf("%d", value.readBytes), fmt.Sprintf("%d", value.writeBytes))
+	// 	idx += 1
+	// }
 
 }
