@@ -145,7 +145,7 @@ func ServiceQuery(db *gorm.DB) (servicePort []ServicePort) {
 				ON dgc.service_type=gn.id 
 				JOIN %s doc 
 				on gn.cluster_id = doc.id
-				where doc.cluster_id = %d`, DbConfig.Cluster.Postgres.GatherDetailTable, DbConfig.Cluster.Postgres.GatherTable, DbConfig.Cluster.Postgres.ObtainTable, DbConfig.Cluster.ClusterID)
+				where doc.id = %d`, DbConfig.Cluster.Postgres.GatherDetailTable, DbConfig.Cluster.Postgres.GatherTable, DbConfig.Cluster.Postgres.ObtainTable, DbConfig.Cluster.ClusterID)
 	Logger.Println("ServiceQuery sql: ", sql)
 	db.Raw(sql).Scan(&sps)
 
