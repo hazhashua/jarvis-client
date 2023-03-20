@@ -9,17 +9,27 @@ import (
 	"github.com/samuel/go-zookeeper/zk"
 )
 
-// 获取到zookeeper的连接
-func conn() *zk.Conn {
+var defaultPath string
+var currentPath string
+var ModelChan chan string
+
+// 初始化zk连接相关信息
+func init() {
+
+	defaultPath = "/exporter/all_node"
+	currentPath = "/exporter/current"
+	ModelChan = make(chan string)
+}
+
+func getZkHost() []string {
 	var zookeeper_config config.ZookeepeConfig
 	var ok bool
 
 	zookeeper_config, ok = (ConfigStruct.ConfigData[config.ZOOKEEPER]).(config.ZookeepeConfig)
 	if ok == false {
 		Logger.Println("获取zookeeper config配置失败!")
-		return nil
+		return []string{}
 	}
-
 	fmt.Println("zookeeper_config.Cluster.Name: ", zookeeper_config.Cluster.Name)
 	fmt.Println("zookeeper_config.Cluster.Hosts: ", zookeeper_config.Cluster.Hosts)
 	fmt.Println("zookeeper_config.Cluster.ClientPort: ", zookeeper_config.Cluster.ClientPort)
@@ -27,6 +37,16 @@ func conn() *zk.Conn {
 	for _, host := range zookeeper_config.Cluster.Hosts {
 		hosts = append(hosts, fmt.Sprintf("%s:%s", host, zookeeper_config.Cluster.ClientPort))
 	}
+	return hosts
+}
+
+// 获取到zookeeper的连接
+func conn() *zk.Conn {
+	hosts := getZkHost()
+	if len(hosts) == 0 {
+		return nil
+	}
+
 	// hosts_str := strings.Join(hosts, ",")
 	conn, _, err := zk.Connect(hosts, time.Second*5)
 	defer conn.Close()
@@ -120,7 +140,7 @@ func delete(path string) {
 }
 
 // 发布执行成功的采集模块
-func publish(model string, ch chan interface{}) {
+func Publish(model string, ch chan string) {
 	ch <- model
 	fmt.Printf("发布模块%s", model)
 }
@@ -129,17 +149,17 @@ func register(model string) {
 	// 这册模块到zookeeper
 	connection := conn()
 	var existPath bool = true
-	if existFlag, zkState, _ := connection.Exists("/exporter/current"); !existFlag {
+	if existFlag, zkState, _ := connection.Exists(currentPath); !existFlag {
 		Logger.Printf("zkState: %v", zkState)
 		// 不存在存储根节点，则创建存储根节点
-		existPath = create("/exporter/current", false, []byte("存储当前连接状态的exporter"))
+		existPath = create(currentPath, false, []byte("存储当前连接状态的exporter"))
 	}
 	if !existPath {
 		Logger.Printf("创建current节点失败")
 		return
 	}
 	// 注册临时节点
-	if createOk := create(fmt.Sprintf("/exporter/current/%s", model), true, []byte(fmt.Sprintf("%s模块连接成功", model))); !createOk {
+	if createOk := create(fmt.Sprintf("%s/%s", currentPath, model), true, []byte(fmt.Sprintf("%s模块连接成功", model))); !createOk {
 		Logger.Printf("%s模块连接创建失败！", model)
 	} else {
 		Logger.Printf("%s模块连接创建成功！", model)
@@ -147,7 +167,7 @@ func register(model string) {
 
 }
 
-func registerDefaultAll() {
+func RegisterDefaultAll() {
 	// 注册所有的exporter
 	// HADOOP HBASE HIVE KAFKA MICROSERVICE
 	// MYSQL NODE REDIS SKYWALKING SPARK ZOOKEEPER ALIVE APISIX CONFIG
@@ -157,23 +177,22 @@ func registerDefaultAll() {
 		config.ZOOKEEPER, config.ALIVE, config.APISIX, config.CONFIG}
 
 	data := strings.Join(modelAll, ",")
-	if true == create("/exporter/all_node", false, []byte("可存储的所有exporter信息")) {
+	if true == create(defaultPath, false, []byte("可存储的所有exporter信息")) {
 		// 设置全部可以获取的exporter
-		set("/exporter/all_node", data)
+		set(defaultPath, data)
 		Logger.Printf("初始化zk全部exporter信息成功！")
 	} else {
 		Logger.Printf("创建zk节点失败, 尝试update全部exporter信息")
-		set("/exporter/all_node", data)
+		set(defaultPath, data)
 	}
 
 }
 
-func consumer(ch chan string) {
+func Consumer(ch chan string) {
 	for i := 1; i < 2; i++ {
 		model := <-ch
 		Logger.Printf("获取已发布模块%s, 将写入zookeeper!", model)
 		register(model)
-
 		i--
 	}
 
