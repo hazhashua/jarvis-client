@@ -21,7 +21,7 @@ func init() {
 	ModelChan = make(chan string)
 }
 
-func getZkHost() []string {
+func GetZkHost() []string {
 	var zookeeper_config config.ZookeepeConfig
 	var ok bool
 
@@ -37,19 +37,19 @@ func getZkHost() []string {
 	for _, host := range zookeeper_config.Cluster.Hosts {
 		hosts = append(hosts, fmt.Sprintf("%s:%s", host, zookeeper_config.Cluster.ClientPort))
 	}
+	Logger.Printf("zk_hosts: %v", hosts)
 	return hosts
 }
 
 // 获取到zookeeper的连接
 func conn() *zk.Conn {
-	hosts := getZkHost()
+	hosts := GetZkHost()
 	if len(hosts) == 0 {
 		return nil
 	}
 
 	// hosts_str := strings.Join(hosts, ",")
 	conn, _, err := zk.Connect(hosts, time.Second*5)
-	defer conn.Close()
 	if err != nil {
 		Logger.Println("zk connect fail  error: ", err.Error())
 		return nil
@@ -59,14 +59,15 @@ func conn() *zk.Conn {
 }
 
 // 创建节点
-func create(path string, temporary bool, data []byte) bool {
+func Create(conn *zk.Conn, path string, temporary bool, data []byte) bool {
 	if path == "" {
 		path = "/test_zk_node"
 	}
-	var conn *zk.Conn = conn()
-	if conn != nil {
-		defer conn.Close()
-	}
+	Logger.Printf("conn.State(): %s \n", conn.State().String())
+	// var conn *zk.Conn = conn()
+	// if conn != nil {
+	// 	defer conn.Close()
+	// }
 	if len(data) == 0 {
 		data = []byte("test zk node 数据")
 	}
@@ -80,12 +81,12 @@ func create(path string, temporary bool, data []byte) bool {
 		flags = zk.FlagEphemeral
 	}
 	var acls = zk.WorldACL(zk.PermAll) //控制访问权限模式
-	p, err_create := conn.Create(path, data, flags, acls)
+	path, err_create := conn.Create(path, data, flags, acls)
 	if err_create != nil {
-		fmt.Println(err_create)
+		Logger.Printf("create path:%s error:%s\n", path, err_create)
 		return false
 	}
-	fmt.Println("create node:", p)
+	Logger.Printf("create node: %s success\n", path)
 	return true
 }
 
@@ -145,21 +146,20 @@ func Publish(model string, ch chan string) {
 	fmt.Printf("发布模块%s", model)
 }
 
-func register(model string) {
+func Register(connection *zk.Conn, model string) {
 	// 这册模块到zookeeper
-	connection := conn()
 	var existPath bool = true
 	if existFlag, zkState, _ := connection.Exists(currentPath); !existFlag {
 		Logger.Printf("zkState: %v", zkState)
 		// 不存在存储根节点，则创建存储根节点
-		existPath = create(currentPath, false, []byte("存储当前连接状态的exporter"))
+		existPath = Create(connection, currentPath, false, []byte("存储当前连接状态的exporter"))
 	}
 	if !existPath {
 		Logger.Printf("创建current节点失败")
 		return
 	}
 	// 注册临时节点
-	if createOk := create(fmt.Sprintf("%s/%s", currentPath, model), true, []byte(fmt.Sprintf("%s模块连接成功", model))); !createOk {
+	if createOk := Create(connection, fmt.Sprintf("%s/%s", currentPath, model), true, []byte(fmt.Sprintf("%s模块连接成功", model))); !createOk {
 		Logger.Printf("%s模块连接创建失败！", model)
 	} else {
 		Logger.Printf("%s模块连接创建成功！", model)
@@ -172,12 +172,20 @@ func RegisterDefaultAll() {
 	// HADOOP HBASE HIVE KAFKA MICROSERVICE
 	// MYSQL NODE REDIS SKYWALKING SPARK ZOOKEEPER ALIVE APISIX CONFIG
 
+	defer Errorrecover()
+	Logger.Println("in RegisterDefaultAll......")
+
 	modelAll := []string{config.HADOOP, config.HBASE, config.HIVE, config.KAFKA, config.MICROSERVICE,
 		config.MYSQL, config.NODE, config.REDIS, config.SKYWALKING, config.SPARK, config.ZOOKEEPER,
 		config.ZOOKEEPER, config.ALIVE, config.APISIX, config.CONFIG}
 
 	data := strings.Join(modelAll, ",")
-	if true == create(defaultPath, false, []byte("可存储的所有exporter信息")) {
+	connection := conn()
+	// 如果连接创建成功则进行关闭操作
+	if connection != nil {
+		defer connection.Close()
+	}
+	if true == Create(connection, defaultPath, false, []byte("可存储的所有exporter信息")) {
 		// 设置全部可以获取的exporter
 		set(defaultPath, data)
 		Logger.Printf("初始化zk全部exporter信息成功！")
@@ -185,14 +193,26 @@ func RegisterDefaultAll() {
 		Logger.Printf("创建zk节点失败, 尝试update全部exporter信息")
 		set(defaultPath, data)
 	}
-
 }
 
 func Consumer(ch chan string) {
+	var connection *zk.Conn
+	defer func() {
+		if connection != nil {
+			// 关闭zookeeper连接
+			connection.Close()
+		}
+		if r := recover(); r != nil {
+			Logger.Println("Consumer goroutine异常退出，err: ", r)
+		} else {
+			Logger.Println("Consumer goroutine正常退出")
+		}
+	}()
+	connection = conn()
 	for i := 1; i < 2; i++ {
 		model := <-ch
 		Logger.Printf("获取已发布模块%s, 将写入zookeeper!", model)
-		register(model)
+		Register(connection, model)
 		i--
 	}
 
