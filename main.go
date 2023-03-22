@@ -644,8 +644,3 @@ func graceExit() {
 // 	utils.Logger.Println("接收到信号: ", signalx)
 
 // }
-
-// 定时刷新配置的源路径
-func autoRefreshSourceConfig() {
-
-}
