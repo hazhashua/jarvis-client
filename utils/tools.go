@@ -25,3 +25,14 @@ func CheckPorts(ip_port string, port_type string) bool {
 	return check
 
 }
+
+func Errorrecover() {
+	if r := recover(); r != nil {
+		Logger.Println("recover()返回异常，err: ", r)
+	} else {
+		Logger.Println("recover()返回正常")
+	}
+	DataStoreRemove(SourceMysqlDb)
+	Logger.Printf("服务退出，清空数据库注册端口数据！")
+
+}
