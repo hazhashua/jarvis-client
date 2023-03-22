@@ -250,7 +250,7 @@ func getTopicInfo(client sarama.Client, config *sarama.Config) (topic_num_metric
 	if err3 != nil {
 		utils.Logger.Println("ListConsumerGroups() error: ", err3.Error())
 	} else {
-		for group, _ := range m {
+		for group := range m {
 			topic_partition_consumer_group_offsets[group] = make(map[string]int64)
 			consumer_groups = append(consumer_groups, group)
 			ofr, err5 := cluster_admin.ListConsumerGroupOffsets(group, topic_partitions)
