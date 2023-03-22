@@ -345,7 +345,7 @@ func exportAll(allModels map[string]string) {
 func main() {
 
 	// 注册所有可以注册的模块
-	go utils.RegisterDefaultAll()
+	utils.RegisterDefaultAll()
 	// 启动注册model模块
 	go utils.Consumer(utils.ModelChan)
 
@@ -404,6 +404,8 @@ func main() {
 					http.Handle(config.HADOOP_METRICPATH, hadoop_handler)
 					modelStart[model] = true
 					registerEndpoint(config.HADOOP, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.HADOOP])
+					go utils.Publish(config.HADOOP, utils.ModelChan)
+
 				}
 			case config.HBASE:
 				if modelStart[model] == false {
@@ -433,7 +435,6 @@ func main() {
 					http.Handle(config.HIVE_METRICPATH, hive_handler)
 					modelStart[model] = true
 					registerEndpoint(config.HIVE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.HIVE])
-
 					go utils.Publish(config.HIVE, utils.ModelChan)
 
 				}
@@ -447,7 +448,6 @@ func main() {
 					http.Handle(config.KAFKA_METRICPATH, kafka_handler)
 					modelStart[model] = true
 					registerEndpoint(config.KAFKA, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.KAFKA])
-
 					go utils.Publish(config.KAFKA, utils.ModelChan)
 
 				}
@@ -461,7 +461,6 @@ func main() {
 					http.Handle(config.MICROSERVICE_METRICPATH, microServiceHandler)
 					modelStart[model] = true
 					registerEndpoint(config.MICROSERVICE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.MICROSERVICE])
-
 					go utils.Publish(config.MICROSERVICE, utils.ModelChan)
 
 				}
@@ -475,7 +474,6 @@ func main() {
 					http.Handle(config.MYSQL_METRICPATH, mysql_handler)
 					modelStart[model] = true
 					registerEndpoint(config.MYSQL, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.MYSQL])
-
 					go utils.Publish(config.MYSQL, utils.ModelChan)
 
 				}
@@ -489,7 +487,6 @@ func main() {
 					http.Handle(config.NODE_METRICPATH, node_handler)
 					modelStart[model] = true
 					registerEndpoint(config.NODE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.NODE])
-
 					go utils.Publish(config.NODE, utils.ModelChan)
 
 				}
@@ -513,7 +510,6 @@ func main() {
 					modelStart[model] = true
 					utils.Logger.Printf("注册alive endpoint到数据库！")
 					registerEndpoint(config.ALIVE, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.ALIVE])
-
 					go utils.Publish(config.ALIVE, utils.ModelChan)
 
 				}
@@ -527,7 +523,6 @@ func main() {
 					http.Handle(config.SKYWALKING_METRICPATH, skywalking_handler)
 					modelStart[model] = true
 					registerEndpoint(config.SKYWALKING, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.SKYWALKING])
-
 					go utils.Publish(config.SKYWALKING, utils.ModelChan)
 
 				}
@@ -542,7 +537,6 @@ func main() {
 					fmt.Println("命令行的参数有", len(os.Args))
 					modelStart[model] = true
 					registerEndpoint(config.SPARK, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.SPARK])
-
 					go utils.Publish(config.SPARK, utils.ModelChan)
 
 				}
@@ -559,7 +553,6 @@ func main() {
 				// 注册config端点
 				registerConfig()
 				registerEndpoint(config.CONFIG, utils.DbConfig.Cluster.HttpPort, config.MetricPathMap[config.CONFIG])
-
 				go utils.Publish(config.CONFIG, utils.ModelChan)
 
 			default:
@@ -619,50 +612,17 @@ func main() {
 	// 	fmt.Println("拷贝远程文件到本地, 失败!")
 	// }
 
+	// 退出处理异常函数
 	go graceExit()
+	// 退出处理函数
+	// go abortExit()
+
 	utils.Logger.Printf(fmt.Sprintf("Beginning to serve on port :%d", utils.DbConfig.Cluster.HttpPort))
 	// log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", utils.DbConfig.Cluster.HttpPort), nil))
-	http.ListenAndServe(fmt.Sprintf(":%d", utils.DbConfig.Cluster.HttpPort), nil)
-
-	// 	// handler
-	//     handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	//         time.Sleep(2 * time.Second)
-	//         fmt.Fprintln(w, "hello")
-	//     })
-
-	//     // server
-	//     srv := http.Server{
-	//         Addr:    *addr,
-	//         Handler: handler,
-	//     }
-
-	//     // make sure idle connections returned
-	//     processed := make(chan struct{})
-	//     go func() {
-	//         c := make(chan os.Signal, 1)
-	//         signal.Notify(c, os.Interrupt)
-	//         <-c
-
-	//         ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	//         defer cancel()
-	//         if err := srv.Shutdown(ctx); nil != err {
-	//             log.Fatalf("server shutdown failed, err: %v
-	// ", err)
-	//         }
-	//         log.Println("server gracefully shutdown")
-
-	//         close(processed)
-	//     }()
-
-	//     // serve
-	//     err := srv.ListenAndServe()
-	//     if http.ErrServerClosed != err {
-	//         log.Fatalf("server not gracefully shutdown, err :%v
-	// ", err)
-	//     }
-
-	//     // waiting for goroutine above processed
-	//     <-processed
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", utils.DbConfig.Cluster.HttpPort), nil); err != nil {
+		// 程序异常退出是执行数据销毁等操作
+		defer utils.Errorrecover()
+	}
 
 }
 
@@ -674,6 +634,16 @@ func graceExit() {
 		os.Exit(1)
 	})
 }
+
+// func abortExit() {
+// 	channel := make(chan os.Signal, 1)
+// 	signal.Notify(channel, syscall.SIGTERM, syscall.SIGINT, syscall.SIGALRM, syscall.SIGKILL)
+// 	utils.Logger.Printf("等待接收signal信号......")
+// 	// Block until a signal is received.
+// 	signalx := <-channel
+// 	utils.Logger.Println("接收到信号: ", signalx)
+
+// }
 
 // 定时刷新配置的源路径
 func autoRefreshSourceConfig() {
