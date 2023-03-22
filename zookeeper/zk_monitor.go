@@ -2,7 +2,6 @@ package zookeeper
 
 import (
 	"fmt"
-	"metric_exporter/config"
 	"metric_exporter/utils"
 	"time"
 
@@ -11,22 +10,8 @@ import (
 
 // 获取到zookeeper的连接
 func conn() *zk.Conn {
-	var zookeeper_config config.ZookeepeConfig
-	var ok bool
 
-	zookeeper_config, ok = (utils.ConfigStruct.ConfigData[config.ZOOKEEPER]).(config.ZookeepeConfig)
-	if ok == false {
-		utils.Logger.Println("获取zookeeper config配置失败!")
-		return nil
-	}
-
-	fmt.Println("zookeeper_config.Cluster.Name: ", zookeeper_config.Cluster.Name)
-	fmt.Println("zookeeper_config.Cluster.Hosts: ", zookeeper_config.Cluster.Hosts)
-	fmt.Println("zookeeper_config.Cluster.ClientPort: ", zookeeper_config.Cluster.ClientPort)
-	hosts := make([]string, 0)
-	for _, host := range zookeeper_config.Cluster.Hosts {
-		hosts = append(hosts, fmt.Sprintf("%s:%s", host, zookeeper_config.Cluster.ClientPort))
-	}
+	hosts := utils.GetZkHost()
 	// hosts_str := strings.Join(hosts, ",")
 	conn, _, err := zk.Connect(hosts, time.Second*5)
 	defer conn.Close()
