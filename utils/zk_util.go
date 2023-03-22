@@ -150,16 +150,30 @@ func Register(connection *zk.Conn, model string) {
 	// 这册模块到zookeeper
 	var existPath bool = true
 	if existFlag, zkState, _ := connection.Exists(currentPath); !existFlag {
-		Logger.Printf("zkState: %v", zkState)
+		Logger.Printf("path: %s   zkState: %v", currentPath, zkState)
 		// 不存在存储根节点，则创建存储根节点
 		existPath = Create(connection, currentPath, false, []byte("存储当前连接状态的exporter"))
 	}
 	if !existPath {
-		Logger.Printf("创建current节点失败")
+		Logger.Printf("创建%s节点失败\n", currentPath)
 		return
 	}
+
+	// 获取主机的ip信息
+	netInfo := NetInfoGet()
+	currentIpPath := fmt.Sprintf("%s/%s", currentPath, netInfo.Ip)
+	if existFlag, zkState, _ := connection.Exists(currentIpPath); !existFlag {
+		Logger.Printf("path: %s   zkState: %v", currentIpPath, zkState)
+		existPath = Create(connection, currentIpPath, false, []byte(fmt.Sprintf("存储到当前主机:%s有连接状态的exporter", netInfo.Ip)))
+	}
+	if !existPath {
+		Logger.Printf("创建%s节点失败\n", currentIpPath)
+		return
+	}
+
+	endpoint := fmt.Sprintf("http://%s:%d%s", netInfo.Ip, DbConfig.Cluster.HttpPort, config.MetricPathMap[model])
 	// 注册临时节点
-	if createOk := Create(connection, fmt.Sprintf("%s/%s", currentPath, model), true, []byte(fmt.Sprintf("%s模块连接成功", model))); !createOk {
+	if createOk := Create(connection, fmt.Sprintf("%s/%s", currentIpPath, model), true, []byte(endpoint)); !createOk {
 		Logger.Printf("%s模块连接创建失败！", model)
 	} else {
 		Logger.Printf("%s模块连接创建成功！", model)
